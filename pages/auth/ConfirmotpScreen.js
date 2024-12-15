@@ -15,76 +15,82 @@ import {
 } from "react-native";
 import { AuthContext } from "../../contexts/AuthContext";
 
-export default Confirmotp = ({ navigation }) => {
-
-  const {register}  = useContext(AuthContext);
-
+export default Confirmotp = ({ navigation, route }) => {
+  console.log(route.params);
+  const { confirmOtp } = useContext(AuthContext);
+  const [otp, setOtp] = useState("");
+  const { username, password, email, phone, role } = route.params;
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View style={styles.container}>
-          <ImageBackground
-            style={styles.bgImage}
-            source={require("../../assets/BgcLogin.jpg")}
-          />
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.inputs}
-              placeholder="Full name"
-              underlineColorAndroid="transparent"
-              value={username}
-              onChangeText={(value) => setUsername(value)}
-            />
-          </View>
+    <View style={styles.container}>
+      <ImageBackground
+        style={styles.bgImage}
+        source={require("../../assets/BgcLogin.jpg")}
+      />
+      <Text style={styles.title}>Confirm OTP</Text>
 
-          <TouchableOpacity
-            style={[styles.buttonContainer, styles.loginButton]}
-            onPress={() => {
-              register(username, password, email, phone, role);
-            }}
-          >
-            <Text style={styles.loginText}>Confirm </Text>
-          </TouchableOpacity>
+      <View style={styles.inputContainer}>
+        <TextInput
+          style={styles.inputs}
+          placeholder="OTP here"
+          keyboardType="phone-pad"
+          value={otp}
+          onChangeText={(text) => setOtp(text)}
+        />
+        <Image
+          style={styles.inputIcon}
+          source={{
+            uri: "https://img.icons8.com/color/40/000000/password.png",
+          }}
+        />
+      </View>
 
-          <TouchableOpacity
-            style={styles.buttonContainer}
-            onPress={() => navigation.navigate("Login")}
-          >
-            <Text style={styles.btnText}>Have an account?</Text>
-          </TouchableOpacity>
-        </View>
-      </TouchableWithoutFeedback>
-    </KeyboardAvoidingView>
+      <TouchableOpacity
+        style={[styles.buttonContainer, styles.loginButton]}
+        onPress={() => {
+          confirmOtp(username, password, email, phone, role, otp,navigation);
+        }}
+      >
+        <Text style={styles.loginText}>Confirm</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.buttonContainer}
+        onPress={() => navigation.navigate("Login")}
+      >
+        <Text style={styles.btnText}>Back to Login</Text>
+      </TouchableOpacity>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#DCDCDC",
+    justifyContent: "center",
+  },
+  title: {
+    fontSize: 48,
+    fontWeight: "bold",
+    marginBottom: 50,
+    color: "#fff",
+  },
+  bgImage: {
+    position: "absolute",
+    width: "100%",
+    height: "100%",
   },
   inputContainer: {
     borderBottomColor: "#F5FCFF",
     backgroundColor: "#FFFFFF",
     borderRadius: 30,
     borderBottomWidth: 1,
-    width: 300,
+    width: 250,
     height: 45,
     marginBottom: 20,
     flexDirection: "row",
     alignItems: "center",
-
-    shadowColor: "#808080",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-
-    elevation: 5,
+    paddingHorizontal: 10,
   },
   inputs: {
     height: 45,
@@ -96,7 +102,6 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     marginRight: 15,
-    justifyContent: "center",
   },
   buttonContainer: {
     height: 45,
@@ -104,57 +109,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 20,
-    width: 300,
+    width: 250,
     borderRadius: 30,
-    backgroundColor: "transparent",
-  },
-  btnByRegister: {
-    height: 15,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    marginVertical: 20,
-    width: 300,
-    backgroundColor: "transparent",
   },
   loginButton: {
     backgroundColor: "#00b5ec",
-
-    shadowColor: "#808080",
-    shadowOffset: {
-      width: 0,
-      height: 9,
-    },
-    shadowOpacity: 0.5,
-    shadowRadius: 12.35,
-
-    elevation: 19,
   },
   loginText: {
     color: "white",
   },
-  bgImage: {
-    flex: 1,
-    resizeMode: "cover",
-    position: "absolute",
-    width: "100%",
-    height: "100%",
-    justifyContent: "center",
-  },
   btnText: {
-    color: "white",
-    fontWeight: "bold",
-    textShadowColor: "rgba(0, 0, 0, 0.75)",
-    textShadowOffset: { width: -1, height: 1 },
-    textShadowRadius: 10,
-  },
-  textByRegister: {
-    color: "white",
-    fontWeight: "bold",
-    textAlign: "center",
-
-    textShadowColor: "rgba(0, 0, 0, 0.75)",
-    textShadowOffset: { width: -1, height: 1 },
-    textShadowRadius: 10,
+    color: "#fff",
   },
 });

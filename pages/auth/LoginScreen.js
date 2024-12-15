@@ -7,102 +7,120 @@ import {
   TouchableOpacity,
   Image,
   Alert,
-  ImageBackground,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from "react-native";
-import axios from "axios";
-import AsyncStorage from "@react-native-async-storage/async-storage"; // Lưu token nếu cần
 import { AuthContext } from "../../contexts/AuthContext";
+import Spinner from "react-native-loading-spinner-overlay";
 
 const Login = ({ navigation }) => {
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const value = useContext(AuthContext);
-  const onLogin = async () => {
-    try {
-      const response = await axios.post("https://api.ftcs.online/api/auth", {
-        username: email,
-        password: password,
-      });
+  const [usernameError, setUsernameError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
 
-      if (response.status === 200 && response.data.code === 200) {
-        const { access_token } = response.data.data;
+  const { login, isLoading } = useContext(AuthContext);
 
-        // Lưu token vào AsyncStorage
-        await AsyncStorage.setItem("accessToken", access_token);
+  const dismissKeyboard = () => {
+    Keyboard.dismiss();
+  };
 
-        Alert.alert("Đăng nhập thành công");
-        console.log("Access Token:", access_token);
+  const validateInputs = () => {
+    let isValid = true;
 
-        navigation.navigate("Register");
-      } else {
-        Alert.alert(
-          "Đăng nhập thất bại",
-          response.data.message || "Vui lòng kiểm tra thông tin đăng nhập"
-        );
-      }
-    } catch (error) {
-      if (error.response) {
-        Alert.alert("Login fail", error.response.data.message);
-      } else {
-        Alert.alert("Lỗi", "Không thể kết nối đến server");
-      }
-      console.error("Error:", error);
+    if (!username.trim()) {
+      setUsernameError("Username không được để trống");
+      isValid = false;
+    } else {
+      setUsernameError("");
     }
+
+    if (!password.trim()) {
+      setPasswordError("Password không được để trống");
+      isValid = false;
+    } else if (password.length < 6) {
+      setPasswordError("Password phải có ít nhất 6 ký tự");
+      isValid = false;
+    } else {
+      setPasswordError("");
+    }
+
+    return isValid;
   };
 
   return (
-    <View style={styles.container}>
-      <ImageBackground
-        style={styles.bgImage}
-        source={require("../../assets/BgcLogin.jpg")}
-      />
-      <Text style={styles.title}>Login</Text>
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.inputs}
-          placeholder="Email"
-          keyboardType="email-address"
-          value={email}
-          onChangeText={(text) => setEmail(text)}
-        />
-        <Image
-          style={styles.inputIcon}
-          source={{
-            uri: "https://img.icons8.com/flat_round/40/000000/secured-letter.png",
+    <TouchableWithoutFeedback onPress={dismissKeyboard}>
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Welcome Back!</Text>
+          <Text style={styles.subtitle}>
+            Log in to your account to continue.
+          </Text>
+        </View>
+
+        <Spinner visible={isLoading} />
+
+        <View style={styles.inputWrapper}>
+          <TextInput
+            style={styles.input}
+            placeholder="Username"
+            placeholderTextColor="#aaa"
+            value={username}
+            onChangeText={(text) => {
+              setUsername(text);
+              setUsernameError("");
+            }}
+          />
+        </View>
+        {usernameError ? (
+          <Text style={styles.errorText}>{usernameError}</Text>
+        ) : null}
+
+        <View style={styles.inputWrapper}>
+          <TextInput
+            style={styles.input}
+            placeholder="Password"
+            placeholderTextColor="#aaa"
+            secureTextEntry={true}
+            value={password}
+            onChangeText={(text) => {
+              setPassword(text);
+              setPasswordError("");
+            }}
+          />
+        </View>
+        {passwordError ? (
+          <Text style={styles.errorText}>{passwordError}</Text>
+        ) : null}
+
+        <TouchableOpacity
+          style={styles.buttonPrimary}
+          onPress={() => {
+            if (validateInputs()) {
+              login(username, password);
+            }
           }}
-        />
+        >
+          <Text style={styles.buttonText}>Log In</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => navigation.navigate("Signup")}
+          style={styles.buttonSecondary}
+        >
+          <Text style={styles.secondaryText}>
+            Don’t have an account? Sign up
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => navigation.navigate("ForgotPassword")}
+          style={styles.buttonSecondary}
+        >
+          <Text style={styles.secondaryText}>Forgot Password?</Text>
+        </TouchableOpacity>
       </View>
-
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.inputs}
-          placeholder="Password"
-          secureTextEntry={true}
-          value={password}
-          onChangeText={(text) => setPassword(text)}
-        />
-        <Image
-          style={styles.inputIcon}
-          source={{
-            uri: "https://img.icons8.com/color/40/000000/password.png",
-          }}
-        />
-      </View>
-
-      <TouchableOpacity
-        style={[styles.buttonContainer, styles.loginButton]}
-        onPress={onLogin}
-      >
-        <Text style={styles.loginText}>Login</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.buttonContainer}
-        onPress={() => navigation.navigate("Signup")}
-      >
-        <Text style={styles.btnText}>Have an account?</Text>
-      </TouchableOpacity>
-    </View>
+    </TouchableWithoutFeedback>
   );
 };
 
@@ -111,59 +129,71 @@ export default Login;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: "center",
+    backgroundColor: "#f5f5f5",
+    paddingHorizontal: 20,
     justifyContent: "center",
+  },
+  header: {
+    alignItems: "center",
+    marginBottom: 30,
+  },
+  errorText: {
+    color: "red",
+    fontSize: 12,
+    marginBottom: 10,
+    marginLeft: 5,
+  },
+  image: {
+    width: 150,
+    height: 150,
+    resizeMode: "contain",
   },
   title: {
-    fontSize: 48,
+    fontSize: 32,
     fontWeight: "bold",
-    marginBottom: 50,
-    color: "#fff",
+    color: "#333",
+    marginTop: 20,
   },
-  bgImage: {
-    position: "absolute",
-    width: "100%",
-    height: "100%",
+  subtitle: {
+    fontSize: 16,
+    color: "#666",
+    marginTop: 10,
   },
-  inputContainer: {
-    borderBottomColor: "#F5FCFF",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 30,
-    borderBottomWidth: 1,
-    width: 250,
-    height: 45,
+  inputWrapper: {
+    backgroundColor: "#fff",
+    borderRadius: 10,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
     marginBottom: 20,
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  inputs: {
-    height: 45,
-    marginLeft: 16,
-    borderBottomColor: "#FFFFFF",
-    flex: 1,
+  input: {
+    fontSize: 16,
+    color: "#333",
   },
-  inputIcon: {
-    width: 30,
-    height: 30,
-    marginRight: 15,
-  },
-  buttonContainer: {
-    height: 45,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 20,
-    width: 250,
-    borderRadius: 30,
-  },
-  loginButton: {
+  buttonPrimary: {
     backgroundColor: "#00b5ec",
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: "center",
+    marginBottom: 15,
   },
-  loginText: {
-    color: "white",
-  },
-  btnText: {
+  buttonText: {
     color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  buttonSecondary: {
+    alignItems: "center",
+  },
+  secondaryText: {
+    fontSize: 14,
+    color: "#00b5ec",
+    marginBottom: 10,
+    textDecorationLine: "underline",
   },
 });

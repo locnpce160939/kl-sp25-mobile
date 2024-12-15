@@ -1,5 +1,4 @@
 import React, { useContext, useState } from "react";
-import axios from "axios";
 import {
   StyleSheet,
   Text,
@@ -7,63 +6,123 @@ import {
   TextInput,
   TouchableOpacity,
   Image,
-  Alert,
-  ImageBackground,
   KeyboardAvoidingView,
   Keyboard,
   TouchableWithoutFeedback,
 } from "react-native";
-import { AuthContext } from "../../contexts/AuthContext";
 import { useNavigation } from "@react-navigation/native";
+import { AuthContext } from "../../contexts/AuthContext";
+import Spinner from "react-native-loading-spinner-overlay";
 
 export default Signup = () => {
   const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [role, setRole] = useState("customer");
-  const [password, setPassword] = useState("");
+  const [role, setRole] = useState("CUSTOMER"); // Default is DRIVER
 
-  const { register } = useContext(AuthContext);
+  const [usernameError, setUsernameError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [emailError, setEmailError] = useState("");
+  const [phoneError, setPhoneError] = useState("");
+
   const navigation = useNavigation();
+  const { register, isLoading } = useContext(AuthContext);
+
+  const validateInputs = () => {
+    let isValid = true;
+
+    // Validate Username
+    if (!username.trim()) {
+      setUsernameError("Full Name không được để trống");
+      isValid = false;
+    } else if (username.length < 3) {
+      setUsernameError("Full Name phải có ít nhất 3 ký tự");
+      isValid = false;
+    } else {
+      setUsernameError("");
+    }
+
+    // Validate Phone
+    const phoneRegex = /^[0-9]{10}$/;
+    if (!phone.trim()) {
+      setPhoneError("Phone Number không được để trống");
+      isValid = false;
+    } else if (!phoneRegex.test(phone)) {
+      setPhoneError("Phone Number phải là số và đúng định dạng 10 số");
+      isValid = false;
+    } else {
+      setPhoneError("");
+    }
+
+    // Validate Email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email.trim()) {
+      setEmailError("Email không được để trống");
+      isValid = false;
+    } else if (!emailRegex.test(email)) {
+      setEmailError("Email không đúng định dạng");
+      isValid = false;
+    } else {
+      setEmailError("");
+    }
+
+    // Validate Password
+    if (!password.trim()) {
+      setPasswordError("Password không được để trống");
+      isValid = false;
+    } else if (password.length < 6) {
+      setPasswordError("Password phải có ít nhất 6 ký tự");
+      isValid = false;
+    } else {
+      setPasswordError("");
+    }
+
+    return isValid;
+  };
+
+  const dismissKeyboard = () => {
+    Keyboard.dismiss();
+  };
+
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <TouchableWithoutFeedback onPress={dismissKeyboard}>
         <View style={styles.container}>
-          <ImageBackground
-            style={styles.bgImage}
-            source={require("../../assets/BgcLogin.jpg")}
-          />
+          <Text style={styles.headerText}>Sign Up</Text>
+
+          <Spinner visible={isLoading} />
+
           <View style={styles.inputContainer}>
             <TextInput
               style={styles.inputs}
-              placeholder="Full name"
-              underlineColorAndroid="transparent"
+              placeholder="Full Name"
               value={username}
-              onChangeText={(value) => setUsername(value)}
-            />
-            <Image
-              style={styles.inputIcon}
-              source={{
-                uri: "https://img.icons8.com/color/40/000000/circled-user-male-skin-type-3.png",
+              onChangeText={(value) => {
+                setUsername(value);
+                setUsernameError("");
               }}
             />
           </View>
+          {usernameError ? (
+            <Text style={styles.errorText}>{usernameError}</Text>
+          ) : null}
 
           <View style={styles.inputContainer}>
             <TextInput
               style={styles.inputs}
               placeholder="Phone Number"
+              keyboardType="phone-pad"
               value={phone}
-              underlineColorAndroid="transparent"
-              onChangeText={(value) => setPhone(value)}
-            />
-            <Image
-              style={styles.inputIcon}
-              source={{
-                uri: "https://img.icons8.com/?size=100&id=wiJhr5r8Bs2I&format=png&color=000000",
+              onChangeText={(value) => {
+                setPhone(value);
+                setPhoneError("");
               }}
             />
           </View>
+          {phoneError ? (
+            <Text style={styles.errorText}>{phoneError}</Text>
+          ) : null}
 
           <View style={styles.inputContainer}>
             <TextInput
@@ -71,16 +130,15 @@ export default Signup = () => {
               placeholder="Email"
               keyboardType="email-address"
               value={email}
-              underlineColorAndroid="transparent"
-              onChangeText={(value) => setEmail(value)}
-            />
-            <Image
-              style={styles.inputIcon}
-              source={{
-                uri: "https://img.icons8.com/flat_round/40/000000/secured-letter.png",
+              onChangeText={(value) => {
+                setEmail(value);
+                setEmailError("");
               }}
             />
           </View>
+          {emailError ? (
+            <Text style={styles.errorText}>{emailError}</Text>
+          ) : null}
 
           <View style={styles.inputContainer}>
             <TextInput
@@ -88,48 +146,51 @@ export default Signup = () => {
               placeholder="Password"
               secureTextEntry={true}
               value={password}
-              underlineColorAndroid="transparent"
-              onChangeText={(value) => setPassword(value)}
-            />
-            <Image
-              style={styles.inputIcon}
-              source={{
-                uri: "https://img.icons8.com/color/40/000000/password.png",
+              onChangeText={(value) => {
+                setPassword(value);
+                setPasswordError("");
               }}
             />
           </View>
+          {passwordError ? (
+            <Text style={styles.errorText}>{passwordError}</Text>
+          ) : null}
+
+          {/* Role Selection */}
+          <View style={styles.roleContainer}>
+            <TouchableOpacity
+              style={styles.roleOption}
+              onPress={() =>
+                setRole((prevRole) =>
+                  prevRole === "CUSTOMER" ? "DRIVER" : "CUSTOMER"
+                )
+              }
+            >
+              <View
+                style={[
+                  styles.checkbox,
+                  role === "DRIVER" && styles.checkboxSelected,
+                ]}
+              />
+              <Text style={styles.roleText}>Are you driver?</Text>
+            </TouchableOpacity>
+          </View>
 
           <TouchableOpacity
-            style={styles.btnByRegister}
-            onPress={() => this.onClickListener("restore_password")}
-          >
-            <Text style={styles.textByRegister}>
-              By registering on this App you confirm that you have read and
-              accept our policy
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.buttonContainer, styles.loginButton]}
+            style={styles.button}
             onPress={() => {
-              // Gọi hàm register và điều hướng khi thành công
-              register(username, password, email, phone, role)
-                .then(() => {
-                  navigation.navigate("ConfirmOTP");
-                })
-                .catch((err) => {
-                  console.error("Error during registration", err);
-                });
+              if (validateInputs()) {
+                register(username, password, email, phone, role, navigation);
+              }
             }}
           >
-            <Text style={styles.loginText}>Sign Up</Text>
+            <Text style={styles.buttonText}>Sign Up</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.buttonContainer}
-            onPress={() => navigation.navigate("Login")}
-          >
-            <Text style={styles.btnText}>Have an account?</Text>
+          <TouchableOpacity onPress={() => navigation.navigate("Login")}>
+            <Text style={styles.loginLink}>
+              Already have an account? Log in
+            </Text>
           </TouchableOpacity>
         </View>
       </TouchableWithoutFeedback>
@@ -142,34 +203,40 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#DCDCDC",
+    backgroundColor: "#f7f7f7",
+    paddingHorizontal: 20,
+  },
+  errorText: {
+    color: "red",
+    fontSize: 12,
+    marginBottom: 10,
+    marginLeft: 10,
+  },
+  headerText: {
+    fontSize: 28,
+    fontWeight: "bold",
+    color: "#333",
+    marginBottom: 30,
   },
   inputContainer: {
-    borderBottomColor: "#F5FCFF",
     backgroundColor: "#FFFFFF",
     borderRadius: 30,
-    borderBottomWidth: 1,
     width: 300,
     height: 45,
     marginBottom: 20,
     flexDirection: "row",
     alignItems: "center",
-
     shadowColor: "#808080",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
-
     elevation: 5,
   },
   inputs: {
+    flex: 1,
     height: 45,
     marginLeft: 16,
     borderBottomColor: "#FFFFFF",
-    flex: 1,
   },
   inputIcon: {
     width: 30,
@@ -177,63 +244,54 @@ const styles = StyleSheet.create({
     marginRight: 15,
     justifyContent: "center",
   },
-  buttonContainer: {
-    height: 45,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 20,
-    width: 300,
-    borderRadius: 30,
-    backgroundColor: "transparent",
-  },
-  btnByRegister: {
-    height: 15,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    marginVertical: 20,
-    width: 300,
-    backgroundColor: "transparent",
-  },
-  loginButton: {
+  button: {
     backgroundColor: "#00b5ec",
-
-    shadowColor: "#808080",
-    shadowOffset: {
-      width: 0,
-      height: 9,
-    },
-    shadowOpacity: 0.5,
-    shadowRadius: 12.35,
-
-    elevation: 19,
-  },
-  loginText: {
-    color: "white",
-  },
-  bgImage: {
-    flex: 1,
-    resizeMode: "cover",
-    position: "absolute",
-    width: "100%",
-    height: "100%",
+    height: 50,
+    width: 300,
     justifyContent: "center",
+    alignItems: "center",
+    borderRadius: 30,
+    marginTop: 10,
+    shadowColor: "#808080",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
-  btnText: {
-    color: "white",
+  buttonText: {
+    color: "#fff",
     fontWeight: "bold",
-    textShadowColor: "rgba(0, 0, 0, 0.75)",
-    textShadowOffset: { width: -1, height: 1 },
-    textShadowRadius: 10,
+    fontSize: 16,
   },
-  textByRegister: {
-    color: "white",
-    fontWeight: "bold",
+  loginLink: {
+    color: "#00b5ec",
     textAlign: "center",
-
-    textShadowColor: "rgba(0, 0, 0, 0.75)",
-    textShadowOffset: { width: -1, height: 1 },
-    textShadowRadius: 10,
+    marginTop: 20,
+    fontWeight: "bold",
+  },
+  roleContainer: {
+    flexDirection: "row",
+    marginBottom: 20,
+    justifyContent: "space-around",
+    width: "100%",
+  },
+  roleOption: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    marginRight: 10,
+    borderRadius: 4,
+  },
+  checkboxSelected: {
+    backgroundColor: "#00b5ec",
+  },
+  roleText: {
+    fontSize: 16,
+    color: "#333",
   },
 });
