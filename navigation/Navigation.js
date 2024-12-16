@@ -1,24 +1,30 @@
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import React, { useContext } from "react";
-import Login from "../pages/auth/LoginScreen";
-import Signup from "../pages/auth/SignupScreen";
-import Confirmotp from "../pages/auth/ConfirmotpScreen";
+import Login from "../pages/Auth/LoginScreen";
+import Signup from "../pages/Auth/SignupScreen";
+import Confirmotp from "../pages/Auth/ConfirmotpScreen";
 import { AuthContext, AuthProvider } from "../contexts/AuthContext";
 import HomeScreen from "../pages/Home/HomeScreen";
-import ForgotpassScreen from "../pages/auth/ForgotpassScreen";
-import NewpassScreen from "../pages/auth/NewpassScreen";
+import ForgotpassScreen from "../pages/Auth/ForgotpassScreen";
+import NewpassScreen from "../pages/Auth/NewpassScreen";
+import HomeNavigation from "./HomeNavigation";
 
 const Stack = createNativeStackNavigator();
 
 const Navigation = () => {
   const { userInfo } = useContext(AuthContext);
-
+  console.log(userInfo)
   return (
+    
     <NavigationContainer>
       <Stack.Navigator initialRouteName="Login">
         {userInfo.data?.access_token ? (
-          <Stack.Screen name="Home" component={HomeScreen} />
+          <Stack.Screen
+            name="Home"
+            component={HomeNavigation}
+            options={{ title: "Wellcome"  }}          
+          />
         ) : (
           <>
             <Stack.Screen

@@ -91,21 +91,28 @@ export const AuthProvider = ({ children }) => {
   // ================================== Login ========================================
 
   const login = async (username, password) => {
-    setIsLoading(true);
-    const res = await axios.post(`${BASE_URl}/api/auth`, {
-      username,
-      password,
-    });
-    if (res.data.code === 200) {
-      const user = res.data;
-      setUserInfo(user);
-      AsyncStorage.setItem("userInfo", JSON.stringify(user));
+    try {
+      setIsLoading(true);
+      const res = await axios.post(`${BASE_URl}/api/auth`, {
+        username,
+        password,
+      });
+  
+      if (res.data.code === 200) {
+        const user = res.data;
+        setUserInfo(user);
+        console.log(userInfo)
+        AsyncStorage.setItem("userInfo", JSON.stringify(user));
+        setIsLoading(false);
+        Alert.alert("Login successfully", res.data.message);
+      } else {
+        setIsLoading(false);
+        Alert.alert("Error", res.data.message);
+      }
+    } catch (error) {
       setIsLoading(false);
-      console.log(userInfo);
-      Alert.alert("Login successfully", res.data.message);
-    } else {
-      setIsLoading(false);
-      Alert.alert("Error", res.data.message);
+      console.error("Login error:", error);
+      Alert.alert("Error", error.response.data.message);
     }
   };
 
