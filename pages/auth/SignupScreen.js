@@ -19,7 +19,7 @@ export default Signup = () => {
   const [password, setPassword] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [role, setRole] = useState("CUSTOMER"); // Default is DRIVER
+  const [role, setRole] = useState("CUSTOMER"); 
 
   const [usernameError, setUsernameError] = useState("");
   const [passwordError, setPasswordError] = useState("");
