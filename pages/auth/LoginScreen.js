@@ -1,25 +1,46 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import {
   StyleSheet,
   Text,
   View,
   TextInput,
   TouchableOpacity,
-  Image,
-  Alert,
   Keyboard,
   TouchableWithoutFeedback,
 } from "react-native";
 import { AuthContext } from "../../contexts/AuthContext";
 import Spinner from "react-native-loading-spinner-overlay";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const Login = ({ navigation }) => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [usernameError, setUsernameError] = useState("");
   const [passwordError, setPasswordError] = useState("");
 
   const { login, isLoading } = useContext(AuthContext);
+
+  // Kiểm tra thông tin đăng nhập đã lưu khi ứng dụng khởi động
+  useEffect(() => {
+    const checkRememberedLogin = async () => {
+      try {
+        const savedUsername = await AsyncStorage.getItem("savedUsername");
+        const savedPassword = await AsyncStorage.getItem("savedPassword");
+        const savedRememberMe = await AsyncStorage.getItem("rememberMe");
+
+        if (savedRememberMe === "true" && savedUsername && savedPassword) {
+          // Tự động đăng nhập và chuyển đến HomeScreen
+          login(savedUsername, savedPassword);
+          navigation.replace("HomeScreen"); // Chuyển đến HomeScreen
+        }
+      } catch (error) {
+        console.error("Failed to load saved credentials:", error);
+      }
+    };
+
+    checkRememberedLogin();
+  }, []);
 
   const dismissKeyboard = () => {
     Keyboard.dismiss();
@@ -46,6 +67,26 @@ const Login = ({ navigation }) => {
     }
 
     return isValid;
+  };
+
+  const handleLogin = async () => {
+    if (validateInputs()) {
+      login(username, password);
+      if (rememberMe) {
+        try {
+          await AsyncStorage.setItem("savedUsername", username);
+          await AsyncStorage.setItem("savedPassword", password);
+          await AsyncStorage.setItem("rememberMe", "true");
+        } catch (error) {
+          console.error("Failed to save login credentials:", error);
+        }
+      } else {
+        await AsyncStorage.removeItem("savedUsername");
+        await AsyncStorage.removeItem("savedPassword");
+        await AsyncStorage.setItem("rememberMe", "false");
+      }
+      navigation.replace("HomeScreen.js"); // Điều hướng sau khi đăng nhập thành công
+    }
   };
 
   return (
@@ -93,14 +134,15 @@ const Login = ({ navigation }) => {
           <Text style={styles.errorText}>{passwordError}</Text>
         ) : null}
 
-        <TouchableOpacity
-          style={styles.buttonPrimary}
-          onPress={() => {
-            if (validateInputs()) {
-              login(username, password);
-            }
-          }}
-        >
+        <View style={styles.rememberMeContainer}>
+          <TouchableOpacity onPress={() => setRememberMe(!rememberMe)}>
+            <Text style={styles.rememberMeText}>
+              {rememberMe ? "☑" : "☐"} Remember Me
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity style={styles.buttonPrimary} onPress={handleLogin}>
           <Text style={styles.buttonText}>Log In</Text>
         </TouchableOpacity>
 
@@ -127,6 +169,16 @@ const Login = ({ navigation }) => {
 export default Login;
 
 const styles = StyleSheet.create({
+  rememberMeContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 15,
+  },
+  rememberMeText: {
+    fontSize: 14,
+    color: "#333",
+  },
+
   container: {
     flex: 1,
     backgroundColor: "#f5f5f5",

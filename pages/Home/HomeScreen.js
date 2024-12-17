@@ -1,14 +1,48 @@
-import React from 'react'
-import { Text, View } from 'react-native'
+import React, { useContext } from "react";
+import { Text, View, TouchableOpacity, StyleSheet } from "react-native";
+import { AuthContext } from "../../contexts/AuthContext";
 
-const HomeScreen = () => {
+const HomeScreen = ({ navigation }) => {
+  const { logout } = useContext(AuthContext);
+
+  const handleLogout = () => {
+    logout();
+    navigation.replace("LoginScreen"); // Chuyển về màn hình Login sau khi logout
+  };
+
   return (
-    <View>
-        <Text>
-            Hello
-        </Text>
-    </View>
-  )
-}
+    <View style={styles.container}>
+      <Text style={styles.welcomeText}>Hello!</Text>
 
-export default HomeScreen
+      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+        <Text style={styles.logoutButtonText}>Logout</Text>
+      </TouchableOpacity>
+    </View>
+  );
+};
+
+export default HomeScreen;
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f5f5f5",
+  },
+  welcomeText: {
+    fontSize: 24,
+    marginBottom: 20,
+  },
+  logoutButton: {
+    backgroundColor: "#ff4d4d",
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+  },
+  logoutButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+});

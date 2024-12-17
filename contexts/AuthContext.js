@@ -12,10 +12,17 @@ export const AuthProvider = ({ children }) => {
   const [userInfo, setUserInfo] = useState({});
 
   // ================================== Register ========================================
-  const register = async (username, password, email, phone, role, navigation) => {
+  const register = async (
+    username,
+    password,
+    email,
+    phone,
+    role,
+    navigation
+  ) => {
     try {
       setIsLoading(true);
-  
+
       const res = await axios.post(`${BASE_URl}/api/account/register/send`, {
         username,
         password,
@@ -27,7 +34,7 @@ export const AuthProvider = ({ children }) => {
       if (res.status === 200) {
         const userInfo = res.data;
         if (userInfo.code === 200) {
-          setIsLoading(false)
+          setIsLoading(false);
           navigation.navigate("ConfirmOTP", {
             username,
             password,
@@ -41,13 +48,12 @@ export const AuthProvider = ({ children }) => {
         }
       }
     } catch (error) {
-     const message = error.response.data.message
-     Alert.alert('Registe failed' , message)
+      const message = error.response.data.message;
+      Alert.alert("Registe failed", message);
     } finally {
       setIsLoading(false);
     }
   };
-  
 
   // ================================== ConfirmOTP ========================================
   const confirmOtp = (
@@ -109,6 +115,30 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  //===================================logout=============================================================
+  const logout = async () => {
+    try {
+      setIsLoading(true);
+      // Xóa thông tin người dùng khỏi AsyncStorage
+      await AsyncStorage.removeItem("userInfo");
+      await AsyncStorage.removeItem("savedUsername");
+      await AsyncStorage.removeItem("savedPassword");
+      await AsyncStorage.setItem("rememberMe", "false");
+
+      // Đặt trạng thái người dùng về rỗng
+      setUserInfo({});
+      Alert.alert("Logged out successfully");
+
+      // Điều hướng về màn hình Login
+      navigation.replace("LoginScreen");
+    } catch (error) {
+      console.error("Logout failed:", error);
+      Alert.alert("Error", "Failed to log out. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // ================================== Forgot Pass ========================================
 
   const forgotPass = (email, navigation) => {
@@ -161,7 +191,7 @@ export const AuthProvider = ({ children }) => {
       })
       .catch((e) => {
         setIsLoading(false);
-        Alert.alert('Error',e.response.data.message)
+        Alert.alert("Error", e.response.data.message);
       });
   };
 
@@ -171,6 +201,7 @@ export const AuthProvider = ({ children }) => {
         register,
         confirmOtp,
         login,
+        logout,
         userInfo,
         isLoading,
         forgotPass,
