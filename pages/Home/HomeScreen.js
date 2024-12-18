@@ -7,8 +7,8 @@ const HomeScreen = ({ navigation }) => {
 
   const handleLogout = () => {
     logout();
-    navigation.replace("LoginScreen"); // Chuyển về màn hình Login sau khi logout
   };
+
 
   return (
     <View style={styles.container}>

@@ -1,5 +1,5 @@
 import axios from "axios";
-import React, { createContext, useState } from "react";
+import React, { createContext, useEffect, useState } from "react";
 import { BASE_URl } from "../configUrl";
 import { useNavigation } from "@react-navigation/native";
 import { Alert } from "react-native";
@@ -9,6 +9,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 export const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [isPlash, setIsPlash] = useState(false);
   const [userInfo, setUserInfo] = useState({});
 
   // ================================== Register ========================================
@@ -103,11 +104,11 @@ export const AuthProvider = ({ children }) => {
         username,
         password,
       });
-  
+
       if (res.data.code === 200) {
         const user = res.data;
         setUserInfo(user);
-        console.log(userInfo)
+        console.log(userInfo);
         AsyncStorage.setItem("userInfo", JSON.stringify(user));
         setIsLoading(false);
         Alert.alert("Login successfully", res.data.message);
@@ -122,22 +123,31 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  //===================================logout=============================================================
+  const isLoggedIn = async () => {
+    try {
+      setIsPlash(true);
+      let userInfo = await AsyncStorage.getItem("userInfo");
+      userInfo = JSON.parse(userInfo);
+      if (userInfo) {
+        setUserInfo(userInfo);
+      }
+      setIsPlash(false);
+    } catch (error) {
+      setIsPlash(false);
+      console.log(error);
+    }
+  };
+
+  useEffect(() => {
+    isLoggedIn();
+  }, []);
+  //=================================== logout =============================================================
   const logout = async () => {
     try {
       setIsLoading(true);
-      // Xóa thông tin người dùng khỏi AsyncStorage
       await AsyncStorage.removeItem("userInfo");
-      await AsyncStorage.removeItem("savedUsername");
-      await AsyncStorage.removeItem("savedPassword");
-      await AsyncStorage.setItem("rememberMe", "false");
-
-      // Đặt trạng thái người dùng về rỗng
       setUserInfo({});
       Alert.alert("Logged out successfully");
-
-      // Điều hướng về màn hình Login
-      navigation.replace("LoginScreen");
     } catch (error) {
       console.error("Logout failed:", error);
       Alert.alert("Error", "Failed to log out. Please try again.");
@@ -213,6 +223,7 @@ export const AuthProvider = ({ children }) => {
         isLoading,
         forgotPass,
         newpass,
+        isPlash,
       }}
     >
       {children}
