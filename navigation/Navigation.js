@@ -15,6 +15,7 @@ const Stack = createNativeStackNavigator();
 
 const Navigation = () => {
   const { userInfo, isPlash } = useContext(AuthContext);
+
   console.log(userInfo);
   return (
     <NavigationContainer>

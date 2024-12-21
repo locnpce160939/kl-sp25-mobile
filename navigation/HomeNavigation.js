@@ -10,10 +10,12 @@ const HomeNavigation = () => {
 
   return (
     <Tab.Navigator
+
       initialRouteName="Home"
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
+
 
           if (route.name === "Home") {
             iconName = focused
@@ -23,11 +25,13 @@ const HomeNavigation = () => {
             iconName = focused
               ? "person" // filled person icon when focused
               : "person-outline"; // outline person icon when not focused
+
           }
 
           // You can return any component that you like here!
           return <Ionicons name={iconName} size={size} color={color} />;
         },
+
         tabBarActiveTintColor: "#00b5ec",
         tabBarInactiveTintColor: "gray",
         headerShown: false,
@@ -44,10 +48,12 @@ const HomeNavigation = () => {
       <Tab.Screen
         name="Profile"
         component={profileScreen}
+
         options={{ headerShown: false }}
       />
     </Tab.Navigator>
   );
+
 };
 
 export default HomeNavigation;

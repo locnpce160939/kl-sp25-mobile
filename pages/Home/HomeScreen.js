@@ -3,9 +3,11 @@ import { Text, View, TouchableOpacity, StyleSheet } from "react-native";
 import { AuthContext } from "../../contexts/AuthContext";
 
 const HomeScreen = ({ navigation }) => {
+
   return (
     <View style={styles.container}>
       <Text style={styles.welcomeText}>Hello!</Text>
+
     </View>
   );
 };
@@ -23,4 +25,5 @@ const styles = StyleSheet.create({
     fontSize: 24,
     marginBottom: 20,
   },
+
 });
