@@ -15,55 +15,54 @@ const Stack = createNativeStackNavigator();
 
 const Navigation = () => {
   const { userInfo, isPlash } = useContext(AuthContext);
-  console.log(userInfo)
+
+  console.log(userInfo);
   return (
-    
     <NavigationContainer>
-    <Stack.Navigator>
-      {isPlash ? (
-        <Stack.Screen
-          name="Splash"
-          component={PlashScreen}
-          options={{ headerShown: false }}
-        />
-      ) : userInfo.data?.access_token ? (
-        <Stack.Screen
-          name="Home"
-          component={HomeNavigation}
-          options={{ title: "Wellcome" }}
-        />
-      ) : (
-        <>
+      <Stack.Navigator>
+        {isPlash ? (
           <Stack.Screen
-            name="Login"
-            component={Login}
+            name="Splash"
+            component={PlashScreen}
             options={{ headerShown: false }}
           />
+        ) : userInfo.data?.access_token ? (
           <Stack.Screen
-            name="Signup"
-            component={Signup}
+            name="Home"
+            component={HomeNavigation}
             options={{ headerShown: false }}
           />
-          <Stack.Screen
-            name="ConfirmOTP"
-            component={Confirmotp}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="ForgotPassword"
-            component={ForgotpassScreen}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="NewPass"
-            component={NewpassScreen}
-            options={{ headerShown: false }}
-          />
-        </>
-      )}
-    </Stack.Navigator>
-  </NavigationContainer>
-  
+        ) : (
+          <>
+            <Stack.Screen
+              name="Login"
+              component={Login}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="Signup"
+              component={Signup}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="ConfirmOTP"
+              component={Confirmotp}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="ForgotPassword"
+              component={ForgotpassScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="NewPass"
+              component={NewpassScreen}
+              options={{ headerShown: false }}
+            />
+          </>
+        )}
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 };
 
