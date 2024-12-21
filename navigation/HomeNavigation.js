@@ -3,7 +3,7 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import React from "react";
 import HomeScreen from "../pages/Home/HomeScreen";
-import profile from "../pages/Profile/profileScreen";
+import profileScreen from "../pages/Profile/profileScreen";
 
 const HomeNavigation = () => {
   const Tab = createBottomTabNavigator();
@@ -31,7 +31,10 @@ const HomeNavigation = () => {
         tabBarActiveTintColor: "#00b5ec",
         tabBarInactiveTintColor: "gray",
         headerShown: false,
+        animation: 'shift',
+
       })}
+      
     >
       <Tab.Screen
         name="Home"
@@ -40,7 +43,7 @@ const HomeNavigation = () => {
       />
       <Tab.Screen
         name="Profile"
-        component={profile}
+        component={profileScreen}
         options={{ headerShown: false }}
       />
     </Tab.Navigator>

@@ -1,0 +1,138 @@
+import React, { useContext } from "react";
+import { Button } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  SafeAreaView,
+  Image,
+} from "react-native";
+import Ionicons from "react-native-vector-icons/Ionicons";
+import { AuthContext } from "../../contexts/AuthContext";
+
+const profileScreen = () => {
+  const { logout } = useContext(AuthContext);
+  
+  const handleLogout = () => {
+    logout();
+  };
+
+  const sections = [
+    {
+      title: "Phần 1",
+      items: [
+        { id: 1, icon: "ribbon-outline", label: "Hạng thành viên" },
+        { id: 2, icon: "business-outline", label: "Hồ sơ doanh nghiệp" },
+        { id: 3, icon: "person-add-outline", label: "Giới thiệu bạn bè" },
+        { id: 4, icon: "card-outline", label: "Gói hội viên" },
+        { id: 5, icon: "car-sport-outline", label: "Trở thành tài xế Xanh SM" },
+      ],
+    },
+    {
+      title: "Phần 2",
+      items: [
+        { id: 6, icon: "wallet-outline", label: "Quản lý thanh toán" },
+        { id: 7, icon: "document-text-outline", label: "Thông tin hoá đơn" },
+        { id: 8, icon: "bookmark-outline", label: "Địa chỉ đã lưu" },
+        { id: 9, icon: "map-outline", label: "Đóng góp bản đồ" },
+      ],
+    },
+  ];
+
+  const renderSections = () => {
+    return sections.map((section) => (
+      <View key={section.title} style={styles.section}>
+        {section.items.map((item) => (
+          <TouchableOpacity key={item.id} style={styles.row}>
+            <View style={styles.iconContainer}>
+              <Ionicons name={item.icon} size={24} color="#555" />
+            </View>
+            <Text style={styles.label}>{item.label}</Text>
+            <Ionicons
+              name="chevron-forward-outline"
+              size={20}
+              color="#888"
+            />
+          </TouchableOpacity>
+        ))}
+      </View>
+    ));
+  };
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <ScrollView style={styles.scrollView}>
+        <View style={styles.headerContainer}>
+          <Image
+            source={require('../../assets/BgcLogin.jpg')}
+            style={styles.headerImage}
+          />
+        </View>
+        {renderSections()}
+        <View style={styles.logoutContainer}>
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+            <Text style={styles.logoutButtonText}>Logout</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f4f4f4',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  headerContainer: {
+    width: '100%',
+    height: 200, // Bạn có thể điều chỉnh chiều cao này
+    marginBottom: 20,
+  },
+  headerImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  section: {
+    marginBottom: 20,
+  },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    backgroundColor: "#fff",
+  },
+  iconContainer: {
+    width: 30,
+    alignItems: "center",
+  },
+  label: {
+    flex: 1,
+    fontSize: 16,
+    color: "#333",
+  },
+  logoutContainer: {
+    padding: 20,
+  },
+  logoutButton: {
+    backgroundColor: "#ff4d4d",
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  logoutButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+});
+
+export default profileScreen;
