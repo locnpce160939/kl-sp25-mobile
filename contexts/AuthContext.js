@@ -95,6 +95,73 @@ export const AuthProvider = ({ children }) => {
       });
   };
 
+  // ================================== Create Driver Identification ========================================
+  const createDriverIdentification = async (formData, navigation) => {
+    try {
+      setIsLoading(true);
+
+      // Lấy thông tin từ AsyncStorage
+      const userInfoString = await AsyncStorage.getItem("userInfo");
+
+      if (!userInfoString) {
+        Alert.alert("Error", "No user information found. Please login again.");
+        setIsLoading(false);
+        return;
+      }
+
+      // Parse thông tin user
+      const parsedUserInfo = JSON.parse(userInfoString);
+      const accessToken = parsedUserInfo?.data?.access_token; // Đảm bảo truy xuất đúng trường `access_token`
+
+      console.log("Access Token: ", accessToken);
+
+      if (!accessToken) {
+        Alert.alert("Error", "No access token found. Please login again.");
+        setIsLoading(false);
+        return;
+      }
+
+      // Gọi API với token
+      const res = await axios.post(
+        `${BASE_URl}/api/registerDriver/createDriverIdentification`,
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+
+      console.log("API response:", res);
+
+      if (res.status === 200 && res.data.code === 200) {
+        setIsLoading(false);
+        Alert.alert("Success", "Driver identification created successfully!");
+        navigation.navigate("CreateDriverId");
+      } else {
+        setIsLoading(false);
+        Alert.alert(
+          "Error",
+          res.data.message || "Failed to create identification."
+        );
+      }
+    } catch (error) {
+      setIsLoading(false);
+      console.error("Error during API call:", error);
+
+      if (error.response) {
+        Alert.alert(
+          "Error",
+          error.response.data.message || "An error occurred."
+        );
+      } else if (error.request) {
+        Alert.alert("Error", "No response from server. Please try again.");
+      } else {
+        Alert.alert("Error", error.message || "An unknown error occurred.");
+      }
+    }
+  };
+
   // ================================== Login ========================================
 
   const login = async (username, password) => {
@@ -217,6 +284,7 @@ export const AuthProvider = ({ children }) => {
       value={{
         register,
         confirmOtp,
+        createDriverIdentification,
         login,
         logout,
         userInfo,
