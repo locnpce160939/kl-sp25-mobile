@@ -110,6 +110,7 @@ export const AuthProvider = ({ children }) => {
         setUserInfo(user);
         console.log(userInfo);
         AsyncStorage.setItem("userInfo", JSON.stringify(user));
+        AsyncStorage.setItem("token", user.data.access_token);
         setIsLoading(false);
         Alert.alert("Login successfully", res.data.message);
       } else {

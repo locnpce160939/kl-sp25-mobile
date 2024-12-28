@@ -1,21 +1,13 @@
-
 import React, { useContext } from "react";
-import { Button } from "react-native";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  SafeAreaView,
-  Image,
-} from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, Image } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { AuthContext } from "../../contexts/AuthContext";
+import { useNavigation } from "@react-navigation/native";
 
-const profileScreen = () => {
+const ProfileScreen = () => {
   const { logout } = useContext(AuthContext);
-  
+  const navigation = useNavigation();
+
   const handleLogout = () => {
     logout();
   };
@@ -24,7 +16,7 @@ const profileScreen = () => {
     {
       title: "Phần 1",
       items: [
-        { id: 1, icon: "ribbon-outline", label: "Hạng thành viên" },
+        { id: 1, icon: "calendar-outline", label: "Đặt lịch", screen: "Schedule" },
         { id: 2, icon: "business-outline", label: "Hồ sơ doanh nghiệp" },
         { id: 3, icon: "person-add-outline", label: "Giới thiệu bạn bè" },
         { id: 4, icon: "card-outline", label: "Gói hội viên" },
@@ -46,16 +38,16 @@ const profileScreen = () => {
     return sections.map((section) => (
       <View key={section.title} style={styles.section}>
         {section.items.map((item) => (
-          <TouchableOpacity key={item.id} style={styles.row}>
+          <TouchableOpacity
+            key={item.id}
+            style={styles.row}
+            onPress={() => item.screen && navigation.navigate(item.screen)}
+          >
             <View style={styles.iconContainer}>
               <Ionicons name={item.icon} size={24} color="#555" />
             </View>
             <Text style={styles.label}>{item.label}</Text>
-            <Ionicons
-              name="chevron-forward-outline"
-              size={20}
-              color="#888"
-            />
+            {item.screen && <Ionicons name="chevron-forward-outline" size={20} color="#888" />}
           </TouchableOpacity>
         ))}
       </View>
@@ -66,15 +58,12 @@ const profileScreen = () => {
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView}>
         <View style={styles.headerContainer}>
-          <Image
-            source={require('../../assets/BgcLogin.jpg')}
-            style={styles.headerImage}
-          />
+          <Image source={require("../../assets/BgcLogin.jpg")} style={styles.headerImage} />
         </View>
         {renderSections()}
         <View style={styles.logoutContainer}>
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <Text style={styles.logoutButtonText}>Logout</Text>
+            <Text style={styles.logoutButtonText}>Đăng xuất</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -85,20 +74,20 @@ const profileScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f4f4f4',
+    backgroundColor: "#f4f4f4",
   },
   scrollView: {
     flex: 1,
   },
   headerContainer: {
-    width: '100%',
-    height: 200, // Bạn có thể điều chỉnh chiều cao này
+    width: "100%",
+    height: 200,
     marginBottom: 20,
   },
   headerImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
   },
   section: {
     marginBottom: 20,
@@ -127,7 +116,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 10,
-    alignItems: 'center',
+    alignItems: "center",
   },
   logoutButtonText: {
     color: "#fff",
@@ -136,4 +125,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default profileScreen;
+export default ProfileScreen;
