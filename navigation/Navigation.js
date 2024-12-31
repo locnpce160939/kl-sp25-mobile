@@ -11,6 +11,7 @@ import NewpassScreen from "../pages/Auth/NewpassScreen";
 import HomeNavigation from "./HomeNavigation";
 import PlashScreen from "../pages/Auth/PlashScreen";
 import ScheduleScreen from "../pages/Schedule/scheduleScreen";
+import TripBooking from "../pages/TripBooking";
 
 const Stack = createNativeStackNavigator();
 
@@ -37,6 +38,11 @@ const Navigation = () => {
             <Stack.Screen
               name="Schedule"
               component={ScheduleScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="Booking"
+              component={TripBooking}
               options={{ headerShown: false }}
             />
           </>

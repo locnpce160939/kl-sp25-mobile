@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   Modal,
   Alert,
-  Button,
   KeyboardAvoidingView,
   TouchableWithoutFeedback,
   Platform,
@@ -42,18 +41,17 @@ const ScheduleScreen = () => {
 
   const [isMapVisible, setIsMapVisible] = useState(false);
   const [selectingPoint, setSelectingPoint] = useState("start");
-  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
-  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
+  const [datePickerVisible, setDatePickerVisible] = useState(false);
+  const [datePickerType, setDatePickerType] = useState(null); // 'start' or 'end'
+  const [tempDate, setTempDate] = useState(new Date());
 
   const validateForm = () => {
     const newErrors = {};
 
-    // Validate locations
     if (!locations.startLocation || !locations.endLocation) {
       newErrors.location = "Vui lòng chọn điểm bắt đầu và kết thúc";
     }
 
-    // Validate dates
     if (!startDay) {
       newErrors.startDay = "Vui lòng chọn ngày bắt đầu";
     }
@@ -64,7 +62,6 @@ const ScheduleScreen = () => {
       newErrors.endDay = "Ngày kết thúc phải sau ngày bắt đầu";
     }
 
-    // Validate capacity
     if (!availableCapacity) {
       newErrors.capacity = "Vui lòng nhập trọng tải";
     } else if (isNaN(availableCapacity) || parseInt(availableCapacity) <= 0) {
@@ -78,6 +75,23 @@ const ScheduleScreen = () => {
   const handleBlur = (field) => {
     setTouched((prev) => ({ ...prev, [field]: true }));
     validateForm();
+  };
+
+  const showDatePicker = (type) => {
+    setDatePickerType(type);
+    setTempDate(type === 'start' ? startDay : endDay);
+    setDatePickerVisible(true);
+  };
+
+  const handleDateConfirm = () => {
+    if (datePickerType === 'start') {
+      setStartDay(tempDate);
+      handleBlur("startDay");
+    } else {
+      setEndDay(tempDate);
+      handleBlur("endDay");
+    }
+    setDatePickerVisible(false);
   };
 
   const handleMapPress = (event) => {
@@ -192,7 +206,7 @@ const ScheduleScreen = () => {
               styles.input,
               touched.startDay && errors.startDay && styles.errorInput,
             ]}
-            onPress={() => setShowStartDatePicker(true)}
+            onPress={() => showDatePicker('start')}
           >
             <Text>{formatDate(startDay)}</Text>
           </TouchableOpacity>
@@ -206,7 +220,7 @@ const ScheduleScreen = () => {
               styles.input,
               touched.endDay && errors.endDay && styles.errorInput,
             ]}
-            onPress={() => setShowEndDatePicker(true)}
+            onPress={() => showDatePicker('end')}
           >
             <Text>{formatDate(endDay)}</Text>
           </TouchableOpacity>
@@ -240,6 +254,7 @@ const ScheduleScreen = () => {
             <Text style={styles.saveButtonText}>Lưu</Text>
           </TouchableOpacity>
 
+          {/* Map Modal */}
           <Modal visible={isMapVisible} animationType="slide">
             <View style={styles.modalContainer}>
               <View style={styles.modalHeader}>
@@ -298,33 +313,47 @@ const ScheduleScreen = () => {
             </View>
           </Modal>
 
-          {showStartDatePicker && (
-            <DateTimePicker
-              value={startDay}
-              mode="date"
-              onChange={(event, selectedDate) => {
-                setShowStartDatePicker(false);
-                if (selectedDate) {
-                  setStartDay(selectedDate);
-                  handleBlur("startDay");
-                }
-              }}
-            />
-          )}
-
-          {showEndDatePicker && (
-            <DateTimePicker
-              value={endDay}
-              mode="date"
-              onChange={(event, selectedDate) => {
-                setShowEndDatePicker(false);
-                if (selectedDate) {
-                  setEndDay(selectedDate);
-                  handleBlur("endDay");
-                }
-              }}
-            />
-          )}
+          {/* DatePicker Modal */}
+          <Modal
+            visible={datePickerVisible}
+            transparent={true}
+            animationType="fade"
+          >
+            <View style={styles.datePickerModalContainer}>
+              <View style={styles.datePickerContent}>
+                <View style={styles.datePickerHeader}>
+                  <Text style={styles.datePickerHeaderText}>
+                    {datePickerType === 'start' ? 'Chọn ngày bắt đầu' : 'Chọn ngày kết thúc'}
+                  </Text>
+                </View>
+                
+                <DateTimePicker
+                  value={tempDate}
+                  mode="date"
+                  display="spinner"
+                  onChange={(event, date) => {
+                    if (date) setTempDate(date);
+                  }}
+                />
+                
+                <View style={styles.datePickerButtons}>
+                  <TouchableOpacity 
+                    style={[styles.datePickerButton, styles.cancelButton]}
+                    onPress={() => setDatePickerVisible(false)}
+                  >
+                    <Text style={styles.datePickerButtonText}>Hủy</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    style={[styles.datePickerButton, styles.confirmButton]}
+                    onPress={handleDateConfirm}
+                  >
+                    <Text style={styles.datePickerButtonText}>Xác nhận</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </Modal>
         </View>
       </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
@@ -358,7 +387,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#f5f5f5",
     padding: 15,
     borderRadius: 8,
-    marginBottom: 8, // Reduced to accommodate error text
+    marginBottom: 8,
   },
   errorInput: {
     borderColor: "#FF3B30",
@@ -413,6 +442,52 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "bold",
+  },
+  // New styles for DatePicker Modal
+  atePickerModalContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+  },
+  datePickerContent: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    width: "90%",
+    padding: 20,
+  },
+  datePickerHeader: {
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  datePickerHeaderText: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#333",
+  },
+  datePickerButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 20,
+    paddingHorizontal: 20,
+  },
+  datePickerButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    borderRadius: 8,
+    minWidth: 120,
+    alignItems: "center",
+  },
+  cancelButton: {
+    backgroundColor: "#FF3B30",
+  },
+  confirmButton: {
+    backgroundColor: "#007AFF",
+  },
+  datePickerButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "500",
   },
 });
 
