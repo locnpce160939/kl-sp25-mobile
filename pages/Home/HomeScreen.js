@@ -66,7 +66,9 @@ const HomeScreen = () => {
         <Text style={styles.searchText}>Bạn muốn đi đến đâu?</Text>
       </TouchableOpacity>
       <View style={styles.quickAddressContainer}>
-        <TouchableOpacity style={styles.quickAddressButton}>
+        <TouchableOpacity style={styles.quickAddressButton}
+          onPress={() => navigation.navigate("CurrentLocation")}
+        >
           <Image
             source={require('../../assets/BgcLogin.jpg')}
             style={styles.addIcon}

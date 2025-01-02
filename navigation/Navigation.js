@@ -12,6 +12,7 @@ import HomeNavigation from "./HomeNavigation";
 import PlashScreen from "../pages/Auth/PlashScreen";
 import ScheduleScreen from "../pages/Schedule/scheduleScreen";
 import TripBooking from "../pages/TripBooking";
+import CurrentLocation from "../pages/CurrentLocation";
 
 const Stack = createNativeStackNavigator();
 
@@ -44,6 +45,10 @@ const Navigation = () => {
               name="Booking"
               component={TripBooking}
               options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="CurrentLocation"
+              component={CurrentLocation}
             />
           </>
         ) : (
