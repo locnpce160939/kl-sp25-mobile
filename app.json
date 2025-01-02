@@ -16,6 +16,9 @@
       "supportsTablet": true,
       "config": {
         "googleMapsApiKey": "AIzaSyDqKvEIXYrmfyS47mqIzPBbpVZVmHtVi7o"
+      },
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Ứng dụng cần quyền truy cập vị trí của bạn để hiển thị vị trí hiện tại."
       }
     },
     "android": {

@@ -317,7 +317,7 @@ const ScheduleScreen = () => {
           <Modal
             visible={datePickerVisible}
             transparent={true}
-            animationType="fade"
+            animationType="slide"
           >
             <View style={styles.datePickerModalContainer}>
               <View style={styles.datePickerContent}>
@@ -444,7 +444,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   // New styles for DatePicker Modal
-  atePickerModalContainer: {
+  datePickerModalContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
