@@ -12,6 +12,8 @@ import HomeNavigation from "./HomeNavigation";
 import PlashScreen from "../pages/Auth/PlashScreen";
 import ScheduleScreen from "../pages/Schedule/scheduleScreen";
 import TripBooking from "../pages/TripBooking";
+import LicenseScreen from "../pages/Lincese/licenseScreen";
+import VehicleScreen from "../pages/Vehicle/vehicleScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -43,6 +45,16 @@ const Navigation = () => {
             <Stack.Screen
               name="Booking"
               component={TripBooking}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="VehicleScreen"
+              component={VehicleScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="LicenseScreen"
+              component={LicenseScreen}
               options={{ headerShown: false }}
             />
           </>

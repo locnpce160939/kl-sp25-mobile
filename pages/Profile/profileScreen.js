@@ -21,15 +21,17 @@ const ProfileScreen = () => {
         { id: 3, icon: "person-add-outline", label: "Giới thiệu bạn bè" },
         { id: 4, icon: "card-outline", label: "Gói hội viên" },
         { id: 5, icon: "car-sport-outline", label: "Trở thành tài xế Xanh SM" },
+        { id: 6, icon: "car-outline", label: "Hồ sơ phương tiện",screen: "VehicleScreen" },
+        { id: 7, icon: "document-outline", label: "Giấy phép lái xe",screen: "LicenseScreen" },
       ],
     },
     {
       title: "Phần 2",
       items: [
-        { id: 6, icon: "wallet-outline", label: "Quản lý thanh toán" },
-        { id: 7, icon: "document-text-outline", label: "Thông tin hoá đơn" },
-        { id: 8, icon: "bookmark-outline", label: "Địa chỉ đã lưu" },
-        { id: 9, icon: "map-outline", label: "Đóng góp bản đồ" },
+        { id: 8, icon: "wallet-outline", label: "Quản lý thanh toán" },
+        { id: 9, icon: "document-text-outline", label: "Thông tin hoá đơn" },
+        { id: 10, icon: "bookmark-outline", label: "Địa chỉ đã lưu" },
+        { id: 11, icon: "map-outline", label: "Đóng góp bản đồ" },
       ],
     },
   ];
