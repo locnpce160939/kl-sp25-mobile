@@ -113,23 +113,17 @@ const TripBooking = () => {
   };
 
   const onDateChange = (type) => (event, selectedDate) => {
+    const isBooking = type === 'booking';
     if (Platform.OS === 'android') {
-      if (type === 'booking') {
-        setShowBookingDatePicker(false);
-      } else {
-        setShowExpirationDatePicker(false);
-      }
+      isBooking ? setShowBookingDatePicker(false) : setShowExpirationDatePicker(false);
     }
-
+    
     if (selectedDate) {
-      const date = new Date(selectedDate);
-      date.setHours(0, 0, 0, 0);
-      
-      if (type === 'booking') {
-        setBookingDate(date);
+      if (isBooking) {
+        setBookingDate(selectedDate);
         setErrors(prev => ({ ...prev, bookingDate: "" }));
       } else {
-        setExpirationDate(date);
+        setExpirationDate(selectedDate);
         setErrors(prev => ({ ...prev, expirationDate: "" }));
       }
     }
