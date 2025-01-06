@@ -31,7 +31,6 @@ const VehicleScreen = () => {
     });
 
     useEffect(() => {
-        // Fetch data only if vehicleId is not set or needs updating
         if (!vehicleId) {
             fetchVehicleInfo();
         }
@@ -41,7 +40,6 @@ const VehicleScreen = () => {
         setLoading(true);
         try {
             const token = await AsyncStorage.getItem("token");
-            console.log("Token in React Native:", token);
             if (!token) throw new Error("Token không tồn tại. Vui lòng đăng nhập lại.");
 
             const response = await axios.get(`${BASE_URl}/api/registerDriver/vehicle/getByAccountId`, {
@@ -49,7 +47,6 @@ const VehicleScreen = () => {
             });
 
             const vehicleData = response.data.data;
-            console.log("Response data:", response.data.data);
 
             if (vehicleData && vehicleData.vehicleId) {
                 setVehicleId(vehicleData.vehicleId);
@@ -65,7 +62,6 @@ const VehicleScreen = () => {
                     registrationExpiryDate: formatDate(vehicleData.registrationExpiryDate),
                 });
             } else {
-                console.warn("Không tìm thấy vehicleId trong dữ liệu.");
                 setVehicleId(null);
                 resetForm();
             }
@@ -93,22 +89,9 @@ const VehicleScreen = () => {
     const handleInputChange = (field, value) => setFormData((prev) => ({ ...prev, [field]: value }));
 
     const validateInputs = () => {
-        const requiredFields = [
-            "licensePlate",
-            "vehicleType",
-            "make",
-            "model",
-            "year",
-            "capacity",
-            "dimensions",
-            "insuranceStatus",
-        ];
-
-        for (const field of requiredFields) {
-            if (!formData[field]?.trim()) {
-                Alert.alert("Validation Error", `Vui lòng điền đầy đủ thông tin cho trường: ${getFieldLabel(field)}.`);
-                return false;
-            }
+        if (!formData.licensePlate.trim() || !formData.vehicleType.trim()) {
+            Alert.alert("Validation Error", "Vui lòng điền đầy đủ thông tin bắt buộc.");
+            return false;
         }
         return true;
     };
@@ -120,60 +103,44 @@ const VehicleScreen = () => {
 
         try {
             const token = await AsyncStorage.getItem("token");
-            console.log("Token in React Native:", token);
             if (!token) throw new Error("Token không tồn tại. Vui lòng đăng nhập lại.");
 
-            // Tạo URL và phương thức dựa vào vehicleId
             const url = vehicleId
                 ? `${BASE_URl}/api/registerDriver/updateVehicle/${vehicleId}`
                 : `${BASE_URl}/api/registerDriver/createNewVehicle`;
             const method = vehicleId ? "put" : "post";
 
-            // Kiểm tra lại giá trị trong formData
-            console.log("Request URL:", url);
-            console.log("Request Method:", method);
-            console.log("Request Data:", formData);
-
-            // Đảm bảo capacity là kiểu số
-            const data = {
-                ...formData,
-                registrationExpiryDate: formData.registrationExpiryDate.split('T')[0],
-                year: parseInt(formData.year, 10) || 0, // Convert year to a number or set to 0 if invalid
-                capacity: parseInt(formData.capacity, 10) || 0, // Convert capacity to a number or set to 0 if invalid
+            const formatDateForBackend = (date) => {
+                const d = new Date(date);
+                const pad = (n) => (n < 10 ? `0${n}` : n);
+                return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T00:00:00`;
             };
 
-            // Gửi yêu cầu tạo hoặc cập nhật xe
+            const data = {
+                ...formData,
+                registrationExpiryDate: formatDateForBackend(formData.registrationExpiryDate),
+                year: parseInt(formData.year, 10) || 0,
+                capacity: parseInt(formData.capacity, 10) || 0,
+            };
+
             const { status } = await axios[method](url, data, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                     "Content-Type": "application/json",
-                    Accept: "application/json", // Thêm header Accept 
+                    Accept: "application/json",
                 },
             });
 
             if (status === 200 || status === 201) {
                 Alert.alert("Thành công", vehicleId ? "Thông tin xe đã được cập nhật!" : "Tạo xe mới thành công.");
-                // Cập nhật hoặc tải lại thông tin sau khi tạo/cập nhật
                 fetchVehicleInfo();
             } else {
                 throw new Error("Đã xảy ra lỗi trong quá trình lưu thông tin xe.");
             }
         } catch (error) {
-            console.error("Error saving vehicle data:", error);
             if (error.response) {
-                console.error("Error response data:", error.response?.data);
-                console.error("Error response status:", error.response?.status);
-                Alert.alert("Lỗi 403", error.response?.data?.message || "Không có quyền truy cập vào tài nguyên này.");
-                if (error.response.status === 403) {
-                    Alert.alert("Lỗi 403", "Không có quyền truy cập vào tài nguyên này. Vui lòng kiểm tra lại quyền.");
-                } else {
-                    Alert.alert(
-                        "Lỗi",
-                        error.response.data.message || "Không thể lưu thông tin xe. Vui lòng thử lại sau."
-                    );
-                }
+                Alert.alert("Lỗi", error.response.data.message || "Không thể lưu thông tin xe. Vui lòng thử lại sau.");
             } else {
-                console.error("Error:", error.message);
                 Alert.alert("Lỗi", error.message || "Có lỗi xảy ra, vui lòng thử lại.");
             }
         } finally {
@@ -235,12 +202,12 @@ const VehicleScreen = () => {
                                     style={styles.input}
                                     placeholder={getFieldLabel(field)}
                                     value={formData[field]?.toString() || ""}
-                                    keyboardType={["year", "capacity"].includes(field) ? "numeric" : "default"} // Numeric keyboard for specific fields
+                                    keyboardType={["year", "capacity"].includes(field) ? "numeric" : "default"}
                                     onChangeText={(value) => {
                                         const numericFields = ["year", "capacity"];
                                         handleInputChange(
                                             field,
-                                            numericFields.includes(field) ? value.replace(/[^0-9]/g, "") : value // Allow only numbers for numeric fields
+                                            numericFields.includes(field) ? value.replace(/[^0-9]/g, "") : value
                                         );
                                     }}
                                 />

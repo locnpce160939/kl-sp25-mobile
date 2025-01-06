@@ -81,6 +81,7 @@ const LicenseScreen = () => {
     }, []);
 
     const validateInputs = () => {
+        console.log("Validating inputs..."); // Kiểm tra có vào hàm này không
         if (!licenseDetails.licenseNumber.trim()) {
             Alert.alert("Validation Error", "Số giấy phép là bắt buộc.");
             return false;
@@ -89,7 +90,7 @@ const LicenseScreen = () => {
             Alert.alert("Validation Error", "Loại giấy phép là bắt buộc.");
             return false;
         }
-        if (!licenseDetails.licenseDetails.trim()) {
+        if (!licenseDetails.issuingAuthority.trim()) {
             Alert.alert("Validation Error", "Cơ quan cấp là bắt buộc.");
             return false;
         }
@@ -97,26 +98,31 @@ const LicenseScreen = () => {
     };
 
     const updateLicenseDetails = async () => {
+        console.log("Nút Cập nhật đã được bấm."); // Kiểm tra khi nút được bấm
+    
         if (!licenseId) {
             Alert.alert("No License Found", "Bạn chưa có giấy phép, vui lòng tạo mới.");
             return createNewLicense();
         }
-
+    
         if (!validateInputs()) return;
-
+    
         setLoading(true);
+        console.log("Loading state is set to true...");
+    
         try {
             const token = await AsyncStorage.getItem("token");
+            console.log("Token:", token);  // Kiểm tra token có hợp lệ không
             if (!token) throw new Error("Token không tồn tại. Vui lòng đăng nhập lại.");
-
+    
             const updatedDetails = {
                 ...licenseDetails,
                 issuedDate: new Date(licenseDetails.issuedDate).toISOString(),
                 expiryDate: new Date(licenseDetails.expiryDate).toISOString(),
             };
-
-            console.log("Sending Updated Details:", updatedDetails);
-
+    
+            console.log("Dữ liệu gửi lên API:", updatedDetails); // Kiểm tra dữ liệu gửi lên API
+    
             const { status } = await axios.put(
                 `${BASE_URl}/api/registerDriver/updateLicense/${licenseId}`,
                 updatedDetails,
@@ -124,21 +130,26 @@ const LicenseScreen = () => {
                     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
                 }
             );
-
+    
+            console.log("API Response Status:", status); // Kiểm tra trạng thái trả về từ API
+    
             if (status === 200) {
                 Alert.alert("Success", "Cập nhật giấy phép thành công.");
             } else {
                 Alert.alert("Error", "Không thể cập nhật giấy phép.");
             }
         } catch (error) {
-            console.error("Error updating license details:", error.response?.data || error.message);
+            console.error("Error updating license details:", error);
             Alert.alert("Error", error.response?.data?.message || "Đã xảy ra lỗi khi cập nhật giấy phép.");
         } finally {
+            console.log("Loading state is set to false...");
             setLoading(false);
         }
     };
 
     const createNewLicense = async () => {
+        console.log("Nút Tạo mới giấy phép đã được bấm."); // Kiểm tra khi nút tạo mới giấy phép được bấm
+
         if (licenseId) {
             Alert.alert("Cảnh báo", "Giấy phép đã tồn tại. Bạn có chắc muốn tạo giấy phép mới không?", [
                 { text: "Hủy", style: "cancel" },
@@ -148,6 +159,7 @@ const LicenseScreen = () => {
             await proceedWithLicenseCreation(); // Tạo mới khi không có `licenseId`
         }
     };
+
 
     const proceedWithLicenseCreation = async () => {
         if (!validateInputs()) return;
