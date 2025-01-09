@@ -81,7 +81,6 @@ const LicenseScreen = () => {
     }, []);
 
     const validateInputs = () => {
-        console.log("Validating inputs..."); // Kiểm tra có vào hàm này không
         if (!licenseDetails.licenseNumber.trim()) {
             Alert.alert("Validation Error", "Số giấy phép là bắt buộc.");
             return false;
@@ -94,35 +93,48 @@ const LicenseScreen = () => {
             Alert.alert("Validation Error", "Cơ quan cấp là bắt buộc.");
             return false;
         }
+        if (!licenseDetails.issuedDate) {
+            Alert.alert("Validation Error", "Ngày cấp là bắt buộc.");
+            return false;
+        }
+        if (!licenseDetails.expiryDate) {
+            Alert.alert("Validation Error", "Ngày hết hạn là bắt buộc.");
+            return false;
+        }
+        if (new Date(licenseDetails.expiryDate) <= new Date(licenseDetails.issuedDate)) {
+            Alert.alert("Validation Error", "Ngày hết hạn phải sau ngày cấp.");
+            return false;
+        }
         return true;
     };
+        
 
     const updateLicenseDetails = async () => {
         console.log("Nút Cập nhật đã được bấm."); // Kiểm tra khi nút được bấm
-    
+
         if (!licenseId) {
             Alert.alert("No License Found", "Bạn chưa có giấy phép, vui lòng tạo mới.");
             return createNewLicense();
         }
-    
+
         if (!validateInputs()) return;
-    
+
         setLoading(true);
         console.log("Loading state is set to true...");
-    
+
         try {
             const token = await AsyncStorage.getItem("token");
             console.log("Token:", token);  // Kiểm tra token có hợp lệ không
             if (!token) throw new Error("Token không tồn tại. Vui lòng đăng nhập lại.");
-    
+
             const updatedDetails = {
                 ...licenseDetails,
                 issuedDate: new Date(licenseDetails.issuedDate).toISOString(),
                 expiryDate: new Date(licenseDetails.expiryDate).toISOString(),
             };
-    
+
             console.log("Dữ liệu gửi lên API:", updatedDetails); // Kiểm tra dữ liệu gửi lên API
-    
+
             const { status } = await axios.put(
                 `${BASE_URl}/api/registerDriver/updateLicense/${licenseId}`,
                 updatedDetails,
@@ -130,9 +142,9 @@ const LicenseScreen = () => {
                     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
                 }
             );
-    
+
             console.log("API Response Status:", status); // Kiểm tra trạng thái trả về từ API
-    
+
             if (status === 200) {
                 Alert.alert("Success", "Cập nhật giấy phép thành công.");
             } else {
@@ -179,6 +191,8 @@ const LicenseScreen = () => {
                 headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
             });
 
+            console.log("Payload for creating license:", newLicenseDetails);
+
             status === 200
                 ? (Alert.alert("Thành công", "Tạo giấy phép thành công."), setLicenseId(data.data.licenseId))
                 : Alert.alert("Lỗi", "Không thể tạo giấy phép.");
@@ -196,18 +210,45 @@ const LicenseScreen = () => {
     };
 
     const handleDateChange = (event, selectedDate) => {
-        const currentDate = selectedDate || new Date();
-        setShowDatePicker(false);
-        if (currentField === "issuedDate") {
-            setLicenseDetails((prev) => ({ ...prev, issuedDate: currentDate.toISOString() }));
-        } else if (currentField === "expiryDate") {
-            setLicenseDetails((prev) => ({ ...prev, expiryDate: currentDate.toISOString() }));
+        if (event.type === "set") {
+            const currentDate = selectedDate || new Date();
+            const today = new Date();
+            const isPastDate = currentDate < today.setHours(0, 0, 0, 0); // Đặt giờ phút giây thành 0 để so sánh chính xác ngày
+
+            // Kiểm tra nếu ngày được chọn là ngày trong quá khứ
+            if (isPastDate) {
+                Alert.alert("Lỗi", "Không thể chọn ngày trong quá khứ.");
+                setShowDatePicker(false);
+                return;
+            }
+
+            // Nếu là expiryDate, kiểm tra có trước issuedDate không
+            if (
+                currentField === "expiryDate" &&
+                licenseDetails.issuedDate &&
+                currentDate < new Date(licenseDetails.issuedDate)
+            ) {
+                Alert.alert("Lỗi", "Ngày hết hạn không được trước ngày cấp.");
+                setShowDatePicker(false);
+                return;
+            }
+
+            // Cập nhật ngày
+            setLicenseDetails((prev) => ({
+                ...prev,
+                [currentField]: currentDate.toISOString(),
+            }));
+
+            console.log(`${currentField} updated to:`, currentDate.toISOString());
         }
+        setShowDatePicker(false);
     };
+
 
     const renderLicenseForm = () => (
         <>
-            <Text style={styles.label}>Số giấy phép *</Text>
+            <Text style={styles.formTitle}>Hồ sơ Giấy Phép Lái Xe</Text>
+            <Text style={styles.label}>Số giấy phép</Text>
             <TextInput
                 style={styles.input}
                 value={licenseDetails.licenseNumber}
@@ -215,7 +256,7 @@ const LicenseScreen = () => {
                 placeholder="Nhập số giấy phép"
             />
 
-            <Text style={styles.label}>Loại giấy phép *</Text>
+            <Text style={styles.label}>Loại giấy phép</Text>
             <TextInput
                 style={styles.input}
                 value={licenseDetails.licenseType}
@@ -223,7 +264,7 @@ const LicenseScreen = () => {
                 placeholder="Nhập loại giấy phép"
             />
 
-            <Text style={styles.label}>Ngày cấp *</Text>
+            <Text style={styles.label}>Ngày cấp</Text>
             <TouchableOpacity onPress={() => { setCurrentField("issuedDate"); setShowDatePicker(true); }}>
                 <TextInput
                     style={styles.input}
@@ -233,7 +274,7 @@ const LicenseScreen = () => {
                 />
             </TouchableOpacity>
 
-            <Text style={styles.label}>Ngày hết hạn *</Text>
+            <Text style={styles.label}>Ngày hết hạn</Text>
             <TouchableOpacity onPress={() => { setCurrentField("expiryDate"); setShowDatePicker(true); }}>
                 <TextInput
                     style={styles.input}
@@ -243,7 +284,7 @@ const LicenseScreen = () => {
                 />
             </TouchableOpacity>
 
-            <Text style={styles.label}>Cơ quan cấp *</Text>
+            <Text style={styles.label}>Cơ quan cấp</Text>
             <TextInput
                 style={styles.input}
                 value={licenseDetails.issuingAuthority}
@@ -279,7 +320,9 @@ const LicenseScreen = () => {
 
             {showDatePicker && (
                 <DateTimePicker
-                    value={new Date()}
+                    value={currentField === "issuedDate"
+                        ? (licenseDetails.issuedDate ? new Date(licenseDetails.issuedDate) : new Date())
+                        : (licenseDetails.expiryDate ? new Date(licenseDetails.expiryDate) : new Date())}
                     mode="date"
                     display="default"
                     onChange={handleDateChange}
@@ -294,6 +337,13 @@ const styles = StyleSheet.create({
         flexGrow: 1,
         padding: 20,
         backgroundColor: "#fff",
+    },
+    formTitle: {
+        fontSize: 20,
+        fontWeight: "bold",
+        color: "#007AFF",
+        textAlign: "center",
+        marginBottom: 20,
     },
     label: {
         fontSize: 16,
