@@ -89,12 +89,62 @@ const VehicleScreen = () => {
     const handleInputChange = (field, value) => setFormData((prev) => ({ ...prev, [field]: value }));
 
     const validateInputs = () => {
-        if (!formData.licensePlate.trim() || !formData.vehicleType.trim()) {
-            Alert.alert("Validation Error", "Vui lòng điền đầy đủ thông tin bắt buộc.");
+        // Validate required fields
+        if (!formData.licensePlate.trim()) {
+            Alert.alert("Validation Error", "Biển số xe không được để trống.");
             return false;
         }
-        return true;
-    };
+        if (!formData.vehicleType.trim()) {
+            Alert.alert("Validation Error", "Loại xe không được để trống.");
+            return false;
+        }
+
+        if (!formData.make.trim()) {
+            Alert.alert("Validation Error", "Hãng xe không được để trống.");
+            return false;
+        }
+
+        if (!formData.model.trim()) {
+            Alert.alert("Validation Error", "Dòng xe không được để trống.");
+            return false;
+        }
+
+        if (!formData.dimensions.trim()) {
+            Alert.alert("Validation Error", "Kích thước xe không được để trống.");
+            return false;
+        }
+
+        if (!formData.insuranceStatus.trim()) {
+            Alert.alert("Validation Error", "Tình trạng bảo hiểm không được để trống.");
+            return false;
+        }
+    
+        // Validate year as a number
+        if (formData.year && isNaN(formData.year)&&!formData.year.trim()) {
+            Alert.alert("Validation Error", "Năm sản xuất phải là số.");
+            return false;
+        }
+    
+        // Validate capacity as a number
+        if (formData.capacity && isNaN(formData.capacity)&&!formData.capacity.trim()) {
+            Alert.alert("Validation Error", "Sức chứa phải là số.");
+            return false;
+        }
+    
+        // Validate registrationExpiryDate as a valid date
+        if (!formData.registrationExpiryDate) {
+            Alert.alert("Validation Error", "Ngày hết hạn đăng ký không được để trống.");
+            return false;
+        }
+    
+        const registrationDate = new Date(formData.registrationExpiryDate);
+        if (isNaN(registrationDate.getTime())) {
+            Alert.alert("Validation Error", "Ngày hết hạn đăng ký không hợp lệ.");
+            return false;
+        }
+    
+        return true; // All checks passed
+    };    
 
     const createOrUpdateVehicle = async () => {
         if (!validateInputs()) return;
@@ -148,7 +198,11 @@ const VehicleScreen = () => {
         }
     };
 
-    const formatDate = (date) => new Date(date).toISOString().split("T")[0];
+    const formatDate = (date) => {
+        const localDate = new Date(date);
+        localDate.setMinutes(localDate.getMinutes() - localDate.getTimezoneOffset()); 
+        return localDate.toISOString().split("T")[0]; // Format to YYYY-MM-DD
+    };
 
     const getFieldLabel = (field) => ({
         licensePlate: "Biển số xe",
