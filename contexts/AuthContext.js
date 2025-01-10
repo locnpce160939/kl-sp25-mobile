@@ -56,6 +56,258 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+    //-----------------------------getWards--------------------------------------------------------
+    const getWards = async (districtId) => {
+      if (!districtId) {
+        Alert.alert("Lỗi", "Vui lòng chọn quận/huyện trước.");
+        return [];
+      }
+  
+      try {
+        setIsLoading(true);
+        const userInfoString = await AsyncStorage.getItem("userInfo");
+        const accessToken = JSON.parse(userInfoString)?.data?.access_token;
+  
+        if (!accessToken) {
+          Alert.alert(
+            "Lỗi",
+            "Không tìm thấy access token. Vui lòng đăng nhập lại."
+          );
+          return [];
+        }
+  
+        const response = await axios.get(
+          `${BASE_URl}/api/location/wards/${districtId}`,
+          {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          }
+        );
+  
+        if (response.status === 200 && response.data.code === 200) {
+          console.log("Danh sách ấp/xã nhận được:", response.data.data);
+          return response.data.data.map((wards) => ({
+            fullName: wards.fullName,
+            id: wards.code,
+          }));
+        } else {
+          Alert.alert(
+            "Lỗi",
+            response.data.message || "Không thể lấy danh sách ấp/xã."
+          );
+          return [];
+        }
+      } catch (error) {
+        console.error("Lỗi khi lấy danh sách ấp/xã:", error);
+        const errorMessage =
+          error.response?.data?.message ||
+          "Đã xảy ra lỗi không xác định khi lấy danh sách ấp/xã.";
+        Alert.alert("Lỗi", errorMessage);
+        return [];
+      } finally {
+        setIsLoading(false);
+      }
+    };
+  
+    //-----------------------------getDistricts ----------------------------------------------------
+    const getDistricts = async (provinceId) => {
+      if (!provinceId) {
+        Alert.alert("Lỗi", "Vui lòng chọn tỉnh/thành phố trước.");
+        return [];
+      }
+  
+      try {
+        setIsLoading(true);
+        const userInfoString = await AsyncStorage.getItem("userInfo");
+        const accessToken = JSON.parse(userInfoString)?.data?.access_token;
+  
+        if (!accessToken) {
+          Alert.alert(
+            "Lỗi",
+            "Không tìm thấy access token. Vui lòng đăng nhập lại."
+          );
+          return [];
+        }
+  
+        const response = await axios.get(
+          `${BASE_URl}/api/location/districts/${provinceId}`,
+          {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          }
+        );
+  
+        if (response.status === 200 && response.data.code === 200) {
+          return response.data.data.map((district) => ({
+            fullName: district.fullName,
+            id: district.code,
+          }));
+        } else {
+          Alert.alert(
+            "Lỗi",
+            response.data.message || "Không thể lấy danh sách quận/huyện."
+          );
+          return [];
+        }
+      } catch (error) {
+        console.error("Lỗi khi lấy danh sách quận/huyện:", error);
+        const errorMessage =
+          error.response?.data?.message ||
+          "Đã xảy ra lỗi không xác định khi lấy danh sách quận/huyện.";
+        Alert.alert("Lỗi", errorMessage);
+        return [];
+      } finally {
+        setIsLoading(false);
+      }
+    };
+  
+    //----------------------------getProvinces -----------------------------------------------------
+    const getProvinces = async () => {
+      try {
+        setIsLoading(true); // Bật trạng thái loading
+        const userInfoString = await AsyncStorage.getItem("userInfo");
+        const accessToken = JSON.parse(userInfoString)?.data?.access_token;
+  
+        if (!accessToken) {
+          Alert.alert("Error", "No access token found. Please login again.");
+          return [];
+        }
+  
+        const response = await axios.get(`${BASE_URl}/api/location/provinces`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+  
+        if (response.status === 200 && response.data.code === 200) {
+          // Lấy danh sách provinces và đảm bảo có key `fullName`
+          return response.data.data.map((province) => ({
+            id: province.code,
+            fullName: province.fullName, // Sử dụng fullName
+          }));
+        } else {
+          Alert.alert(
+            "Error",
+            response.data.message || "Failed to fetch provinces."
+          );
+          return [];
+        }
+      } catch (error) {
+        console.error("Error fetching provinces:", error);
+        Alert.alert(
+          "Error",
+          "An unknown error occurred while fetching provinces."
+        );
+        return [];
+      } finally {
+        setIsLoading(false); // Tắt trạng thái loading
+      }
+    };
+  
+    //------------------------getDriverIdentificationById-------------------------------------------
+    const getDriverIdentificationById = async () => {
+      try {
+        setIsLoading(true);
+  
+        // Lấy thông tin user từ AsyncStorage
+        const userInfoString = await AsyncStorage.getItem("userInfo");
+        if (!userInfoString) {
+          Alert.alert("Error", "No user information found. Please login again.");
+          setIsLoading(false);
+          return null;
+        }
+  
+        const parsedUserInfo = JSON.parse(userInfoString);
+        const accessToken = parsedUserInfo?.data?.access_token;
+  
+        if (!accessToken) {
+          Alert.alert(
+            "Error",
+            "Missing accountId or access token. Please login again."
+          );
+          setIsLoading(false);
+          return null;
+        }
+  
+        // Gọi API với accountId
+        const res = await axios.get(
+          `${BASE_URl}/api/registerDriver/identification/getByAccountId`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          }
+        );
+  
+        if (res.status === 200 && res.data.code === 200) {
+          return res.data.data; // Trả về dữ liệu từ API
+        } else {
+          Alert.alert(
+            "Error",
+            res.data.message || "Failed to fetch identification details."
+          );
+          return null;
+        }
+      } catch (error) {
+        console.error("Error fetching identification by ID:", error);
+        if (error.response) {
+          Alert.alert(
+            "Error",
+            error.response.data.message || "An error occurred."
+          );
+        } else {
+          Alert.alert("Error", "An unknown error occurred.");
+        }
+        return null;
+      } finally {
+        setIsLoading(false);
+      }
+    };
+  
+    // ================================== Create Driver Identification ========================================
+    const createDriverIdentification = async (formData, navigation) => {
+    try {
+      setIsLoading(true);
+  
+      // Lấy thông tin từ AsyncStorage
+      const userInfoString = await AsyncStorage.getItem("userInfo");
+  
+      if (!userInfoString) {
+        Alert.alert("Error", "No user information found. Please login again.");
+        setIsLoading(false);
+        return;
+      }
+  
+      // Parse thông tin user
+      const parsedUserInfo = JSON.parse(userInfoString);
+      const accessToken = parsedUserInfo?.data?.access_token;
+  
+      if (!accessToken) {
+        Alert.alert("Error", "No access token found. Please login again.");
+        setIsLoading(false);
+        return;
+      }
+  
+      // Gọi API
+      const res = await axios.post(
+        `${BASE_URl}/api/registerDriver/createDriverIdentification`,
+        formData,
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }
+      );
+  
+      if (res.status === 200 && res.data.code === 200) {
+        Alert.alert("Success", "Driver identification created successfully!");
+        navigation.navigate("CreateDriverIdentificationScreen");
+      } else {
+        Alert.alert("Error", res.data.message || "An error occurred.");
+      }
+    } catch (error) {
+      const errorMessage =
+        error.response?.data?.message || "An unknown error occurred.";
+      Alert.alert("Error", errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // ================================== ConfirmOTP ========================================
   const confirmOtp = (
     username,
@@ -217,6 +469,11 @@ export const AuthProvider = ({ children }) => {
     <AuthContext.Provider
       value={{
         register,
+        getWards,
+        getDistricts,
+        getProvinces,
+        getDriverIdentificationById,
+        createDriverIdentification,
         confirmOtp,
         login,
         logout,
@@ -225,6 +482,7 @@ export const AuthProvider = ({ children }) => {
         forgotPass,
         newpass,
         isPlash,
+
       }}
     >
       {children}

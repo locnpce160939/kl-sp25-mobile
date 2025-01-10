@@ -11,13 +11,18 @@ const ProfileScreen = () => {
   const handleLogout = () => {
     logout();
   };
+  const handleNavigation = (label) => {
+    if (label === "Hồ sơ Tài xế") {
+      navigation.navigate("CreateDriverIdentificationScreen");
+    }
+  };
 
   const sections = [
     {
       title: "Phần 1",
       items: [
         { id: 1, icon: "calendar-outline", label: "Đặt lịch", screen: "Schedule" },
-        { id: 2, icon: "business-outline", label: "Hồ sơ doanh nghiệp" },
+        { id: 2, icon: "business-outline", label: "Hồ sơ Tài xế" },
         { id: 3, icon: "person-add-outline", label: "Giới thiệu bạn bè" },
         { id: 4, icon: "card-outline", label: "Gói hội viên" },
         { id: 5, icon: "car-sport-outline", label: "Trở thành tài xế Xanh SM" },
@@ -43,7 +48,7 @@ const ProfileScreen = () => {
           <TouchableOpacity
             key={item.id}
             style={styles.row}
-            onPress={() => item.screen && navigation.navigate(item.screen)}
+            onPress={() => handleNavigation(item.label)}
           >
             <View style={styles.iconContainer}>
               <Ionicons name={item.icon} size={24} color="#555" />
