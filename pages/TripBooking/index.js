@@ -12,6 +12,7 @@ import {
   KeyboardAvoidingView,
   ScrollView,
   Alert,
+  SafeAreaView,
 } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import MapView, { Marker } from "react-native-maps";
@@ -162,41 +163,63 @@ const TripBooking = () => {
     const isBooking = type === 'booking';
     const show = isBooking ? showBookingDatePicker : showExpirationDatePicker;
     const date = isBooking ? bookingDate : expirationDate;
-    const onChange = onDateChange(type);
-
+    
     if (!show) return null;
 
     if (Platform.OS === 'ios') {
       return (
-        <Modal transparent={true} visible={show} animationType="slide">
-          <View style={styles.modalView}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>
-                {isBooking ? "Select Booking Date" : "Select Expiration Date"}
-              </Text>
-              <DateTimePicker
-                value={date}
-                mode="date"
-                display="spinner"
-                onChange={onChange}
-                minimumDate={isBooking ? new Date() : bookingDate}
-              />
-              <View style={styles.modalButtonsContainer}>
-                <TouchableOpacity
-                  style={[styles.modalButton, styles.cancelButton]}
-                  onPress={() => isBooking ? setShowBookingDatePicker(false) : setShowExpirationDatePicker(false)}
-                >
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.modalButton, styles.confirmButton]}
-                  onPress={() => isBooking ? setShowBookingDatePicker(false) : setShowExpirationDatePicker(false)}
-                >
-                  <Text style={styles.confirmButtonText}>Confirm</Text>
-                </TouchableOpacity>
-              </View>
+        <Modal
+          visible={show}
+          transparent={true}
+          animationType="slide"
+        >
+          <TouchableWithoutFeedback 
+            onPress={() => isBooking ? setShowBookingDatePicker(false) : setShowExpirationDatePicker(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <TouchableWithoutFeedback>
+                <View style={styles.modalContent}>
+                  <>
+                    <View style={styles.pickerHeader}>
+                      <TouchableOpacity 
+                        onPress={() => isBooking ? setShowBookingDatePicker(false) : setShowExpirationDatePicker(false)}
+                        style={styles.headerButton}
+                      >
+                        <Text style={styles.cancelText}>Hủy</Text>
+                      </TouchableOpacity>
+                      
+                      <Text style={styles.headerTitle}>
+                        {isBooking ? 'Chọn ngày đặt' : 'Chọn ngày hết hạn'}
+                      </Text>
+                      
+                      <TouchableOpacity 
+                        onPress={() => {
+                          if (isBooking) {
+                            setShowBookingDatePicker(false);
+                          } else {
+                            setShowExpirationDatePicker(false);
+                          }
+                        }}
+                        style={styles.headerButton}
+                      >
+                        <Text style={styles.doneText}>Xong</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <DateTimePicker
+                      value={date}
+                      mode="date"
+                      display="spinner"
+                      onChange={onDateChange(type)}
+                      style={styles.datePickerIOS}
+                      textColor="black"
+                      locale="vi-VN"
+                      minimumDate={isBooking ? new Date() : bookingDate}
+                    />
+                  </>
+                </View>
+              </TouchableWithoutFeedback>
             </View>
-          </View>
+          </TouchableWithoutFeedback>
         </Modal>
       );
     }
@@ -206,7 +229,7 @@ const TripBooking = () => {
         value={date}
         mode="date"
         display="default"
-        onChange={onChange}
+        onChange={onDateChange(type)}
         minimumDate={isBooking ? new Date() : bookingDate}
       />
     );
@@ -468,7 +491,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   modalContent: {
-    backgroundColor: "#fff",
+    backgroundColor: "#ecec",
     padding: 20,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
@@ -544,6 +567,57 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "600",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    width: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius:12,
+    overflow:"hidden",
+  },
+  pickerHeader: {
+    width: '100%' ,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal:20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5E5',
+    backgroundColor: '#f8f8f8',
+  },
+  headerButton: {
+    padding: 4,
+    minWidth: 60,
+  },
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000000',
+    textAlign: 'center',
+  },
+  cancelText: {
+    fontSize: 16,
+    color: '#007AFF',
+    textAlign: 'left',
+  },
+  doneText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#007AFF',
+    textAlign: 'right',
+  },
+  datePickerIOS: {
+    width: '100%',
+    height: 200,
+    backgroundColor: '#FFFFFF',
   },
 });
 
