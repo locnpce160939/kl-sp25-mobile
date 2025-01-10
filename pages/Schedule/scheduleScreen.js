@@ -22,16 +22,20 @@ const ScheduleScreen = () => {
     startLocation: null,
     endLocation: null,
   });
-
+  3;
   const [startDay, setStartDay] = useState(new Date());
   const [endDay, setEndDay] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [dateType, setDateType] = useState(null); // 'start' or 'end'
   const [availableCapacity, setAvailableCapacity] = useState("");
+
   const [touched, setTouched] = useState({
     location: false,
     startDay: false,
     endDay: false,
     capacity: false,
   });
+
   const [errors, setErrors] = useState({
     location: "",
     startDay: "",
@@ -41,9 +45,31 @@ const ScheduleScreen = () => {
 
   const [isMapVisible, setIsMapVisible] = useState(false);
   const [selectingPoint, setSelectingPoint] = useState("start");
-  const [datePickerVisible, setDatePickerVisible] = useState(false);
-  const [datePickerType, setDatePickerType] = useState(null); // 'start' or 'end'
-  const [tempDate, setTempDate] = useState(new Date());
+
+  // Platform specific date picker handling
+  const showPicker = (type) => {
+    setDateType(type);
+    setShowDatePicker(true);
+  };
+
+  const onDateChange = (event, selectedDate) => {
+    const currentDate =
+      selectedDate || (dateType === "start" ? startDay : endDay);
+
+    if (Platform.OS === "android") {
+      setShowDatePicker(false);
+    }
+
+    if (selectedDate) {
+      if (dateType === "start") {
+        setStartDay(currentDate);
+        handleBlur("startDay");
+      } else {
+        setEndDay(currentDate);
+        handleBlur("endDay");
+      }
+    }
+  };
 
   const validateForm = () => {
     const newErrors = {};
@@ -75,23 +101,6 @@ const ScheduleScreen = () => {
   const handleBlur = (field) => {
     setTouched((prev) => ({ ...prev, [field]: true }));
     validateForm();
-  };
-
-  const showDatePicker = (type) => {
-    setDatePickerType(type);
-    setTempDate(type === 'start' ? startDay : endDay);
-    setDatePickerVisible(true);
-  };
-
-  const handleDateConfirm = () => {
-    if (datePickerType === 'start') {
-      setStartDay(tempDate);
-      handleBlur("startDay");
-    } else {
-      setEndDay(tempDate);
-      handleBlur("endDay");
-    }
-    setDatePickerVisible(false);
   };
 
   const handleMapPress = (event) => {
@@ -173,6 +182,65 @@ const ScheduleScreen = () => {
     return date.toLocaleDateString("vi-VN");
   };
 
+  // Render date picker based on platform
+  const renderDatePicker = () => {
+    if (!showDatePicker) return null;
+
+    return (
+      <>
+        {Platform.OS === "ios" ? (
+          <Modal
+            visible={showDatePicker}
+            transparent={true}
+            animationType="slide"
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContent}>
+                <View style={styles.pickerHeader}>
+                  <View style={styles.pickerButtonContainer}>
+                    <TouchableOpacity
+                      style={styles.pickerButton}
+                      onPress={() => setShowDatePicker(false)}
+                    >
+                      <Text style={styles.pickerButtonText}>Hủy</Text>
+                    </TouchableOpacity>
+                    <Text style={styles.pickerHeaderText}>
+                      {dateType === "start"
+                        ? "Chọn ngày bắt đầu"
+                        : "Chọn ngày kết thúc"}
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.pickerButton}
+                      onPress={() => setShowDatePicker(false)}
+                    >
+                      <Text style={styles.pickerButtonText}>Xong</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+                <DateTimePicker
+                  value={dateType === "start" ? startDay : endDay}
+                  mode="date"
+                  display="spinner"
+                  onChange={onDateChange}
+                  style={styles.datePickerIOS}
+                  locale="vi-VN"
+                />
+              </View>
+            </View>
+          </Modal>
+        ) : (
+          <DateTimePicker
+            value={dateType === "start" ? startDay : endDay}
+            mode="date"
+            display="default"
+            onChange={onDateChange}
+            locale="vi-VN"
+          />
+        )}
+      </>
+    );
+  };
+
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
@@ -206,7 +274,7 @@ const ScheduleScreen = () => {
               styles.input,
               touched.startDay && errors.startDay && styles.errorInput,
             ]}
-            onPress={() => showDatePicker('start')}
+            onPress={() => showPicker("start")}
           >
             <Text>{formatDate(startDay)}</Text>
           </TouchableOpacity>
@@ -220,7 +288,7 @@ const ScheduleScreen = () => {
               styles.input,
               touched.endDay && errors.endDay && styles.errorInput,
             ]}
-            onPress={() => showDatePicker('end')}
+            onPress={() => showPicker("end")}
           >
             <Text>{formatDate(endDay)}</Text>
           </TouchableOpacity>
@@ -313,47 +381,7 @@ const ScheduleScreen = () => {
             </View>
           </Modal>
 
-          {/* DatePicker Modal */}
-          <Modal
-            visible={datePickerVisible}
-            transparent={true}
-            animationType="slide"
-          >
-            <View style={styles.datePickerModalContainer}>
-              <View style={styles.datePickerContent}>
-                <View style={styles.datePickerHeader}>
-                  <Text style={styles.datePickerHeaderText}>
-                    {datePickerType === 'start' ? 'Chọn ngày bắt đầu' : 'Chọn ngày kết thúc'}
-                  </Text>
-                </View>
-                
-                <DateTimePicker
-                  value={tempDate}
-                  mode="date"
-                  display="spinner"
-                  onChange={(event, date) => {
-                    if (date) setTempDate(date);
-                  }}
-                />
-                
-                <View style={styles.datePickerButtons}>
-                  <TouchableOpacity 
-                    style={[styles.datePickerButton, styles.cancelButton]}
-                    onPress={() => setDatePickerVisible(false)}
-                  >
-                    <Text style={styles.datePickerButtonText}>Hủy</Text>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity 
-                    style={[styles.datePickerButton, styles.confirmButton]}
-                    onPress={handleDateConfirm}
-                  >
-                    <Text style={styles.datePickerButtonText}>Xác nhận</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
-          </Modal>
+          {renderDatePicker()}
         </View>
       </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
@@ -370,18 +398,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 8,
     color: "#333",
-  },
-  resetButton: {
-    backgroundColor: "#FF3B30",
-    padding: 5,
-    alignItems: "center",
-    marginBottom: 5,
-    borderRadius: 8,
-  },
-  resetButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
   },
   input: {
     backgroundColor: "#f5f5f5",
@@ -422,6 +438,18 @@ const styles = StyleSheet.create({
   map: {
     flex: 1,
   },
+  resetButton: {
+    backgroundColor: "#FF3B30",
+    padding: 5,
+    alignItems: "center",
+    marginBottom: 5,
+    borderRadius: 8,
+  },
+  resetButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
   closeButton: {
     backgroundColor: "#333",
     padding: 15,
@@ -443,51 +471,58 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
   },
-  // New styles for DatePicker Modal
-  datePickerModalContainer: {
+  // Date Picker Modal Styles
+  modalOverlay: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
+    justifyContent: "flex-end",
   },
-  datePickerContent: {
-    backgroundColor: "#fff",
+  modalContent: {
+    width: "100%",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
     borderRadius: 12,
-    width: "90%",
-    padding: 20,
+    overflow: "hidden",
   },
-  datePickerHeader: {
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  datePickerHeaderText: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#333",
-  },
-  datePickerButtons: {
+  pickerHeader: {
+    width: "100%",
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 20,
-    paddingHorizontal: 20,
-  },
-  datePickerButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 30,
-    borderRadius: 8,
-    minWidth: 120,
     alignItems: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E5E5",
+    backgroundColor: "#f8f8f8",
   },
-  cancelButton: {
-    backgroundColor: "#FF3B30",
+  pickerHeaderText: {
+    fontSize: 17,
+    fontWeight: "600",
+    color: "#000",
+    textAlign: "center",
+    marginBottom: 5,
   },
-  confirmButton: {
-    backgroundColor: "#007AFF",
+  pickerButtonContainer: {
+    width: "100%",
+    alignItems: "center",
+    display: "flex",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: 10,
   },
-  datePickerButtonText: {
-    color: "#fff",
+  pickerButton: {
+    padding: 8,
+  },
+  pickerButtonText: {
     fontSize: 16,
+    color: "#007AFF",
     fontWeight: "500",
+  },
+  datePickerIOS: {
+    height: 200,
+    width: "100%",
   },
 });
 
