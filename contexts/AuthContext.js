@@ -200,7 +200,7 @@ export const AuthProvider = ({ children }) => {
       }
     };
   
-    //------------------------getDriverIdentificationById-------------------------------------------
+    //------------------------getDriverIdentificationByAccountId-------------------------------------------
     const getDriverIdentificationById = async () => {
       try {
         setIsLoading(true);
