@@ -7,6 +7,7 @@ import {
     TouchableOpacity,
     Alert,
     ScrollView,
+    SafeAreaView,
     ActivityIndicator,
 } from "react-native";
 import axios from "axios";
@@ -26,6 +27,7 @@ const LicenseScreen = () => {
     const [loading, setLoading] = useState(false);
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [currentField, setCurrentField] = useState(null);
+    const [errors, setErrors] = useState({});
 
     const fetchLicenseDetails = async () => {
         setLoading(true);
@@ -69,10 +71,11 @@ const LicenseScreen = () => {
         if (error.response?.data?.message === "License not found") {
             setLicenseId(null);
             resetLicenseDetails();
-            Alert.alert("Thông báo", "Không tìm thấy giấy phép. Vui lòng tạo giấy phép mới.");
+            console.log("Không tìm thấy giấy phép.");
+            //Alert.alert("Thông báo", "Không tìm thấy giấy phép. Vui lòng tạo giấy phép mới.");
         } else {
             console.error("Error fetching license details:", error);
-            Alert.alert("Lỗi", error.response?.data?.message || "Không thể tải dữ liệu giấy phép.");
+           //Alert.alert("Lỗi", error.response?.data?.message || "Không thể tải dữ liệu giấy phép.");
         }
     };
 
@@ -81,50 +84,43 @@ const LicenseScreen = () => {
     }, []);
 
     const validateInputs = () => {
+        const newErrors = {};
+    
         if (!licenseDetails.licenseNumber.trim()) {
-            Alert.alert("Validation Error", "Số giấy phép là bắt buộc.");
-            return false;
+            newErrors.licenseNumber = "Số giấy phép là bắt buộc.";
         }
         if (!licenseDetails.licenseType.trim()) {
-            Alert.alert("Validation Error", "Loại giấy phép là bắt buộc.");
-            return false;
+            newErrors.licenseType = "Loại giấy phép là bắt buộc.";
         }
         if (!licenseDetails.issuingAuthority.trim()) {
-            Alert.alert("Validation Error", "Cơ quan cấp là bắt buộc.");
-            return false;
+            newErrors.issuingAuthority = "Cơ quan cấp là bắt buộc.";
         }
         if (!licenseDetails.issuedDate) {
-            Alert.alert("Validation Error", "Ngày cấp là bắt buộc.");
-            return false;
+            newErrors.issuedDate = "Ngày cấp là bắt buộc.";
         }
         if (!licenseDetails.expiryDate) {
-            Alert.alert("Validation Error", "Ngày hết hạn là bắt buộc.");
-            return false;
+            newErrors.expiryDate = "Ngày hết hạn là bắt buộc.";
         }
-        if (new Date(licenseDetails.expiryDate) <= new Date(licenseDetails.issuedDate)) {
-            Alert.alert("Validation Error", "Ngày hết hạn phải sau ngày cấp.");
-            return false;
+        if (
+            licenseDetails.issuedDate &&
+            licenseDetails.expiryDate &&
+            new Date(licenseDetails.expiryDate) <= new Date(licenseDetails.issuedDate)
+        ) {
+            newErrors.expiryDate = "Ngày hết hạn phải sau ngày cấp.";
         }
-        return true;
+    
+        console.log("Validation Errors:", newErrors); // In log lỗi
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
     };
-        
+    
 
     const updateLicenseDetails = async () => {
-        console.log("Nút Cập nhật đã được bấm."); // Kiểm tra khi nút được bấm
-
-        if (!licenseId) {
-            Alert.alert("No License Found", "Bạn chưa có giấy phép, vui lòng tạo mới.");
-            return createNewLicense();
-        }
-
         if (!validateInputs()) return;
 
         setLoading(true);
-        console.log("Loading state is set to true...");
-
         try {
             const token = await AsyncStorage.getItem("token");
-            console.log("Token:", token);  // Kiểm tra token có hợp lệ không
             if (!token) throw new Error("Token không tồn tại. Vui lòng đăng nhập lại.");
 
             const updatedDetails = {
@@ -132,8 +128,6 @@ const LicenseScreen = () => {
                 issuedDate: new Date(licenseDetails.issuedDate).toISOString(),
                 expiryDate: new Date(licenseDetails.expiryDate).toISOString(),
             };
-
-            console.log("Dữ liệu gửi lên API:", updatedDetails); // Kiểm tra dữ liệu gửi lên API
 
             const { status } = await axios.put(
                 `${BASE_URl}/api/registerDriver/updateLicense/${licenseId}`,
@@ -143,243 +137,242 @@ const LicenseScreen = () => {
                 }
             );
 
-            console.log("API Response Status:", status); // Kiểm tra trạng thái trả về từ API
-
             if (status === 200) {
-                Alert.alert("Success", "Cập nhật giấy phép thành công.");
+                Alert.alert("Thành công", "Cập nhật giấy phép thành công.");
             } else {
-                Alert.alert("Error", "Không thể cập nhật giấy phép.");
+                Alert.alert("Lỗi", "Không thể cập nhật giấy phép.");
             }
         } catch (error) {
             console.error("Error updating license details:", error);
-            Alert.alert("Error", error.response?.data?.message || "Đã xảy ra lỗi khi cập nhật giấy phép.");
+            Alert.alert("Lỗi", error.response?.data?.message || "Đã xảy ra lỗi khi cập nhật giấy phép.");
         } finally {
-            console.log("Loading state is set to false...");
             setLoading(false);
         }
     };
 
     const createNewLicense = async () => {
-        console.log("Nút Tạo mới giấy phép đã được bấm."); // Kiểm tra khi nút tạo mới giấy phép được bấm
-
-        if (licenseId) {
-            Alert.alert("Cảnh báo", "Giấy phép đã tồn tại. Bạn có chắc muốn tạo giấy phép mới không?", [
-                { text: "Hủy", style: "cancel" },
-                { text: "Đồng ý", onPress: proceedWithLicenseCreation },
-            ]);
-        } else {
-            await proceedWithLicenseCreation(); // Tạo mới khi không có `licenseId`
-        }
-    };
-
-
-    const proceedWithLicenseCreation = async () => {
         if (!validateInputs()) return;
-
+    
         setLoading(true);
         try {
             const token = await AsyncStorage.getItem("token");
             if (!token) throw new Error("Token không tồn tại. Vui lòng đăng nhập lại.");
-
+    
             const newLicenseDetails = {
                 ...licenseDetails,
                 issuedDate: new Date(licenseDetails.issuedDate).toISOString(),
                 expiryDate: new Date(licenseDetails.expiryDate).toISOString(),
             };
-
-            const { data, status } = await axios.post(`${BASE_URl}/api/registerDriver/createNewLicense`, newLicenseDetails, {
-                headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-            });
-
-            console.log("Payload for creating license:", newLicenseDetails);
-
-            status === 200
-                ? (Alert.alert("Thành công", "Tạo giấy phép thành công."), setLicenseId(data.data.licenseId))
-                : Alert.alert("Lỗi", "Không thể tạo giấy phép.");
+    
+            console.log("Data sent to API:", newLicenseDetails); // In log dữ liệu gửi đi
+    
+            const { data, status } = await axios.post(
+                `${BASE_URl}/api/registerDriver/createNewLicense`,
+                newLicenseDetails,
+                {
+                    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+                }
+            );
+    
+            if (status === 200) {
+                Alert.alert("Thành công", "Tạo giấy phép thành công.");
+                setLicenseId(data.data.licenseId);
+            } else {
+                Alert.alert("Lỗi", "Không thể tạo giấy phép.");
+            }
         } catch (error) {
             console.error("Error creating new license:", error);
             Alert.alert("Lỗi", error.response?.data?.message || "Đã xảy ra lỗi khi tạo giấy phép mới.");
         } finally {
             setLoading(false);
         }
-    };
+    };    
 
-    // Handle input changes
     const handleInputChange = (field, value) => {
         setLicenseDetails((prev) => ({ ...prev, [field]: value }));
+        setErrors((prev) => ({ ...prev, [field]: null })); // Clear the error for the specific field
     };
 
     const handleDateChange = (event, selectedDate) => {
         if (event.type === "set") {
             const currentDate = selectedDate || new Date();
-            const today = new Date();
-            const isPastDate = currentDate < today.setHours(0, 0, 0, 0); // Đặt giờ phút giây thành 0 để so sánh chính xác ngày
-
-            // Kiểm tra nếu ngày được chọn là ngày trong quá khứ
-            if (isPastDate) {
-                Alert.alert("Lỗi", "Không thể chọn ngày trong quá khứ.");
-                setShowDatePicker(false);
-                return;
-            }
-
-            // Nếu là expiryDate, kiểm tra có trước issuedDate không
             if (
                 currentField === "expiryDate" &&
                 licenseDetails.issuedDate &&
                 currentDate < new Date(licenseDetails.issuedDate)
             ) {
-                Alert.alert("Lỗi", "Ngày hết hạn không được trước ngày cấp.");
+                Alert.alert("Lỗi", "Ngày hết hạn phải sau ngày cấp.");
                 setShowDatePicker(false);
                 return;
             }
 
-            // Cập nhật ngày
             setLicenseDetails((prev) => ({
                 ...prev,
                 [currentField]: currentDate.toISOString(),
             }));
-
-            console.log(`${currentField} updated to:`, currentDate.toISOString());
         }
         setShowDatePicker(false);
     };
 
-
-    const renderLicenseForm = () => (
-        <>
-            <Text style={styles.formTitle}>Hồ sơ Giấy Phép Lái Xe</Text>
-            <Text style={styles.label}>Số giấy phép</Text>
+    const renderInputField = (label, field, placeholder) => (
+        <View>
+            <Text style={styles.label}>{label}</Text>
             <TextInput
-                style={styles.input}
-                value={licenseDetails.licenseNumber}
-                onChangeText={(text) => handleInputChange("licenseNumber", text)}
-                placeholder="Nhập số giấy phép"
+                style={[styles.input, errors[field] && styles.inputError]}
+                value={licenseDetails[field]}
+                onChangeText={(text) => handleInputChange(field, text)}
+                placeholder={placeholder}
+                placeholderTextColor={"#ccc"}
             />
+            {errors[field] && <Text style={styles.errorText}>{errors[field]}</Text>}
+        </View>
+    );
 
-            <Text style={styles.label}>Loại giấy phép</Text>
-            <TextInput
-                style={styles.input}
-                value={licenseDetails.licenseType}
-                onChangeText={(text) => handleInputChange("licenseType", text)}
-                placeholder="Nhập loại giấy phép"
-            />
-
-            <Text style={styles.label}>Ngày cấp</Text>
-            <TouchableOpacity onPress={() => { setCurrentField("issuedDate"); setShowDatePicker(true); }}>
+    const renderDateField = (label, field) => (
+        <View>
+            <Text style={styles.label}>{label}</Text>
+            <TouchableOpacity
+                onPress={() => {
+                    setCurrentField(field);
+                    setShowDatePicker(true);
+                }}
+            >
                 <TextInput
-                    style={styles.input}
-                    value={licenseDetails.issuedDate ? new Date(licenseDetails.issuedDate).toLocaleDateString() : ""}
+                    style={[styles.input, errors[field] && styles.inputError]}
+                    value={licenseDetails[field] ? new Date(licenseDetails[field]).toLocaleDateString() : ""}
                     editable={false}
-                    placeholder="Chọn ngày cấp"
+                    placeholder={"Chọn ngày"}
+                    placeholderTextColor={"#ccc"}
                 />
             </TouchableOpacity>
-
-            <Text style={styles.label}>Ngày hết hạn</Text>
-            <TouchableOpacity onPress={() => { setCurrentField("expiryDate"); setShowDatePicker(true); }}>
-                <TextInput
-                    style={styles.input}
-                    value={licenseDetails.expiryDate ? new Date(licenseDetails.expiryDate).toLocaleDateString() : ""}
-                    editable={false}
-                    placeholder="Chọn ngày hết hạn"
-                />
-            </TouchableOpacity>
-
-            <Text style={styles.label}>Cơ quan cấp</Text>
-            <TextInput
-                style={styles.input}
-                value={licenseDetails.issuingAuthority}
-                onChangeText={(text) => handleInputChange("issuingAuthority", text)}
-                placeholder="Nhập cơ quan cấp"
-            />
-        </>
+            {errors[field] && <Text style={styles.errorText}>{errors[field]}</Text>}
+        </View>
     );
 
     return (
-        <ScrollView contentContainerStyle={styles.container}>
-            {loading ? (
-                <ActivityIndicator size="large" color="#007AFF" />
-            ) : (
-                <>
-                    {licenseId ? (
-                        <>
-                            {renderLicenseForm()}
-                            <TouchableOpacity style={styles.saveButton} onPress={updateLicenseDetails}>
-                                <Text style={styles.saveButtonText}>Cập nhật</Text>
-                            </TouchableOpacity>
-                        </>
-                    ) : (
-                        <>
-                            {renderLicenseForm()}
-                            <TouchableOpacity style={styles.createButton} onPress={createNewLicense}>
-                                <Text style={styles.createButtonText}>Tạo mới giấy phép</Text>
-                            </TouchableOpacity>
-                        </>
-                    )}
-                </>
-            )}
+        <SafeAreaView style={styles.safeContainer}>
+            <ScrollView contentContainerStyle={styles.container}>
+                {loading ? (
+                    <ActivityIndicator size="large" color="#007AFF" />
+                ) : (
+                    <>
+                        <Text style={styles.formTitle}>Hồ sơ Giấy Phép Lái Xe</Text>
+                        {renderInputField("Số giấy phép", "licenseNumber", "123123123123")}
+                        {renderInputField("Loại giấy phép", "licenseType", "B1,C,D,E,....")}
+                        {renderDateField("Ngày cấp", "issuedDate")}
+                        {renderDateField("Ngày hết hạn", "expiryDate")}
+                        {renderInputField("Cơ quan cấp", "issuingAuthority", "GTVT Can Tho,GTVT Soc Trang")}
 
-            {showDatePicker && (
-                <DateTimePicker
-                    value={currentField === "issuedDate"
-                        ? (licenseDetails.issuedDate ? new Date(licenseDetails.issuedDate) : new Date())
-                        : (licenseDetails.expiryDate ? new Date(licenseDetails.expiryDate) : new Date())}
-                    mode="date"
-                    display="default"
-                    onChange={handleDateChange}
-                />
-            )}
-        </ScrollView>
+                        <TouchableOpacity
+                            style={styles.saveButton}
+                            onPress={licenseId ? updateLicenseDetails : createNewLicense}
+                        >
+                            <Text style={styles.saveButtonText}>
+                                {licenseId ? "Cập nhật" : "Tạo mới giấy phép"}
+                            </Text>
+                        </TouchableOpacity>
+                    </>
+                )}
+
+                {showDatePicker && (
+                    <DateTimePicker
+                        value={currentField === "issuedDate"
+                            ? (licenseDetails.issuedDate ? new Date(licenseDetails.issuedDate) : new Date())
+                            : (licenseDetails.expiryDate ? new Date(licenseDetails.expiryDate) : new Date())}
+                        mode="date"
+                        display="default"
+                        onChange={handleDateChange}
+                    />
+                )}
+            </ScrollView>
+        </SafeAreaView>
     );
 };
 
 const styles = StyleSheet.create({
+    safeContainer: {
+        flex: 1,
+        backgroundColor: "#f9f9f9",
+        paddingTop: 50,
+    },
     container: {
         flexGrow: 1,
         padding: 20,
-        backgroundColor: "#fff",
     },
     formTitle: {
-        fontSize: 20,
+        fontSize: 26,
         fontWeight: "bold",
         color: "#007AFF",
         textAlign: "center",
-        marginBottom: 20,
+        marginBottom: 30,
     },
     label: {
-        fontSize: 16,
-        marginBottom: 8,
+        fontSize: 14,
+        marginBottom: 6,
         color: "#333",
+        fontWeight: "600",
     },
     input: {
-        backgroundColor: "#f5f5f5",
-        padding: 15,
-        borderRadius: 8,
-        marginBottom: 20,
+        backgroundColor: "#fff",
+        padding: 14,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: "#ddd",
+        marginBottom: 15,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+        elevation: 2,
+    },
+    inputError: {
+        borderColor: "red",
+    },
+    errorText: {
+        color: "red",
+        fontSize: 12,
+        marginBottom: 10,
     },
     saveButton: {
         backgroundColor: "#007AFF",
-        padding: 15,
+        paddingVertical: 14,
         borderRadius: 8,
         alignItems: "center",
         marginTop: 20,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+        elevation: 2,
     },
     saveButtonText: {
         color: "#fff",
         fontSize: 16,
-        fontWeight: "bold",
+        fontWeight: "600",
     },
-    createButton: {
-        backgroundColor: "#28a745",
-        padding: 15,
+    sectionDivider: {
+        height: 1,
+        backgroundColor: "#ddd",
+        marginVertical: 20,
+    },
+    datePickerButton: {
+        paddingVertical: 14,
+        paddingHorizontal: 10,
+        borderWidth: 1,
+        borderColor: "#ddd",
         borderRadius: 8,
-        alignItems: "center",
-        marginTop: 20,
+        backgroundColor: "#fff",
+        marginBottom: 15,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+        elevation: 2,
     },
-    createButtonText: {
-        color: "#fff",
-        fontSize: 16,
-        fontWeight: "bold",
+    datePickerText: {
+        color: "#333",
     },
 });
+
 
 export default LicenseScreen;

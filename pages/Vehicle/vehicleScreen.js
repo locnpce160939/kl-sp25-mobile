@@ -9,13 +9,14 @@ import {
     ScrollView,
     ActivityIndicator,
 } from "react-native";
-import DateTimePicker from "@react-native-community/datetimepicker";
 import axios from "axios";
 import { BASE_URl } from "../../configUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import DateTimePicker from "@react-native-community/datetimepicker";
 
 const VehicleScreen = () => {
-    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [viewMode, setViewMode] = useState("list");
+    const [vehicles, setVehicles] = useState([]);
     const [loading, setLoading] = useState(false);
     const [vehicleId, setVehicleId] = useState(null);
     const [formData, setFormData] = useState({
@@ -29,50 +30,62 @@ const VehicleScreen = () => {
         insuranceStatus: "",
         registrationExpiryDate: "",
     });
+    const [errors, setErrors] = useState({});
+    const [showPicker, setShowPicker] = useState(false);
 
     useEffect(() => {
-        if (!vehicleId) {
-            fetchVehicleInfo();
-        }
-    }, [vehicleId]);
+        if (viewMode === "list") fetchVehicleList();
+    }, [viewMode]);
 
-    const fetchVehicleInfo = async () => {
+    
+    const fetchVehicleList = async () => {
         setLoading(true);
         try {
             const token = await AsyncStorage.getItem("token");
             if (!token) throw new Error("Token không tồn tại. Vui lòng đăng nhập lại.");
 
-            const response = await axios.get(`${BASE_URl}/api/registerDriver/vehicle/getByAccountId`, {
-                headers: { Authorization: `Bearer ${token}` },
+            const response = await axios.get(`${BASE_URl}/api/registerDriver/vehicles/getByAccountId`, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                },
             });
 
-            const vehicleData = response.data.data;
+            console.log("Vehicle data:", response.data);
 
-            if (vehicleData && vehicleData.vehicleId) {
-                setVehicleId(vehicleData.vehicleId);
-                setFormData({
-                    licensePlate: vehicleData.licensePlate,
-                    vehicleType: vehicleData.vehicleType,
-                    make: vehicleData.make,
-                    model: vehicleData.model,
-                    year: vehicleData.year,
-                    capacity: vehicleData.capacity,
-                    dimensions: vehicleData.dimensions,
-                    insuranceStatus: vehicleData.insuranceStatus,
-                    registrationExpiryDate: formatDate(vehicleData.registrationExpiryDate),
-                });
-            } else {
-                setVehicleId(null);
-                resetForm();
-            }
+            const vehicleData = Array.isArray(response.data.data) ? response.data.data : [response.data.data];
+            setVehicles(vehicleData);
         } catch (error) {
-            Alert.alert("Lỗi", error.response?.data?.message || "Không thể tải thông tin xe.");
+            Alert.alert("Thông báo", error.response?.data?.message || "Không thể tải danh sách xe.");
         } finally {
             setLoading(false);
         }
     };
 
-    const resetForm = () => {
+    const handleInputChange = (field, value) => {
+        setFormData((prev) => ({ ...prev, [field]: value }));
+        setErrors((prev) => ({ ...prev, [field]: "" })); // Reset error when user types
+    };
+
+    const handleSelectVehicle = (vehicle, index) => {
+        setVehicleId(vehicle.vehicleId);
+        setFormData({
+            licensePlate: vehicle.licensePlate,
+            vehicleType: vehicle.vehicleType,
+            make: vehicle.make,
+            model: vehicle.model,
+            year: vehicle.year.toString(), // Ensure it's a string for TextInput
+            capacity: vehicle.capacity.toString(), // Ensure it's a string for TextInput
+            dimensions: vehicle.dimensions,
+            insuranceStatus: vehicle.insuranceStatus,
+            registrationExpiryDate: vehicle.registrationExpiryDate.split("T")[0], // Show only YYYY-MM-DD
+        });
+        setViewMode("form");
+    };
+
+    const handleCreateNew = () => {
+        setVehicleId(null);
         setFormData({
             licensePlate: "",
             vehicleType: "",
@@ -84,208 +97,253 @@ const VehicleScreen = () => {
             insuranceStatus: "",
             registrationExpiryDate: "",
         });
+        setViewMode("form");
     };
 
-    const handleInputChange = (field, value) => setFormData((prev) => ({ ...prev, [field]: value }));
+    const handleBackToList = () => {
+        setViewMode("list");
+    };
 
-    const validateInputs = () => {
-        // Validate required fields
-        if (!formData.licensePlate.trim()) {
-            Alert.alert("Validation Error", "Biển số xe không được để trống.");
-            return false;
-        }
-        if (!formData.vehicleType.trim()) {
-            Alert.alert("Validation Error", "Loại xe không được để trống.");
-            return false;
-        }
+    const validateFormData = () => {
+        const { licensePlate, vehicleType, make, model, year, capacity, dimensions, insuranceStatus, registrationExpiryDate } = formData;
+        let formErrors = {};
 
-        if (!formData.make.trim()) {
-            Alert.alert("Validation Error", "Hãng xe không được để trống.");
-            return false;
-        }
+        if (!licensePlate) formErrors.licensePlate = "Biển số xe là bắt buộc.";
+        if (!vehicleType) formErrors.vehicleType = "Loại xe là bắt buộc.";
+        if (!make) formErrors.make = "Hãng xe là bắt buộc.";
+        if (!model) formErrors.model = "Mẫu xe là bắt buộc.";
+        if (!year) formErrors.year = "Năm sản xuất là bắt buộc.";
+        if (isNaN(year)) formErrors.year = "Năm sản xuất phải là số.";
+        if (!capacity) formErrors.capacity = "Sức chứa là bắt buộc.";
+        if (isNaN(capacity)) formErrors.capacity = "Sức chứa phải là số.";
+        if (!dimensions) formErrors.dimensions = "Kích thước là bắt buộc.";
+        if (!insuranceStatus) formErrors.insuranceStatus = "Tình trạng bảo hiểm là bắt buộc.";
+        if (!registrationExpiryDate) formErrors.registrationExpiryDate = "Ngày hết hạn đăng ký là bắt buộc.";
 
-        if (!formData.model.trim()) {
-            Alert.alert("Validation Error", "Dòng xe không được để trống.");
-            return false;
-        }
+        setErrors(formErrors);
 
-        if (!formData.dimensions.trim()) {
-            Alert.alert("Validation Error", "Kích thước xe không được để trống.");
-            return false;
-        }
-
-        if (!formData.insuranceStatus.trim()) {
-            Alert.alert("Validation Error", "Tình trạng bảo hiểm không được để trống.");
-            return false;
-        }
-    
-        // Validate year as a number
-        if (formData.year && isNaN(formData.year)&&!formData.year.trim()) {
-            Alert.alert("Validation Error", "Năm sản xuất phải là số.");
-            return false;
-        }
-    
-        // Validate capacity as a number
-        if (formData.capacity && isNaN(formData.capacity)&&!formData.capacity.trim()) {
-            Alert.alert("Validation Error", "Sức chứa phải là số.");
-            return false;
-        }
-    
-        // Validate registrationExpiryDate as a valid date
-        if (!formData.registrationExpiryDate) {
-            Alert.alert("Validation Error", "Ngày hết hạn đăng ký không được để trống.");
-            return false;
-        }
-    
-        const registrationDate = new Date(formData.registrationExpiryDate);
-        if (isNaN(registrationDate.getTime())) {
-            Alert.alert("Validation Error", "Ngày hết hạn đăng ký không hợp lệ.");
-            return false;
-        }
-    
-        return true; // All checks passed
-    };    
+        return Object.keys(formErrors).length === 0;
+    };
 
     const createOrUpdateVehicle = async () => {
-        if (!validateInputs()) return;
+        if (!validateFormData()) return;
 
         setLoading(true);
-
         try {
             const token = await AsyncStorage.getItem("token");
             if (!token) throw new Error("Token không tồn tại. Vui lòng đăng nhập lại.");
 
+            const formattedDate = `${formData.registrationExpiryDate}T00:00:00.000`;
             const url = vehicleId
                 ? `${BASE_URl}/api/registerDriver/updateVehicle/${vehicleId}`
                 : `${BASE_URl}/api/registerDriver/createNewVehicle`;
+
             const method = vehicleId ? "put" : "post";
 
-            const formatDateForBackend = (date) => {
-                const d = new Date(date);
-                const pad = (n) => (n < 10 ? `0${n}` : n);
-                return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T00:00:00`;
-            };
-
-            const data = {
-                ...formData,
-                registrationExpiryDate: formatDateForBackend(formData.registrationExpiryDate),
-                year: parseInt(formData.year, 10) || 0,
-                capacity: parseInt(formData.capacity, 10) || 0,
-            };
-
-            const { status } = await axios[method](url, data, {
+            const response = await axios({
+                method,
+                url,
                 headers: {
                     Authorization: `Bearer ${token}`,
                     "Content-Type": "application/json",
-                    Accept: "application/json",
+                    "Accept": "application/json",
                 },
+                data: { ...formData, registrationExpiryDate: formattedDate },
             });
 
-            if (status === 200 || status === 201) {
-                Alert.alert("Thành công", vehicleId ? "Thông tin xe đã được cập nhật!" : "Tạo xe mới thành công.");
-                fetchVehicleInfo();
+            if (response.data.success) {
+                Alert.alert("Thông báo", "Thông tin xe đã được lưu.");
+                setViewMode("list");
             } else {
-                throw new Error("Đã xảy ra lỗi trong quá trình lưu thông tin xe.");
+                Alert.alert("Thông báo", response.data.message || "Có lỗi xảy ra.");
             }
         } catch (error) {
-            if (error.response) {
-                Alert.alert("Lỗi", error.response.data.message || "Không thể lưu thông tin xe. Vui lòng thử lại sau.");
-            } else {
-                Alert.alert("Lỗi", error.message || "Có lỗi xảy ra, vui lòng thử lại.");
-            }
+            console.error("Error: ", error.response?.data || error);
+            Alert.alert("Thông báo", error.response?.data?.message || "Không thể lưu thông tin xe.");
         } finally {
             setLoading(false);
         }
     };
 
-    const formatDate = (date) => {
-        const localDate = new Date(date);
-        localDate.setMinutes(localDate.getMinutes() - localDate.getTimezoneOffset()); 
-        return localDate.toISOString().split("T")[0]; // Format to YYYY-MM-DD
-    };
-
-    const getFieldLabel = (field) => ({
-        licensePlate: "Biển số xe",
-        vehicleType: "Loại xe",
-        make: "Hãng xe",
-        model: "Dòng xe",
-        year: "Năm sản xuất",
-        capacity: "Sức chứa",
-        dimensions: "Kích thước",
-        insuranceStatus: "Tình trạng bảo hiểm",
-        registrationExpiryDate: "Ngày hết hạn đăng ký",
-    }[field]);
-
-    return (
+    const renderList = () => (
         <ScrollView contentContainerStyle={styles.container}>
+            <Text style={styles.header}>Danh sách xe</Text>
             {loading ? (
                 <ActivityIndicator size="large" color="#007AFF" />
             ) : (
                 <>
-                    <Text style={styles.header}>
-                        {vehicleId ? "Cập nhật thông tin xe" : "Tạo thông tin xe mới"}
-                    </Text>
-                    {Object.keys(formData).map((field) => (
-                        <View key={field}>
-                            <Text style={styles.label}>{getFieldLabel(field)}</Text>
-                            {field === "registrationExpiryDate" ? (
-                                <>
-                                    <TouchableOpacity onPress={() => setShowDatePicker(true)}>
-                                        <TextInput
-                                            style={styles.input}
-                                            value={formData.registrationExpiryDate}
-                                            editable={false}
-                                            placeholder="YYYY-MM-DD"
-                                        />
-                                    </TouchableOpacity>
-                                    {showDatePicker && (
-                                        <DateTimePicker
-                                            value={formData.registrationExpiryDate
-                                                ? new Date(formData.registrationExpiryDate)
-                                                : new Date()}
-                                            mode="date"
-                                            onChange={(event, date) => {
-                                                setShowDatePicker(false);
-                                                if (date) handleInputChange(field, formatDate(date));
-                                            }}
-                                        />
-                                    )}
-                                </>
-                            ) : (
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder={getFieldLabel(field)}
-                                    value={formData[field]?.toString() || ""}
-                                    keyboardType={["year", "capacity"].includes(field) ? "numeric" : "default"}
-                                    onChangeText={(value) => {
-                                        const numericFields = ["year", "capacity"];
-                                        handleInputChange(
-                                            field,
-                                            numericFields.includes(field) ? value.replace(/[^0-9]/g, "") : value
-                                        );
-                                    }}
-                                />
-                            )}
-                        </View>
-                    ))}
-                    <TouchableOpacity style={styles.button} onPress={createOrUpdateVehicle}>
-                        <Text style={styles.buttonText}>
-                            {vehicleId ? "Cập nhật" : "Tạo mới"}
-                        </Text>
+                    {vehicles.length > 0 ? (
+                        vehicles.map((vehicle, index) => (
+                            <TouchableOpacity
+                                key={vehicle.vehicleId}
+                                style={styles.item}
+                                onPress={() => handleSelectVehicle(vehicle, index)}
+                            >
+                                <Text style={styles.itemText}>
+                                    <Text style={styles.boldText}>STT: </Text>{index + 1}
+                                </Text>
+                                <Text style={styles.itemText}>
+                                    <Text style={styles.boldText}>Biển số: </Text>{vehicle.licensePlate}
+                                </Text>
+                                <Text style={styles.itemText}>
+                                    <Text style={styles.boldText}>Loại xe: </Text>{vehicle.vehicleType}
+                                </Text>
+                                <Text style={styles.itemText}>
+                                    <Text style={styles.boldText}>Hãng xe: </Text>{vehicle.make}
+                                </Text>
+                                <Text style={styles.itemText}>
+                                    <Text style={styles.boldText}>Mẫu xe: </Text>{vehicle.model}
+                                </Text>
+                                <Text style={styles.itemText}>
+                                    <Text style={styles.boldText}>Trọng tải: </Text>{vehicle.capacity}
+                                </Text>
+                            </TouchableOpacity>
+                        ))
+                    ) : (
+                        <Text style={styles.noDataText}>Không có xe nào trong danh sách.</Text>
+                    )}
+                    <TouchableOpacity style={styles.button} onPress={handleCreateNew}>
+                        <Text style={styles.buttonText}>Tạo xe mới</Text>
                     </TouchableOpacity>
                 </>
             )}
         </ScrollView>
     );
+
+    const renderForm = () => (
+        <ScrollView contentContainerStyle={styles.container}>
+            <Text style={styles.header}>
+                {vehicleId ? "Cập nhật thông tin xe" : "Tạo thông tin xe mới"}
+            </Text>
+            {Object.keys(formData).map((field) => (
+                <View key={field}>
+                    <Text style={styles.label}>
+                        {field === "licensePlate" && "Biển số xe"}
+                        {field === "vehicleType" && "Loại xe"}
+                        {field === "make" && "Hãng xe"}
+                        {field === "model" && "Mẫu xe"}
+                        {field === "year" && "Năm sản xuất"}
+                        {field === "capacity" && "Sức chứa"}
+                        {field === "dimensions" && "Kích thước"}
+                        {field === "insuranceStatus" && "Tình trạng bảo hiểm"}
+                        {field === "registrationExpiryDate" && "Ngày hết hạn đăng ký"}
+                    </Text>
+                    {field === "registrationExpiryDate" ? (
+                        <TouchableOpacity onPress={showDatePicker}>
+                            <TextInput
+                                style={[styles.input, errors[field] ? styles.inputError : null]}
+                                placeholder="Chọn ngày"
+                                value={formData[field]}
+                                editable={false} // Disable manual editing
+                            />
+                        </TouchableOpacity>
+                    ) : (
+                        <TextInput
+                            style={[styles.input, errors[field] ? styles.inputError : null]}
+                            placeholder="Nhập thông tin"
+                            value={formData[field]}
+                            keyboardType={field === "year" || field === "capacity" ? "numeric" : "default"}
+                            onChangeText={(value) => handleInputChange(field, value)}
+                        />
+                    )}
+                    {errors[field] && <Text style={styles.errorText}>{errors[field]}</Text>}
+                </View>
+            ))}
+            <TouchableOpacity style={styles.button} onPress={createOrUpdateVehicle}>
+                <Text style={styles.buttonText}>
+                    {vehicleId ? "Cập nhật" : "Tạo mới"}
+                </Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.button, { backgroundColor: "#aaa" }]} onPress={handleBackToList}>
+                <Text style={styles.buttonText}>Quay lại danh sách</Text>
+            </TouchableOpacity>
+            {showPicker && (
+                <DateTimePicker
+                    value={new Date(formData.registrationExpiryDate || Date.now())}
+                    mode="date"
+                    display="default"
+                    onChange={(event, selectedDate) => {
+                        setShowPicker(false);
+                        if (selectedDate) {
+                            const formattedDate = selectedDate.toISOString().split("T")[0];
+                            setFormData((prev) => ({ ...prev, registrationExpiryDate: formattedDate }));
+                        }
+                    }}
+                />
+            )}
+        </ScrollView>
+    );
+
+    const showDatePicker = () => {
+        setShowPicker(true); // Show the DatePicker
+    };
+
+    return viewMode === "list" ? renderList() : renderForm();
 };
 
 const styles = StyleSheet.create({
-    container: { flexGrow: 1, padding: 20, backgroundColor: "#fff" },
-    header: { fontSize: 20, fontWeight: "bold", marginBottom: 20 },
-    label: { fontSize: 16, marginBottom: 8 },
-    input: { backgroundColor: "#f5f5f5", padding: 15, borderRadius: 8, marginBottom: 20 },
-    button: { backgroundColor: "#007AFF", padding: 15, borderRadius: 8, alignItems: "center", marginTop: 20 },
-    buttonText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
+    container: {
+        padding: 20,
+    },
+    header: {
+        paddingTop: 30,
+        fontSize: 24,
+        fontWeight: "bold",
+        marginBottom: 20,
+        textAlign: "center",
+    },
+    item: {
+        padding: 15,
+        backgroundColor: "#f8f8f8",
+        marginBottom: 10,
+        borderRadius: 8,
+        borderWidth: 1, // Add border
+        borderColor: "#ddd", // Border color
+    },
+    itemText: {
+        fontSize: 18,
+        color: "#333",
+    },
+    noDataText: {
+        textAlign: "center",
+        color: "#999",
+    },
+    label: {
+        marginTop: 10,
+        fontSize: 16,
+        fontWeight: "bold",
+    },
+    input: {
+        height: 40,
+        borderColor: "#ddd",
+        borderWidth: 1,
+        borderRadius: 5,
+        marginBottom: 15,
+        paddingLeft: 10,
+    },
+    inputError: {
+        borderColor: "red",
+    },
+    errorText: {
+        color: "red",
+        fontSize: 12,
+        marginBottom: 10,
+    },
+    button: {
+        backgroundColor: "#007AFF",
+        padding: 15,
+        borderRadius: 8,
+        alignItems: "center",
+        marginTop: 10,
+    },
+    buttonText: {
+        color: "#fff",
+        fontSize: 18,
+        fontWeight: "bold",
+    },
+    boldText: {
+        fontWeight: "bold",
+    },
 });
 
 export default VehicleScreen;
