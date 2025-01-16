@@ -1,4 +1,4 @@
-import { NavigationContainer } from "@react-navigation/native";
+import { NavigationContainer, useNavigation } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import React, { useContext } from "react";
 import Login from "../pages/Auth/LoginScreen";
@@ -22,11 +22,15 @@ const Stack = createNativeStackNavigator();
 const Navigation = () => {
   const { userInfo, isPlash } = useContext(AuthContext);
 
-  console.log(userInfo);
   return (
     <NavigationContainer>
-      <Stack.Navigator>
-        {isPlash ? (
+      <Stack.Navigator
+        screenOptions={{
+          headerBackButtonDisplayMode : 'minimal',
+          headerTintColor: 'black',
+        }}
+      >
+        {isPlash ? ( 
           <Stack.Screen
             name="Splash"
             component={PlashScreen}
@@ -44,12 +48,8 @@ const Navigation = () => {
               component={ScheduleScreen}
               options={{ headerShown: false }}
             />
-            <Stack.Screen
-              name="Booking"
-              component={TripBooking}
-              options={{ headerShown: false }}
+            <Stack.Screen name="Booking" component={TripBooking} 
             />
-
             <Stack.Screen
               name="VehicleScreen"
               component={VehicleScreen}
@@ -61,7 +61,6 @@ const Navigation = () => {
               options={{ headerShown: false }}
             />
             <Stack.Screen name="CurrentLocation" component={CurrentLocation} />
-
             <Stack.Screen
               name="CreateDriverIdentificationScreen"
               component={CreateDriverIdentificationScreen}

@@ -36,7 +36,7 @@ const HomeNavigation = () => {
         tabBarInactiveTintColor: "gray",
         headerShown: false,
         animation: 'shift',
-
+        
       })}
       
     >

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   Text,
   View,
@@ -20,8 +20,14 @@ import { Dropdown } from "react-native-element-dropdown";
 import { BASE_URl } from "../../configUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
+import { useNavigation } from "@react-navigation/native";
+import Ionicons from "react-native-vector-icons/Ionicons";
 
 const TripBooking = () => {
+  const navigation = useNavigation();
+
   // Form state
   const [bookingType, setBookingType] = useState("Round-trip");
   const [bookingDate, setBookingDate] = useState(new Date());
@@ -41,7 +47,8 @@ const TripBooking = () => {
 
   // Modal states
   const [showBookingDatePicker, setShowBookingDatePicker] = useState(false);
-  const [showExpirationDatePicker, setShowExpirationDatePicker] = useState(false);
+  const [showExpirationDatePicker, setShowExpirationDatePicker] =
+    useState(false);
   const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [activeLocationField, setActiveLocationField] = useState(null);
 
@@ -49,6 +56,16 @@ const TripBooking = () => {
     { label: "Round-trip", value: "Round-trip" },
     { label: "One-way", value: "One-way" },
   ];
+
+  const bottomSheetRef = useRef(null);
+
+  // Define snap points
+  const snapPoints = useMemo(() => ["50%", "95%"], []);
+
+  // Handle sheet changes to prevent going back to index 0
+  const handleSheetChanges = useCallback((index) => {
+    console.log("handleSheetChanges", index);
+  }, []);
 
   // Validation functions
   const validateForm = () => {
@@ -106,7 +123,7 @@ const TripBooking = () => {
 
   // Date picker handlers with unified approach for both platforms
   const showDatePicker = (type) => {
-    if (type === 'booking') {
+    if (type === "booking") {
       setShowBookingDatePicker(true);
     } else {
       setShowExpirationDatePicker(true);
@@ -114,18 +131,20 @@ const TripBooking = () => {
   };
 
   const onDateChange = (type) => (event, selectedDate) => {
-    const isBooking = type === 'booking';
-    if (Platform.OS === 'android') {
-      isBooking ? setShowBookingDatePicker(false) : setShowExpirationDatePicker(false);
+    const isBooking = type === "booking";
+    if (Platform.OS === "android") {
+      isBooking
+        ? setShowBookingDatePicker(false)
+        : setShowExpirationDatePicker(false);
     }
-    
+
     if (selectedDate) {
       if (isBooking) {
         setBookingDate(selectedDate);
-        setErrors(prev => ({ ...prev, bookingDate: "" }));
+        setErrors((prev) => ({ ...prev, bookingDate: "" }));
       } else {
         setExpirationDate(selectedDate);
-        setErrors(prev => ({ ...prev, expirationDate: "" }));
+        setErrors((prev) => ({ ...prev, expirationDate: "" }));
       }
     }
   };
@@ -142,15 +161,19 @@ const TripBooking = () => {
         latitude: coordinate.latitude,
         longitude: coordinate.longitude,
       });
-      setErrors(prev => ({ ...prev, pickupLocation: "" }));
+      setErrors((prev) => ({ ...prev, pickupLocation: "" }));
     } else {
       setDropoffLocation({
         latitude: coordinate.latitude,
         longitude: coordinate.longitude,
       });
-      setErrors(prev => ({ ...prev, dropoffLocation: "" }));
+      setErrors((prev) => ({ ...prev, dropoffLocation: "" }));
     }
     setShowLocationPicker(false);
+  };
+
+  const handleClose = () => {
+    navigation.goBack();
   };
 
   const getLocationDisplayText = (location) => {
@@ -160,39 +183,43 @@ const TripBooking = () => {
 
   // Render date picker based on platform
   const renderDatePicker = (type) => {
-    const isBooking = type === 'booking';
+    const isBooking = type === "booking";
     const show = isBooking ? showBookingDatePicker : showExpirationDatePicker;
     const date = isBooking ? bookingDate : expirationDate;
-    
+
     if (!show) return null;
 
-    if (Platform.OS === 'ios') {
+    if (Platform.OS === "ios") {
       return (
-        <Modal
-          visible={show}
-          transparent={true}
-          animationType="slide"
-        >
-          <TouchableWithoutFeedback 
-            onPress={() => isBooking ? setShowBookingDatePicker(false) : setShowExpirationDatePicker(false)}
+        <Modal visible={show} transparent={true} animationType="slide">
+          <TouchableWithoutFeedback
+            onPress={() =>
+              isBooking
+                ? setShowBookingDatePicker(false)
+                : setShowExpirationDatePicker(false)
+            }
           >
             <View style={styles.modalOverlay}>
               <TouchableWithoutFeedback>
                 <View style={styles.modalContent}>
                   <>
                     <View style={styles.pickerHeader}>
-                      <TouchableOpacity 
-                        onPress={() => isBooking ? setShowBookingDatePicker(false) : setShowExpirationDatePicker(false)}
+                      <TouchableOpacity
+                        onPress={() =>
+                          isBooking
+                            ? setShowBookingDatePicker(false)
+                            : setShowExpirationDatePicker(false)
+                        }
                         style={styles.headerButton}
                       >
                         <Text style={styles.cancelText}>Hủy</Text>
                       </TouchableOpacity>
-                      
+
                       <Text style={styles.headerTitle}>
-                        {isBooking ? 'Chọn ngày đặt' : 'Chọn ngày hết hạn'}
+                        {isBooking ? "Chọn ngày đặt" : "Chọn ngày hết hạn"}
                       </Text>
-                      
-                      <TouchableOpacity 
+
+                      <TouchableOpacity
                         onPress={() => {
                           if (isBooking) {
                             setShowBookingDatePicker(false);
@@ -246,7 +273,7 @@ const TripBooking = () => {
     try {
       const dropoffLocationString = `${dropoffLocation.latitude},${dropoffLocation.longitude}`;
       const pickupLocationString = `${pickupLocation.latitude},${pickupLocation.longitude}`;
-      
+
       const res = await axios.post(
         `${BASE_URl}/api/tripBookings/create`,
         {
@@ -264,7 +291,7 @@ const TripBooking = () => {
           },
         }
       );
-      
+
       if (res.data.code === 200) {
         Alert.alert("Success", res.data.message);
         // Reset form here if needed
@@ -272,11 +299,17 @@ const TripBooking = () => {
     } catch (error) {
       console.log(error);
       const responseData = error.response?.data;
-      if (responseData?.code === 200 && responseData?.message === "Validation failed") {
+      if (
+        responseData?.code === 200 &&
+        responseData?.message === "Validation failed"
+      ) {
         const validationMessages = Object.values(responseData.data).join("\n");
         Alert.alert("Validation Error", validationMessages);
       } else {
-        Alert.alert("Error", error.response?.data?.message || "An error occurred!");
+        Alert.alert(
+          "Error",
+          error.response?.data?.message || "An error occurred!"
+        );
       }
     }
   };
@@ -295,6 +328,14 @@ const TripBooking = () => {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.formContainer}>
+            {/* <View>
+              <TouchableOpacity
+                onPress={handleClose}
+                style={styles.buttonback}
+              >
+                <Ionicons name="arrow-back" size={24} color="black" />
+              </TouchableOpacity>
+            </View> */}
             {/* Booking Type */}
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Booking Type</Text>
@@ -314,36 +355,42 @@ const TripBooking = () => {
               <Text style={styles.label}>Booking Date</Text>
               <TouchableOpacity
                 style={[styles.input, errors.bookingDate && styles.inputError]}
-                onPress={() => showDatePicker('booking')}
+                onPress={() => showDatePicker("booking")}
               >
                 <Text>{bookingDate.toLocaleDateString()}</Text>
               </TouchableOpacity>
               {errors.bookingDate && (
                 <Text style={styles.errorText}>{errors.bookingDate}</Text>
               )}
-              {renderDatePicker('booking')}
+              {renderDatePicker("booking")}
             </View>
 
             {/* Expiration Date */}
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Expiration Date</Text>
               <TouchableOpacity
-                style={[styles.input, errors.expirationDate && styles.inputError]}
-                onPress={() => showDatePicker('expiration')}
+                style={[
+                  styles.input,
+                  errors.expirationDate && styles.inputError,
+                ]}
+                onPress={() => showDatePicker("expiration")}
               >
                 <Text>{expirationDate.toLocaleDateString()}</Text>
               </TouchableOpacity>
               {errors.expirationDate && (
                 <Text style={styles.errorText}>{errors.expirationDate}</Text>
               )}
-              {renderDatePicker('expiration')}
+              {renderDatePicker("expiration")}
             </View>
 
             {/* Pickup Location */}
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Pickup Location</Text>
               <TouchableOpacity
-                style={[styles.locationButton, errors.pickupLocation && styles.inputError]}
+                style={[
+                  styles.locationButton,
+                  errors.pickupLocation && styles.inputError,
+                ]}
                 onPress={() => openLocationPicker("pickup")}
               >
                 <Text>{getLocationDisplayText(pickupLocation)}</Text>
@@ -357,7 +404,10 @@ const TripBooking = () => {
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Dropoff Location</Text>
               <TouchableOpacity
-                style={[styles.locationButton, errors.dropoffLocation && styles.inputError]}
+                style={[
+                  styles.locationButton,
+                  errors.dropoffLocation && styles.inputError,
+                ]}
                 onPress={() => openLocationPicker("dropoff")}
               >
                 <Text>{getLocationDisplayText(dropoffLocation)}</Text>
@@ -375,7 +425,7 @@ const TripBooking = () => {
                 value={capacity}
                 onChangeText={(text) => {
                   setCapacity(text);
-                  setErrors(prev => ({ ...prev, capacity: "" }));
+                  setErrors((prev) => ({ ...prev, capacity: "" }));
                 }}
                 keyboardType="numeric"
                 placeholder="Enter capacity"
@@ -435,6 +485,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#fff",
+  },
+  GestureHandlerRootViewContainer: {
+    flex: 1,
+    backgroundColor: "grey",
   },
   formContainer: {
     flex: 1,
@@ -570,28 +624,28 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-    justifyContent: 'flex-end',
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
+    justifyContent: "flex-end",
   },
   modalContent: {
-    width: '100%',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius:12,
-    overflow:"hidden",
+    width: "100%",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    overflow: "hidden",
   },
   pickerHeader: {
-    width: '100%' ,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    width: "100%",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: 10,
-    paddingHorizontal:20,
+    paddingHorizontal: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E5',
-    backgroundColor: '#f8f8f8',
+    borderBottomColor: "#E5E5E5",
+    backgroundColor: "#f8f8f8",
   },
   headerButton: {
     padding: 4,
@@ -599,25 +653,25 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#000000',
-    textAlign: 'center',
+    fontWeight: "600",
+    color: "#000000",
+    textAlign: "center",
   },
   cancelText: {
     fontSize: 16,
-    color: '#007AFF',
-    textAlign: 'left',
+    color: "#007AFF",
+    textAlign: "left",
   },
   doneText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#007AFF',
-    textAlign: 'right',
+    fontWeight: "600",
+    color: "#007AFF",
+    textAlign: "right",
   },
   datePickerIOS: {
-    width: '100%',
+    width: "100%",
     height: 200,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
   },
 });
 
