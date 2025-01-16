@@ -141,7 +141,7 @@ const CreateDriverIdentificationScreen = ({ navigation }) => {
       }
     };
     fetchProvinces();
-  }, [getProvinces]);
+  }, []);
 
   const handleProvinceChange = async (value, addressType) => {
     const selectedProvince = provinces.find(

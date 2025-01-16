@@ -22,7 +22,8 @@ const ScheduleScreen = () => {
     startLocation: null,
     endLocation: null,
   });
-  3;
+
+  
   const [startDay, setStartDay] = useState(new Date());
   const [endDay, setEndDay] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -51,6 +52,7 @@ const ScheduleScreen = () => {
     setDateType(type);
     setShowDatePicker(true);
   };
+  
 
   const onDateChange = (event, selectedDate) => {
     const currentDate =
