@@ -1,5 +1,6 @@
 {
   "expo": {
+    "jsEngine": "hermes",
     "name": "kl-sp25-app",
     "slug": "kl-sp25-app",
     "version": "1.0.0",
@@ -13,22 +14,24 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
+      "jsEngine": "jsc",
       "supportsTablet": true,
       "config": {
-        "googleMapsApiKey": "AIzaSyDqKvEIXYrmfyS47mqIzPBbpVZVmHtVi7o"
+        "googleMapsApiKey": "t0vRyftUba3uIEnx5JlMJta2ff3B03BEUVg0xHWw"
       },
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Ứng dụng cần quyền truy cập vị trí của bạn để hiển thị vị trí hiện tại."
       }
     },
     "android": {
+      "enableHermes": true,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
       "config": {
         "googleMaps": {
-          "apiKey": "AIzaSyDqKvEIXYrmfyS47mqIzPBbpVZVmHtVi7o"
+          "apiKey": "t0vRyftUba3uIEnx5JlMJta2ff3B03BEUVg0xHWw"
         }
       }
     },

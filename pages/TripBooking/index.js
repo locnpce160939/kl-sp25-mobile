@@ -1,4 +1,10 @@
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Text,
   View,
@@ -13,6 +19,7 @@ import {
   ScrollView,
   Alert,
   SafeAreaView,
+  FlatList,
 } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import MapView, { Marker } from "react-native-maps";
@@ -20,14 +27,12 @@ import { Dropdown } from "react-native-element-dropdown";
 import { BASE_URl } from "../../configUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { Ionicons } from "@expo/vector-icons";
 import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
-import { useNavigation } from "@react-navigation/native";
-import Ionicons from "react-native-vector-icons/Ionicons";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { Button } from "react-native";
 
 const TripBooking = () => {
-  const navigation = useNavigation();
-
   // Form state
   const [bookingType, setBookingType] = useState("Round-trip");
   const [bookingDate, setBookingDate] = useState(new Date());
@@ -35,6 +40,8 @@ const TripBooking = () => {
   const [pickupLocation, setPickupLocation] = useState("");
   const [dropoffLocation, setDropoffLocation] = useState("");
   const [capacity, setCapacity] = useState("");
+  const [locationState, setLocationState] = useState([]);
+  const [initialRegion, setInitialRegion] = useState(null);
 
   // Error states
   const [errors, setErrors] = useState({
@@ -58,14 +65,6 @@ const TripBooking = () => {
   ];
 
   const bottomSheetRef = useRef(null);
-
-  // Define snap points
-  const snapPoints = useMemo(() => ["50%", "95%"], []);
-
-  // Handle sheet changes to prevent going back to index 0
-  const handleSheetChanges = useCallback((index) => {
-    console.log("handleSheetChanges", index);
-  }, []);
 
   // Validation functions
   const validateForm = () => {
@@ -155,25 +154,20 @@ const TripBooking = () => {
     setShowLocationPicker(true);
   };
 
-  const handleLocationSelect = (coordinate) => {
+  const handleLocationSelect = async (coordinate) => {
     if (activeLocationField === "pickup") {
       setPickupLocation({
         latitude: coordinate.latitude,
         longitude: coordinate.longitude,
       });
-      setErrors((prev) => ({ ...prev, pickupLocation: "" }));
+      await getNearLocation(coordinate);
     } else {
       setDropoffLocation({
         latitude: coordinate.latitude,
         longitude: coordinate.longitude,
       });
-      setErrors((prev) => ({ ...prev, dropoffLocation: "" }));
+      await getNearLocation(coordinate);
     }
-    setShowLocationPicker(false);
-  };
-
-  const handleClose = () => {
-    navigation.goBack();
   };
 
   const getLocationDisplayText = (location) => {
@@ -273,7 +267,6 @@ const TripBooking = () => {
     try {
       const dropoffLocationString = `${dropoffLocation.latitude},${dropoffLocation.longitude}`;
       const pickupLocationString = `${pickupLocation.latitude},${pickupLocation.longitude}`;
-
       const res = await axios.post(
         `${BASE_URl}/api/tripBookings/create`,
         {
@@ -306,13 +299,88 @@ const TripBooking = () => {
         const validationMessages = Object.values(responseData.data).join("\n");
         Alert.alert("Validation Error", validationMessages);
       } else {
-        Alert.alert(
-          "Error",
-          error.response?.data?.message || "An error occurred!"
-        );
+        if (error.response.status === 401) {
+          Alert.alert("Phiên đăng nhập hết hạn!");
+        }
       }
     }
   };
+
+  const getNearLocation = async (coordinate) => {
+    try {
+      let token = await AsyncStorage.getItem("token");
+      const res = await axios.get(
+        `${BASE_URl}/api/location/reverse-geocode?latitude=${coordinate.latitude}&longitude=${coordinate.longitude}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const locationData = res.data.data.map((item) => ({
+        formatted_address: item.formatted_address,
+        lat: item.geometry.location.lat,
+        long: item.geometry.location.lng,
+      }));
+
+      setLocationState(locationData);
+      if (locationData && locationData.length > 0) {
+        bottomSheetRef.current?.snapToIndex(0);
+      }
+    } catch (error) {
+      console.error(
+        "Error:",
+        error.response ? error.response.data : error.message
+      );
+    }
+  };
+
+  const handleNearLocationPress = (item) => {
+    if (activeLocationField === "pickup") {
+      setPickupLocation({
+        latitude: item.lat,
+        longitude: item.long,
+      });
+    } else {
+      setDropoffLocation({
+        latitude: item.lat,
+        longitude: item.long,
+      });
+    }
+  };
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const savedLocation = await AsyncStorage.getItem("currentLocation");
+        console.log(savedLocation);
+        if (savedLocation) {
+          const { latitude, longitude } = JSON.parse(savedLocation);
+          setInitialRegion({
+            latitude,
+            longitude,
+            latitudeDelta: 0.005,
+            longitudeDelta: 0.005,
+          });
+          setPickupLocation({
+            latitude,
+            longitude,
+          });
+        } else {
+          setInitialRegion({
+            latitude: 10.03,
+            longitude: 105.7469,
+            latitudeDelta: 0.005,
+            longitudeDelta: 0.005,
+          });
+        }
+      } catch (error) {
+        console.error("Error loading initial region:", error);
+      }
+    })();
+  }, []);
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -328,14 +396,6 @@ const TripBooking = () => {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.formContainer}>
-            {/* <View>
-              <TouchableOpacity
-                onPress={handleClose}
-                style={styles.buttonback}
-              >
-                <Ionicons name="arrow-back" size={24} color="black" />
-              </TouchableOpacity>
-            </View> */}
             {/* Booking Type */}
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Booking Type</Text>
@@ -393,7 +453,7 @@ const TripBooking = () => {
                 ]}
                 onPress={() => openLocationPicker("pickup")}
               >
-                <Text>{getLocationDisplayText(pickupLocation)}</Text>
+                <Text>Vị trí hiện tại của bạn</Text>
               </TouchableOpacity>
               {errors.pickupLocation && (
                 <Text style={styles.errorText}>{errors.pickupLocation}</Text>
@@ -453,14 +513,43 @@ const TripBooking = () => {
           <View style={styles.mapContainer}>
             <MapView
               style={styles.map}
-              initialRegion={{
-                latitude: 21.0285,
-                longitude: 105.8542,
-                latitudeDelta: 0.0922,
-                longitudeDelta: 0.0421,
-              }}
+              initialRegion={initialRegion}
               onPress={(e) => handleLocationSelect(e.nativeEvent.coordinate)}
             >
+              <GestureHandlerRootView>
+                <BottomSheet
+                  ref={bottomSheetRef}
+                  index={-1}
+                  snapPoints={["50%"]}
+                >
+                  <BottomSheetView>
+                    <FlatList
+                      data={locationState}
+                      keyExtractor={(item, index) => index.toString()}
+                      renderItem={({ item }) => (
+                        <TouchableOpacity
+                          style={styles.locationItem}
+                          onPress={() => handleNearLocationPress(item)}
+                        >
+                          <Ionicons
+                            name="location-outline"
+                            size={24}
+                            color="black"
+                          />
+                          <Text>{item.formatted_address}</Text>
+                        </TouchableOpacity>
+                      )}
+                    />
+                    <TouchableOpacity
+                      style={styles.confirmLocation}
+                      onPress={() => setShowLocationPicker(false)}
+                    >
+                      <Text style={styles.confirmText}>Xác nhận </Text>
+                    </TouchableOpacity>
+                  </BottomSheetView>
+                </BottomSheet>
+              </GestureHandlerRootView>
+
               {activeLocationField === "pickup" && pickupLocation && (
                 <Marker coordinate={pickupLocation} title="Pickup Location" />
               )}
@@ -472,7 +561,7 @@ const TripBooking = () => {
               style={styles.closeButton}
               onPress={() => setShowLocationPicker(false)}
             >
-              <Text style={styles.closeButtonText}>Close</Text>
+              <Ionicons name="arrow-back-outline" size={24}></Ionicons>
             </TouchableOpacity>
           </View>
         </Modal>
@@ -494,9 +583,30 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
   },
+
   scrollView: {
     flex: 1,
   },
+  confirmText: {
+    fontWeight: 600,
+    fontSize: 18,
+    color: "#fff",
+  },
+
+  confirmLocation: {
+    backgroundColor: "#00b5ec",
+    height: 50,
+    alignItems: "center",
+    justifyContent: "center",
+    margin: 20,
+    borderRadius: 10,
+  },
+  locationItem: {
+    flex: 1,
+    flexDirection: "row",
+    height: 50,
+  },
+
   scrollViewContent: {
     padding: 16,
     paddingBottom: 32,
@@ -592,11 +702,11 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     position: "absolute",
-    top: 40,
-    right: 20,
+    top: 60,
+    left: 20,
     backgroundColor: "#fff",
     padding: 10,
-    borderRadius: 8,
+    borderRadius: 100,
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
@@ -604,14 +714,19 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
-    elevation: 5,
+    elevation: 10,
+    width: 45,
+    height: 45,
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
   closeButtonText: {
-    fontSize: 16,
+    fontSize: 22,
     fontWeight: "600",
   },
   submitButton: {
-    backgroundColor: "#007AFF",
+    backgroundColor: "#00b5ec",
     padding: 15,
     borderRadius: 8,
     alignItems: "center",

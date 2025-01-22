@@ -55,21 +55,18 @@ const ScheduleScreen = () => {
   
 
   const onDateChange = (event, selectedDate) => {
-    const currentDate =
-      selectedDate || (dateType === "start" ? startDay : endDay);
-
-    if (Platform.OS === "android") {
+    if (event.type === 'dismissed') {
       setShowDatePicker(false);
+      return;
     }
-
+    
     if (selectedDate) {
       if (dateType === "start") {
-        setStartDay(currentDate);
-        handleBlur("startDay");
+        setStartDay(selectedDate);
       } else {
-        setEndDay(currentDate);
-        handleBlur("endDay");
+        setEndDay(selectedDate);
       }
+      setShowDatePicker(false);
     }
   };
 
@@ -186,7 +183,6 @@ const ScheduleScreen = () => {
 
   // Render date picker based on platform
   const renderDatePicker = () => {
-    if (!showDatePicker) return null;
 
     return (
       <>
@@ -462,7 +458,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   saveButton: {
-    backgroundColor: "#007AFF",
+    backgroundColor: "#00b5ec",
     padding: 15,
     borderRadius: 8,
     alignItems: "center",
