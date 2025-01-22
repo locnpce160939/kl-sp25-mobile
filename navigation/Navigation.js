@@ -38,7 +38,7 @@ const Navigation = () => {
         ) : userInfo.data?.access_token ? (
           <>
             <Stack.Screen
-              name="Home"
+              name="HomeScreen"
               component={HomeNavigation}
               options={{ headerShown: false }}
             />
