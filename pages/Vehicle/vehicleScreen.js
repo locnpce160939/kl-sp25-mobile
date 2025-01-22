@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
     StyleSheet,
     View,
@@ -13,12 +13,14 @@ import axios from "axios";
 import { BASE_URl } from "../../configUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import { AuthContext } from "../../contexts/AuthContext";
 
 const VehicleScreen = () => {
     const [viewMode, setViewMode] = useState("list");
     const [vehicles, setVehicles] = useState([]);
     const [loading, setLoading] = useState(false);
     const [vehicleId, setVehicleId] = useState(null);
+    const { logout } = useContext(AuthContext);
     const [formData, setFormData] = useState({
         licensePlate: "",
         vehicleType: "",
@@ -37,7 +39,30 @@ const VehicleScreen = () => {
         if (viewMode === "list") fetchVehicleList();
     }, [viewMode]);
 
-    
+    const handleLicenseError = async (error) => {
+            if (error.response?.status === 401) {
+                Alert.alert(
+                    "Phiên đăng nhập hết hạn",
+                    "Vui lòng đăng nhập lại.",
+                    [
+                        {
+                            text: "OK",
+                            onPress: async () => {
+                                await logout();
+                            },
+                        },
+                    ],
+                    { cancelable: false }
+                );
+            } else if (error.response?.data?.message === "Vehicle not found") {
+                setLicenseId(null);
+                resetLicenseDetails();
+                console.log("Không tìm thấy thông tin xe.");
+            } else {
+                console.log("Error fetching vehicle details:", error);
+            }
+        };
+ 
     const fetchVehicleList = async () => {
         setLoading(true);
         try {
@@ -57,7 +82,8 @@ const VehicleScreen = () => {
             const vehicleData = Array.isArray(response.data.data) ? response.data.data : [response.data.data];
             setVehicles(vehicleData);
         } catch (error) {
-            Alert.alert("Thông báo", error.response?.data?.message || "Không thể tải danh sách xe.");
+            console.log("Không thể tải danh sách xe.",error.response?.data?.message);
+            //Alert.alert("Thông báo", error.response?.data?.message || "Không thể tải danh sách xe.");
         } finally {
             setLoading(false);
         }
@@ -65,7 +91,7 @@ const VehicleScreen = () => {
 
     const handleInputChange = (field, value) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
-        setErrors((prev) => ({ ...prev, [field]: "" })); // Reset error when user types
+        setErrors((prev) => ({ ...prev, [field]: "" })); 
     };
 
     const handleSelectVehicle = (vehicle, index) => {
@@ -113,9 +139,17 @@ const VehicleScreen = () => {
         if (!make) formErrors.make = "Hãng xe là bắt buộc.";
         if (!model) formErrors.model = "Mẫu xe là bắt buộc.";
         if (!year) formErrors.year = "Năm sản xuất là bắt buộc.";
-        if (isNaN(year)) formErrors.year = "Năm sản xuất phải là số.";
+
+        // New validation for year
+        const currentYear = new Date().getFullYear();
+        const manufacturingYear = parseInt(year);
+        if (isNaN(manufacturingYear)) {
+            formErrors.year = "Năm sản xuất phải là số.";
+        } else if (currentYear - manufacturingYear > 25) {
+            formErrors.year = "Xe không được quá 25 năm tuổi.";
+        }
         if (!capacity) formErrors.capacity = "Sức chứa là bắt buộc.";
-        if (isNaN(capacity)) formErrors.capacity = "Sức chứa phải là số.";
+        if (capacity < 1 || capacity > 15) formErrors.capacity = "Sức chứa phải nằm trong khoảng từ 1 đến 15 tấn.";
         if (!dimensions) formErrors.dimensions = "Kích thước là bắt buộc.";
         if (!insuranceStatus) formErrors.insuranceStatus = "Tình trạng bảo hiểm là bắt buộc.";
         if (!registrationExpiryDate) formErrors.registrationExpiryDate = "Ngày hết hạn đăng ký là bắt buộc.";
@@ -151,15 +185,16 @@ const VehicleScreen = () => {
                 data: { ...formData, registrationExpiryDate: formattedDate },
             });
 
-            if (response.data.success) {
+            if (response.status === 200) {
                 Alert.alert("Thông báo", "Thông tin xe đã được lưu.");
                 setViewMode("list");
             } else {
                 Alert.alert("Thông báo", response.data.message || "Có lỗi xảy ra.");
             }
         } catch (error) {
-            console.error("Error: ", error.response?.data || error);
-            Alert.alert("Thông báo", error.response?.data?.message || "Không thể lưu thông tin xe.");
+            console.log("Error: ", error.response?.status || error);
+            handleLicenseError(error);
+            //Alert.alert("Thông báo", error.response?.data?.message || "Không thể lưu thông tin xe.");
         } finally {
             setLoading(false);
         }
