@@ -14,7 +14,6 @@ import ScheduleScreen from "../pages/Schedule/scheduleScreen";
 import TripBooking from "../pages/TripBooking";
 import LicenseScreen from "../pages/Lincese/licenseScreen";
 import VehicleScreen from "../pages/Vehicle/vehicleScreen";
-import CurrentLocation from "../pages/CurrentLocation";
 import CreateDriverIdentificationScreen from "../pages/Auth/CreateDriverIdentificationScreen";
 
 const Stack = createNativeStackNavigator();
@@ -26,11 +25,11 @@ const Navigation = () => {
     <NavigationContainer>
       <Stack.Navigator
         screenOptions={{
-          headerBackButtonDisplayMode : 'minimal',
-          headerTintColor: 'black',
+          headerBackButtonDisplayMode: "minimal",
+          headerTintColor: "black",
         }}
       >
-        {isPlash ? ( 
+        {isPlash ? (
           <Stack.Screen
             name="Splash"
             component={PlashScreen}
@@ -43,13 +42,8 @@ const Navigation = () => {
               component={HomeNavigation}
               options={{ headerShown: false }}
             />
-            <Stack.Screen
-              name="Schedule"
-              component={ScheduleScreen}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen name="Booking" component={TripBooking} 
-            />
+            <Stack.Screen name="Schedule" component={ScheduleScreen} />
+            <Stack.Screen name="Booking" component={TripBooking} />
             <Stack.Screen
               name="VehicleScreen"
               component={VehicleScreen}
@@ -60,7 +54,6 @@ const Navigation = () => {
               component={LicenseScreen}
               options={{ headerShown: false }}
             />
-            <Stack.Screen name="CurrentLocation" component={CurrentLocation} />
             <Stack.Screen
               name="CreateDriverIdentificationScreen"
               component={CreateDriverIdentificationScreen}
