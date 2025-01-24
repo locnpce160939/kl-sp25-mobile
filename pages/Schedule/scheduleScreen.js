@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   StyleSheet,
   View,
@@ -23,12 +23,12 @@ const ScheduleScreen = () => {
     endLocation: null,
   });
 
-  
   const [startDay, setStartDay] = useState(new Date());
   const [endDay, setEndDay] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [dateType, setDateType] = useState(null); // 'start' or 'end'
   const [availableCapacity, setAvailableCapacity] = useState("");
+  const [initialRegion, setInitialRegion] = useState(null);
 
   const [touched, setTouched] = useState({
     location: false,
@@ -52,14 +52,13 @@ const ScheduleScreen = () => {
     setDateType(type);
     setShowDatePicker(true);
   };
-  
 
   const onDateChange = (event, selectedDate) => {
-    if (event.type === 'dismissed') {
+    if (event.type === "dismissed") {
       setShowDatePicker(false);
       return;
     }
-    
+
     if (selectedDate) {
       if (dateType === "start") {
         setStartDay(selectedDate);
@@ -110,6 +109,7 @@ const ScheduleScreen = () => {
         ...prev,
         startLocation: coordinate,
       }));
+
       setSelectingPoint("end");
     } else {
       setLocations((prev) => ({
@@ -181,61 +181,71 @@ const ScheduleScreen = () => {
     return date.toLocaleDateString("vi-VN");
   };
 
+  useEffect(() => {
+    (async () => {
+      try {
+        const savedLocation = await AsyncStorage.getItem("currentLocation");
+        if (savedLocation) {
+          const { latitude, longitude } = JSON.parse(savedLocation);
+          setInitialRegion({
+            latitude,
+            longitude,
+            latitudeDelta: 0.005,
+            longitudeDelta: 0.005,
+          });
+        } else {
+          setInitialRegion({
+            latitude: 10.03,
+            longitude: 105.7469,
+            latitudeDelta: 0.005,
+            longitudeDelta: 0.005,
+          });
+        }
+      } catch (error) {
+        console.error("Error loading initial region:", error);
+      }
+    })();
+  }, []);
+
   // Render date picker based on platform
   const renderDatePicker = () => {
-
     return (
-      <>
-        {Platform.OS === "ios" ? (
-          <Modal
-            visible={showDatePicker}
-            transparent={true}
-            animationType="slide"
-          >
-            <View style={styles.modalOverlay}>
-              <View style={styles.modalContent}>
-                <View style={styles.pickerHeader}>
-                  <View style={styles.pickerButtonContainer}>
-                    <TouchableOpacity
-                      style={styles.pickerButton}
-                      onPress={() => setShowDatePicker(false)}
-                    >
-                      <Text style={styles.pickerButtonText}>Hủy</Text>
-                    </TouchableOpacity>
-                    <Text style={styles.pickerHeaderText}>
-                      {dateType === "start"
-                        ? "Chọn ngày bắt đầu"
-                        : "Chọn ngày kết thúc"}
-                    </Text>
-                    <TouchableOpacity
-                      style={styles.pickerButton}
-                      onPress={() => setShowDatePicker(false)}
-                    >
-                      <Text style={styles.pickerButtonText}>Xong</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-                <DateTimePicker
-                  value={dateType === "start" ? startDay : endDay}
-                  mode="date"
-                  display="spinner"
-                  onChange={onDateChange}
-                  style={styles.datePickerIOS}
-                  locale="vi-VN"
-                />
+      <Modal visible={showDatePicker} transparent={true} animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.pickerHeader}>
+              <View style={styles.pickerButtonContainer}>
+                <TouchableOpacity
+                  style={styles.pickerButton}
+                  onPress={() => setShowDatePicker(false)}
+                >
+                  <Text style={styles.pickerButtonText}>Hủy</Text>
+                </TouchableOpacity>
+                <Text style={styles.pickerHeaderText}>
+                  {dateType === "start"
+                    ? "Chọn ngày bắt đầu"
+                    : "Chọn ngày kết thúc"}
+                </Text>
+                <TouchableOpacity
+                  style={styles.pickerButton}
+                  onPress={() => setShowDatePicker(false)}
+                >
+                  <Text style={styles.pickerButtonText}>Xong</Text>
+                </TouchableOpacity>
               </View>
             </View>
-          </Modal>
-        ) : (
-          <DateTimePicker
-            value={dateType === "start" ? startDay : endDay}
-            mode="date"
-            display="default"
-            onChange={onDateChange}
-            locale="vi-VN"
-          />
-        )}
-      </>
+            <DateTimePicker
+              value={dateType == "start" ? startDay : endDay}
+              mode="date"
+              display="spinner"
+              onChange={onDateChange}
+              style={styles.datePickerIOS}
+              locale="vi-VN"
+              textColor="black"
+            />
+          </View>
+        </View>
+      </Modal>
     );
   };
 
@@ -319,7 +329,6 @@ const ScheduleScreen = () => {
           >
             <Text style={styles.saveButtonText}>Lưu</Text>
           </TouchableOpacity>
-
           {/* Map Modal */}
           <Modal visible={isMapVisible} animationType="slide">
             <View style={styles.modalContainer}>
@@ -333,26 +342,21 @@ const ScheduleScreen = () => {
 
               <MapView
                 style={styles.map}
-                initialRegion={{
-                  latitude: 10.7769,
-                  longitude: 106.7009,
-                  latitudeDelta: 0.0922,
-                  longitudeDelta: 0.0421,
-                }}
+                initialRegion={initialRegion}
                 onPress={handleMapPress}
               >
                 {locations.startLocation && (
                   <Marker
                     coordinate={locations.startLocation}
                     title="Điểm bắt đầu"
-                    pinColor="green"
+                    pinColor="green" // Màu sắc cho Marker điểm bắt đầu
                   />
                 )}
                 {locations.endLocation && (
                   <Marker
                     coordinate={locations.endLocation}
                     title="Điểm kết thúc"
-                    pinColor="red"
+                    pinColor="red" // Màu sắc cho Marker điểm kết thúc
                   />
                 )}
               </MapView>
@@ -378,7 +382,6 @@ const ScheduleScreen = () => {
               </TouchableOpacity>
             </View>
           </Modal>
-
           {renderDatePicker()}
         </View>
       </TouchableWithoutFeedback>

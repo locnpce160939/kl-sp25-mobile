@@ -42,6 +42,10 @@ const TripBooking = () => {
   const [capacity, setCapacity] = useState("");
   const [locationState, setLocationState] = useState([]);
   const [initialRegion, setInitialRegion] = useState(null);
+  const [isBottomSheetOpen, setIsBottomSheetOpen] = useState(false);
+  const [titlePickup, setTitlePickup] = useState(false);
+  const [titleDropoff, setTitleDropoff] = useState(false);
+
 
   // Error states
   const [errors, setErrors] = useState({
@@ -152,6 +156,7 @@ const TripBooking = () => {
   const openLocationPicker = (type) => {
     setActiveLocationField(type);
     setShowLocationPicker(true);
+    setIsBottomSheetOpen(true); // Open the BottomSheet
   };
 
   const handleLocationSelect = async (coordinate) => {
@@ -168,6 +173,7 @@ const TripBooking = () => {
       });
       await getNearLocation(coordinate);
     }
+    setIsBottomSheetOpen(true);
   };
 
   const getLocationDisplayText = (location) => {
@@ -196,47 +202,45 @@ const TripBooking = () => {
             <View style={styles.modalOverlay}>
               <TouchableWithoutFeedback>
                 <View style={styles.modalContent}>
-                  <>
-                    <View style={styles.pickerHeader}>
-                      <TouchableOpacity
-                        onPress={() =>
-                          isBooking
-                            ? setShowBookingDatePicker(false)
-                            : setShowExpirationDatePicker(false)
+                  <View style={styles.pickerHeader}>
+                    <TouchableOpacity
+                      onPress={() =>
+                        isBooking
+                          ? setShowBookingDatePicker(false)
+                          : setShowExpirationDatePicker(false)
+                      }
+                      style={styles.headerButton}
+                    >
+                      <Text style={styles.cancelText}>Hủy</Text>
+                    </TouchableOpacity>
+
+                    <Text style={styles.headerTitle}>
+                      {isBooking ? "Chọn ngày đặt" : "Chọn ngày hết hạn"}
+                    </Text>
+
+                    <TouchableOpacity
+                      onPress={() => {
+                        if (isBooking) {
+                          setShowBookingDatePicker(false);
+                        } else {
+                          setShowExpirationDatePicker(false);
                         }
-                        style={styles.headerButton}
-                      >
-                        <Text style={styles.cancelText}>Hủy</Text>
-                      </TouchableOpacity>
-
-                      <Text style={styles.headerTitle}>
-                        {isBooking ? "Chọn ngày đặt" : "Chọn ngày hết hạn"}
-                      </Text>
-
-                      <TouchableOpacity
-                        onPress={() => {
-                          if (isBooking) {
-                            setShowBookingDatePicker(false);
-                          } else {
-                            setShowExpirationDatePicker(false);
-                          }
-                        }}
-                        style={styles.headerButton}
-                      >
-                        <Text style={styles.doneText}>Xong</Text>
-                      </TouchableOpacity>
-                    </View>
-                    <DateTimePicker
-                      value={date}
-                      mode="date"
-                      display="spinner"
-                      onChange={onDateChange(type)}
-                      style={styles.datePickerIOS}
-                      textColor="black"
-                      locale="vi-VN"
-                      minimumDate={isBooking ? new Date() : bookingDate}
-                    />
-                  </>
+                      }}
+                      style={styles.headerButton}
+                    >
+                      <Text style={styles.doneText}>Xong</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <DateTimePicker
+                    value={date}
+                    mode="date"
+                    display="spinner"
+                    onChange={onDateChange(type)}
+                    style={styles.datePickerIOS}
+                    textColor="black"
+                    locale="vi-VN"
+                    minimumDate={isBooking ? new Date() : bookingDate}
+                  />
                 </View>
               </TouchableWithoutFeedback>
             </View>
@@ -324,11 +328,8 @@ const TripBooking = () => {
         lat: item.geometry.location.lat,
         long: item.geometry.location.lng,
       }));
-
       setLocationState(locationData);
-      if (locationData && locationData.length > 0) {
-        bottomSheetRef.current?.snapToIndex(0);
-      }
+      console.log(locationState)
     } catch (error) {
       console.error(
         "Error:",
@@ -339,15 +340,19 @@ const TripBooking = () => {
 
   const handleNearLocationPress = (item) => {
     if (activeLocationField === "pickup") {
+      console.log("🚀 ~ handleNearLocationPress ~ item:", item)
       setPickupLocation({
         latitude: item.lat,
         longitude: item.long,
       });
+      setTitlePickup(item.formatted_address);
+
     } else {
       setDropoffLocation({
         latitude: item.lat,
         longitude: item.long,
       });
+      setTitleDropoff(item.formatted_address);
     }
   };
 
@@ -355,7 +360,6 @@ const TripBooking = () => {
     (async () => {
       try {
         const savedLocation = await AsyncStorage.getItem("currentLocation");
-        console.log(savedLocation);
         if (savedLocation) {
           const { latitude, longitude } = JSON.parse(savedLocation);
           setInitialRegion({
@@ -368,6 +372,8 @@ const TripBooking = () => {
             latitude,
             longitude,
           });
+
+          await getNearLocation({ latitude, longitude });
         } else {
           setInitialRegion({
             latitude: 10.03,
@@ -453,7 +459,7 @@ const TripBooking = () => {
                 ]}
                 onPress={() => openLocationPicker("pickup")}
               >
-                <Text>Vị trí hiện tại của bạn</Text>
+                <Text>{titlePickup}</Text>
               </TouchableOpacity>
               {errors.pickupLocation && (
                 <Text style={styles.errorText}>{errors.pickupLocation}</Text>
@@ -470,7 +476,7 @@ const TripBooking = () => {
                 ]}
                 onPress={() => openLocationPicker("dropoff")}
               >
-                <Text>{getLocationDisplayText(dropoffLocation)}</Text>
+                <Text>{titleDropoff || 'Chọn điểm đến của bạn'}</Text>
               </TouchableOpacity>
               {errors.dropoffLocation && (
                 <Text style={styles.errorText}>{errors.dropoffLocation}</Text>
@@ -510,60 +516,61 @@ const TripBooking = () => {
           animationType="slide"
           onRequestClose={() => setShowLocationPicker(false)}
         >
-          <View style={styles.mapContainer}>
-            <MapView
-              style={styles.map}
-              initialRegion={initialRegion}
-              onPress={(e) => handleLocationSelect(e.nativeEvent.coordinate)}
-            >
-              <GestureHandlerRootView>
-                <BottomSheet
-                  ref={bottomSheetRef}
-                  index={-1}
-                  snapPoints={["50%"]}
-                >
-                  <BottomSheetView>
-                    <FlatList
-                      data={locationState}
-                      keyExtractor={(item, index) => index.toString()}
-                      renderItem={({ item }) => (
-                        <TouchableOpacity
-                          style={styles.locationItem}
-                          onPress={() => handleNearLocationPress(item)}
-                        >
-                          <Ionicons
-                            name="location-outline"
-                            size={24}
-                            color="black"
-                          />
-                          <Text>{item.formatted_address}</Text>
-                        </TouchableOpacity>
-                      )}
-                    />
-                    <TouchableOpacity
-                      style={styles.confirmLocation}
-                      onPress={() => setShowLocationPicker(false)}
-                    >
-                      <Text style={styles.confirmText}>Xác nhận </Text>
-                    </TouchableOpacity>
-                  </BottomSheetView>
-                </BottomSheet>
-              </GestureHandlerRootView>
+          <GestureHandlerRootView>
+            <View style={styles.mapContainer}>
+              <MapView
+                style={styles.map}
+                initialRegion={initialRegion}
+                onPress={(e) => handleLocationSelect(e.nativeEvent.coordinate)}
+              >
+                {activeLocationField === "pickup" && pickupLocation && (
+                  <Marker coordinate={pickupLocation} title="Pickup Location" />
+                )}
+                {activeLocationField === "dropoff" && dropoffLocation && (
+                  <Marker
+                    coordinate={dropoffLocation}
+                    title="Dropoff Location"
+                  />
+                )}
+              </MapView>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setShowLocationPicker(false)}
+              >
+                <Ionicons name="arrow-back-outline" size={24}></Ionicons>
+              </TouchableOpacity>
 
-              {activeLocationField === "pickup" && pickupLocation && (
-                <Marker coordinate={pickupLocation} title="Pickup Location" />
-              )}
-              {activeLocationField === "dropoff" && dropoffLocation && (
-                <Marker coordinate={dropoffLocation} title="Dropoff Location" />
-              )}
-            </MapView>
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => setShowLocationPicker(false)}
-            >
-              <Ionicons name="arrow-back-outline" size={24}></Ionicons>
-            </TouchableOpacity>
-          </View>
+              <BottomSheet ref={bottomSheetRef} index={0} snapPoints={["50%"]}>
+                <BottomSheetView>
+                  <FlatList
+                    data={locationState}
+                    keyExtractor={(item, index) => index.toString()}
+                    renderItem={({ item }) => (
+                      <TouchableOpacity
+                        style={styles.locationItem}
+                        onPress={() => handleNearLocationPress(item)}
+                      >
+                        <Ionicons
+                          name="location-outline"
+                          size={24}
+                          color="black"
+                        />
+                        <Text>{item.formatted_address}</Text>
+                      </TouchableOpacity>
+                    )}
+                  />
+                  <TouchableOpacity
+                    style={styles.confirmLocation}
+                    onPress={() => {
+                      setShowLocationPicker(false);
+                    }}
+                  >
+                    <Text style={styles.confirmText}>Xác nhận </Text>
+                  </TouchableOpacity>
+                </BottomSheetView>
+              </BottomSheet>
+            </View>
+          </GestureHandlerRootView>
         </Modal>
       </KeyboardAvoidingView>
     </TouchableWithoutFeedback>

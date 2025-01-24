@@ -60,9 +60,7 @@ const HomeScreen = () => {
   useEffect(() => {
       (async () => {
         let { status } = await Location.requestForegroundPermissionsAsync();  
-        console.log(status)
         let current = await Location.getCurrentPositionAsync({});
-        console.log(current.coords)
         if ( status == "granted"){
           const storeCurrent = await AsyncStorage.setItem('currentLocation', JSON.stringify(current.coords));
         }
