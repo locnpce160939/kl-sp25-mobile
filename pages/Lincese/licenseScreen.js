@@ -9,14 +9,18 @@ import {
     ScrollView,
     SafeAreaView,
     ActivityIndicator,
+    Platform,
 } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 import axios from "axios";
 import { BASE_URl } from "../../configUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { AuthContext } from "../../contexts/AuthContext";
+import Ionicons from "react-native-vector-icons/Ionicons";
 
 const LicenseScreen = () => {
+    const navigation = useNavigation();
     const [licenseDetails, setLicenseDetails] = useState({
         licenseNumber: "",
         licenseType: "",
@@ -30,6 +34,10 @@ const LicenseScreen = () => {
     const [currentField, setCurrentField] = useState(null);
     const [errors, setErrors] = useState({});
     const { logout } = useContext(AuthContext);
+
+    useEffect(() => {
+        fetchLicenseDetails();
+    }, []);
 
     const fetchLicenseDetails = async () => {
         setLoading(true);
@@ -88,14 +96,14 @@ const LicenseScreen = () => {
             setLicenseId(null);
             resetLicenseDetails();
             console.log("Không tìm thấy giấy phép.");
+        } else if (error.response?.status === 400) {
+            Alert.alert(error.response?.data?.message);
+            console.log("Error fetching License details!", error);
         } else {
-            console.log("Error fetching license details:", error);
+            Alert.alert(error.response?.data?.message);
+            console.log("Error fetching License details:", error);
         }
     };
-
-    useEffect(() => {
-        fetchLicenseDetails();
-    }, []);
 
     const validateInputs = () => {
         const newErrors = {};
@@ -224,21 +232,21 @@ const LicenseScreen = () => {
     };
 
     const renderInputField = (label, field, placeholder) => (
-        <View>
+        <View style={styles.inputContainer}>
             <Text style={styles.label}>{label}</Text>
             <TextInput
                 style={[styles.input, errors[field] && styles.inputError]}
                 value={licenseDetails[field]}
                 onChangeText={(text) => handleInputChange(field, text)}
                 placeholder={placeholder}
-                placeholderTextColor={"#ccc"}
+                placeholderTextColor={"#999"}
             />
             {errors[field] && <Text style={styles.errorText}>{errors[field]}</Text>}
         </View>
     );
 
     const renderDateField = (label, field) => (
-        <View>
+        <View style={styles.inputContainer}>
             <Text style={styles.label}>{label}</Text>
             <TouchableOpacity
                 onPress={() => {
@@ -251,7 +259,7 @@ const LicenseScreen = () => {
                     value={licenseDetails[field] ? new Date(licenseDetails[field]).toLocaleDateString() : ""}
                     editable={false}
                     placeholder={"Chọn ngày"}
-                    placeholderTextColor={"#ccc"}
+                    placeholderTextColor={"#999"}
                 />
             </TouchableOpacity>
             {errors[field] && <Text style={styles.errorText}>{errors[field]}</Text>}
@@ -261,16 +269,22 @@ const LicenseScreen = () => {
     return (
         <SafeAreaView style={styles.safeContainer}>
             <ScrollView contentContainerStyle={styles.container}>
+                <TouchableOpacity onPress={() => navigation.goBack()}>
+                    <View style={styles.header}>
+                        <Ionicons name="arrow-back" size={24} color="#000" style={styles.backIcon} />
+                        <Text style={styles.headerTitle}>License</Text>
+                    </View>
+                </TouchableOpacity>
+
                 {loading ? (
-                    <ActivityIndicator size="large" color="#007AFF" />
+                    <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />
                 ) : (
                     <>
-                        <Text style={styles.formTitle}>Hồ sơ Giấy Phép Lái Xe</Text>
-                        {renderInputField("Số giấy phép", "licenseNumber", "123123123123")}
-                        {renderInputField("Loại giấy phép", "licenseType", "B1,C,D,E,....")}
+                        {renderInputField("Số giấy phép", "licenseNumber", "Nhập số giấy phép")}
+                        {renderInputField("Loại giấy phép", "licenseType", "Nhập loại giấy phép")}
                         {renderDateField("Ngày cấp", "issuedDate")}
                         {renderDateField("Ngày hết hạn", "expiryDate")}
-                        {renderInputField("Cơ quan cấp", "issuingAuthority", "GTVT Can Tho,GTVT Soc Trang")}
+                        {renderInputField("Cơ quan cấp", "issuingAuthority", "Nhập cơ quan cấp")}
 
                         <TouchableOpacity
                             style={styles.saveButton}
@@ -302,45 +316,50 @@ const styles = StyleSheet.create({
     safeContainer: {
         flex: 1,
         backgroundColor: "#f9f9f9",
-        paddingTop: 50,
     },
     container: {
         flexGrow: 1,
         padding: 20,
     },
-    formTitle: {
-        fontSize: 26,
+    header: {
+        marginTop: Platform.OS === "ios" ? 50 : 30,
+        flexDirection: "row",
+        alignItems: "center",
+        marginBottom: 20,
+    },
+    backIcon: {
+        marginRight: 10,
+    },
+    headerTitle: {
+        fontSize: 24,
         fontWeight: "bold",
-        color: "#007AFF",
-        textAlign: "center",
-        marginBottom: 30,
+        color: "#000",
+    },
+    inputContainer: {
+        marginBottom: 20,
     },
     label: {
-        fontSize: 14,
-        marginBottom: 6,
-        color: "#333",
+        fontSize: 16,
         fontWeight: "600",
+        color: "#333",
+        marginBottom: 8,
     },
     input: {
         backgroundColor: "#fff",
         padding: 14,
-        borderRadius: 10,
+        borderRadius: 8,
         borderWidth: 1,
         borderColor: "#ddd",
-        marginBottom: 15,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 3,
-        elevation: 2,
+        fontSize: 16,
+        color: "#333",
     },
     inputError: {
         borderColor: "red",
     },
     errorText: {
         color: "red",
-        fontSize: 12,
-        marginBottom: 10,
+        fontSize: 14,
+        marginTop: 5,
     },
     saveButton: {
         backgroundColor: "#007AFF",
@@ -348,17 +367,26 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         alignItems: "center",
         marginTop: 20,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 3,
-        elevation: 2,
+        ...Platform.select({
+            ios: {
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 3,
+            },
+            android: {
+                elevation: 2,
+            },
+        }),
     },
     saveButtonText: {
         color: "#fff",
         fontSize: 16,
         fontWeight: "600",
-    }
+    },
+    loader: {
+        marginTop: 20,
+    },
 });
 
 export default LicenseScreen;
