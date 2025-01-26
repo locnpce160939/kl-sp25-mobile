@@ -23,7 +23,6 @@ axiosInstance.interceptors.request.use(
   }
 );
 
-// Xử lý lỗi toàn cục cho response
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
