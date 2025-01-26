@@ -9,19 +9,25 @@ import {
   Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import Navigation from "../../navigation/Navigation";
 import { useNavigation } from "@react-navigation/native";
-import * as Location from 'expo-location';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-
-
-
+import * as Location from "expo-location";
+import { getUserInfo } from "../../services/ProfileService";
 const { width } = Dimensions.get("window");
 
 const HomeScreen = () => {
+  const [userInfo, setUserInfo] = useState({});
 
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      const data = await getUserInfo();
+      setUserInfo(data);
+    };
+
+    fetchUserInfo();
+  }, []);
 
   const navigation = useNavigation();
 
@@ -33,18 +39,18 @@ const HomeScreen = () => {
   ];
 
   const services = [
-    { id: 1, name: "Ô tô", icon: require("../../assets/BgcLogin.jpg") },
-    { id: 2, name: "Xe máy", icon: require("../../assets/BgcLogin.jpg") },
-    { id: 3, name: "Taxi 👋", icon: require("../../assets/BgcLogin.jpg") },
-    { id: 4, name: "Xanh thổ địa", icon: require("../../assets/BgcLogin.jpg") },
+    // { id: 1, name: "Khuyến mãi", icon: require("../../assets/BgcLogin.jpg") },
+    // { id: 2, name: "Xe máy", icon: require("../../assets/BgcLogin.jpg") },
+    // { id: 3, name: "Taxi 👋", icon: require("../../assets/BgcLogin.jpg") },
+    // { id: 4, name: "Xanh thổ địa", icon: require("../../assets/BgcLogin.jpg") },
     {
-      id: 5,
-      name: "Vé lễ hội",
-      icon: require("../../assets/BgcLogin.jpg"),
+      id: 1,
+      name: "Khuyến mãi",
+      icon: require("../../assets/gift.png"),
       hot: true,
     },
-    { id: 6, name: "Gói hội viên", icon: require("../../assets/BgcLogin.jpg") },
-    { id: 7, name: "Xanh Tour", icon: require("../../assets/BgcLogin.jpg") },
+    // { id: 6, name: "Gói hội viên", icon: require("../../assets/BgcLogin.jpg") },
+    // { id: 7, name: "Xanh Tour", icon: require("../../assets/BgcLogin.jpg") },
   ];
 
   const renderHeader = () => (
@@ -58,20 +64,25 @@ const HomeScreen = () => {
   );
 
   useEffect(() => {
-      (async () => {
-        let { status } = await Location.requestForegroundPermissionsAsync();  
-        let current = await Location.getCurrentPositionAsync({});
-        if ( status == "granted"){
-          const storeCurrent = await AsyncStorage.setItem('currentLocation', JSON.stringify(current.coords));
-        }
-      })();
-    }, [])
+    (async () => {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      let current = await Location.getCurrentPositionAsync({});
+      if (status == "granted") {
+        const storeCurrent = await AsyncStorage.setItem(
+          "currentLocation",
+          JSON.stringify(current.coords)
+        );
+      }
+    })();
+  }, []);
 
   const renderGreeting = () => (
     <View style={styles.greetingContainer}>
-      <Text style={styles.greeting}>Xin chào, Trương Nhật Tân</Text>
+      <Text style={styles.greeting}>
+        Xin chào, {userInfo.fullName || "User"}
+      </Text>
       <View style={styles.pointsBadge}>
-        <Text style={styles.pointsText}>10 ✓</Text>
+        <Text style={styles.pointsText}>12 ✓</Text>
       </View>
     </View>
   );
@@ -82,23 +93,18 @@ const HomeScreen = () => {
         style={styles.searchBar}
         onPress={() => navigation.navigate("Booking")}
       >
-        <Image
-          source={require("../../assets/BgcLogin.jpg")}
-          style={styles.locationIcon}
-        />
-        <Text style={styles.searchText}>Bạn muốn đi đến đâu?</Text>
+        <Ionicons name="add-outline" size={30} color="#888" />
+        <Text style={styles.searchText}>Tạo đơn hàng?</Text>
       </TouchableOpacity>
       <View style={styles.quickAddressContainer}>
-        <TouchableOpacity
-          style={styles.quickAddressButton}
-        >
+        <TouchableOpacity style={styles.quickAddressButton}>
           <Image
             source={require("../../assets/BgcLogin.jpg")}
             style={styles.addIcon}
           />
           <Text style={styles.quickAddressText}>Thêm Nhà</Text>
         </TouchableOpacity>
-        <TouchableOpacity
+        {/* <TouchableOpacity
           style={styles.quickAddressButton}
           onPress={() => navigation.navigate("Test")}
         >
@@ -114,7 +120,7 @@ const HomeScreen = () => {
             style={styles.addIcon}
           />
           <Text style={styles.quickAddressText}>Thêm</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
     </View>
   );

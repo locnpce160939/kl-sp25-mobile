@@ -16,8 +16,6 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import { BASE_URl } from "../../configUrl";
 
-
-
 const InputField = ({
   label,
   value,
@@ -48,7 +46,7 @@ const PickerField = ({
 }) => (
   <View style={styles.inputContainer}>
     <Text style={styles.label}>
-    {label} <Text style={styles.required}>*</Text>
+      {label} <Text style={styles.required}>*</Text>
     </Text>
     <Picker
       selectedValue={selectedValue}
@@ -83,11 +81,10 @@ const DatePickerField = ({ label, value, onChange }) => {
   return (
     <View style={styles.inputContainer}>
       <Text style={styles.label}>{label}</Text>
-      <TouchableOpacity
-        style={styles.input}
-        onPress={() => setShow(true)}
-      >
-        <Text style={styles.inputText}>{value ? formatDisplayDate(value) : "Select a date"}</Text>
+      <TouchableOpacity style={styles.input} onPress={() => setShow(true)}>
+        <Text style={styles.inputText}>
+          {value ? formatDisplayDate(value) : "Select a date"}
+        </Text>
       </TouchableOpacity>
       {show && (
         <DateTimePicker
@@ -156,15 +153,14 @@ const CreateDriverIdentificationScreen = ({ navigation }) => {
             fullName: province.fullName,
           }))
         );
-        
-  
+
         setPermanentDistricts(
           data.permanentAddress.district.templateLocations.map((district) => ({
             id: district.code,
             fullName: district.fullName,
           }))
         );
-  
+
         setPermanentWards(
           data.permanentAddress.ward.templateLocations.map((ward) => ({
             id: ward.code,
@@ -177,14 +173,14 @@ const CreateDriverIdentificationScreen = ({ navigation }) => {
             fullName: district.fullName,
           }))
         );
-  
+
         setTemporaryWards(
           data.temporaryAddress.ward.templateLocations.map((ward) => ({
             id: ward.code,
             fullName: ward.fullName,
           }))
         );
-  
+
         // Đặt giá trị cho form
         setFormData({
           idNumber: data.idNumber || "",
@@ -200,7 +196,7 @@ const CreateDriverIdentificationScreen = ({ navigation }) => {
           expiryDate: data.expiryDate || "",
           issuedBy: data.issuedBy || "",
         });
-  
+
         // Xử lý thay đổi tỉnh thành nếu có
         if (data.permanentAddress.province.id) {
           handleProvinceChange(data.permanentAddress.province.id, "permanent");
@@ -210,11 +206,9 @@ const CreateDriverIdentificationScreen = ({ navigation }) => {
         }
       }
     };
-  
+
     fetchData();
   }, []);
-  
-  
 
   const getDriverIdentificationById = async () => {
     try {
@@ -230,7 +224,10 @@ const CreateDriverIdentificationScreen = ({ navigation }) => {
       const accessToken = parsedUserInfo?.data?.access_token;
 
       if (!accessToken) {
-        Alert.alert("Error", "Missing accountId or access token. Please login again.");
+        Alert.alert(
+          "Error",
+          "Missing accountId or access token. Please login again."
+        );
         setIsLoading(false);
         return null;
       }
@@ -247,13 +244,18 @@ const CreateDriverIdentificationScreen = ({ navigation }) => {
       if (res.status === 200 && res.data.code === 200) {
         return res.data.data;
       } else {
-        Alert.alert("Error", res.data.message || "Failed to fetch identification details.");
+        Alert.alert(
+          "Error",
+          res.data.message || "Failed to fetch identification details."
+        );
         return null;
       }
     } catch (error) {
-   
       if (error.response) {
-        Alert.alert("Error", error.response.data.message || "An error occurred.");
+        Alert.alert(
+          "Error",
+          error.response.data.message || "An error occurred."
+        );
       } else {
         Alert.alert("Error", "An unknown error occurred.");
       }
@@ -264,7 +266,9 @@ const CreateDriverIdentificationScreen = ({ navigation }) => {
   };
 
   const handleProvinceChange = async (value, addressType) => {
-    const selectedProvince = provinces.find((province) => province.id === value);
+    const selectedProvince = provinces.find(
+      (province) => province.id === value
+    );
     if (selectedProvince) {
       try {
         const districtsData = await getDistricts(selectedProvince.id);
@@ -282,8 +286,11 @@ const CreateDriverIdentificationScreen = ({ navigation }) => {
   };
 
   const handleDistrictChange = async (value, addressType) => {
-    const districts = addressType === "permanent" ? permanentDistricts : temporaryDistricts;
-    const selectedDistrict = districts.find((district) => district.id === value);
+    const districts =
+      addressType === "permanent" ? permanentDistricts : temporaryDistricts;
+    const selectedDistrict = districts.find(
+      (district) => district.id === value
+    );
     if (selectedDistrict) {
       try {
         const wardsData = await getWards(selectedDistrict.id);
@@ -321,7 +328,7 @@ const CreateDriverIdentificationScreen = ({ navigation }) => {
   const handleSubmit = async () => {
     if (isLoading) return;
     if (!validateForm()) return;
-  
+
     setIsLoading(true);
     try {
       const userInfoString = await AsyncStorage.getItem("userInfo");
@@ -330,16 +337,16 @@ const CreateDriverIdentificationScreen = ({ navigation }) => {
         setIsLoading(false);
         return;
       }
-  
+
       const parsedUserInfo = JSON.parse(userInfoString);
       const accessToken = parsedUserInfo?.data?.access_token;
-  
+
       if (!accessToken) {
         Alert.alert("Error", "Missing access token. Please login again.");
         setIsLoading(false);
         return;
       }
-  
+
       const data = await getDriverIdentificationById();
       if (data) {
         // Update existing data
@@ -357,11 +364,11 @@ const CreateDriverIdentificationScreen = ({ navigation }) => {
       setIsLoading(false);
     }
   };
-  
+
   const updateDriverIdentification = async (updatedData) => {
     try {
       setIsLoading(true); // Bắt đầu loading
-  
+
       // Lấy token từ AsyncStorage
       const userInfoString = await AsyncStorage.getItem("userInfo");
       if (!userInfoString) {
@@ -369,24 +376,24 @@ const CreateDriverIdentificationScreen = ({ navigation }) => {
         setIsLoading(false);
         return null;
       }
-  
+
       const parsedUserInfo = JSON.parse(userInfoString);
       const accessToken = parsedUserInfo?.data?.access_token;
-  
+
       if (!accessToken) {
         Alert.alert("Error", "Missing access token. Please login again.");
         setIsLoading(false);
         return null;
       }
 
-       // Kiểm tra xem driver identification đã tồn tại chưa
-    const driverIdentification = updatedData?.driverIdentification;
-    if (!driverIdentification) {
-      Alert.alert("Error", "Driver identification not found. Cannot update.");
-      setIsLoading(false);
-      return null;
-    }
-  
+      // Kiểm tra xem driver identification đã tồn tại chưa
+      const driverIdentification = updatedData?.driverIdentification;
+      if (!driverIdentification) {
+        Alert.alert("Error", "Driver identification not found. Cannot update.");
+        setIsLoading(false);
+        return null;
+      }
+
       // Gửi yêu cầu update
       const response = await axios.put(
         `${BASE_URl}/api/registerDriver/updateDriverIdentification`,
@@ -398,27 +405,31 @@ const CreateDriverIdentificationScreen = ({ navigation }) => {
           },
         }
       );
-  
+
       setIsLoading(false); // Kết thúc loading
-  
+
       // Kiểm tra kết quả
       if (response.status === 200) {
         Alert.alert("Success", "Driver identification updated successfully.");
       } else {
-        Alert.alert("Error", response.data.message || "Failed to update identification.");
+        Alert.alert(
+          "Error",
+          response.data.message || "Failed to update identification."
+        );
       }
     } catch (error) {
       console.error("Error updating driver identification:", error);
       setIsLoading(false); // Kết thúc loading
       if (error.response) {
-        Alert.alert("Error", error.response.data.message || "An error occurred.");
+        Alert.alert(
+          "Error",
+          error.response.data.message || "An error occurred."
+        );
       } else {
         Alert.alert("Error", "An unknown error occurred.");
       }
     }
   };
-  
-  
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -431,7 +442,9 @@ const CreateDriverIdentificationScreen = ({ navigation }) => {
         placeholder="Enter your ID number"
         keyboardType="numeric"
       />
-      {errors.idNumber && <Text style={styles.errorText}>{errors.idNumber}</Text>}
+      {errors.idNumber && (
+        <Text style={styles.errorText}>{errors.idNumber}</Text>
+      )}
 
       <PickerField
         label="Permanent Address Province"
@@ -458,7 +471,9 @@ const CreateDriverIdentificationScreen = ({ navigation }) => {
         label="Permanent Address Ward"
         items={permanentWards}
         selectedValue={formData.permanentAddressWard}
-        onValueChange={(value) => handleInputChange("permanentAddressWard", value)}
+        onValueChange={(value) =>
+          handleInputChange("permanentAddressWard", value)
+        }
         enabled={!!formData.permanentAddressDistrict}
       />
       {errors.permanentAddressWard && (
@@ -468,7 +483,9 @@ const CreateDriverIdentificationScreen = ({ navigation }) => {
       <InputField
         label="Permanent Street Address"
         value={formData.permanentStreetAddress}
-        onChangeText={(value) => handleInputChange("permanentStreetAddress", value)}
+        onChangeText={(value) =>
+          handleInputChange("permanentStreetAddress", value)
+        }
         placeholder="Enter your street address"
       />
       {errors.permanentStreetAddress && (
@@ -500,7 +517,9 @@ const CreateDriverIdentificationScreen = ({ navigation }) => {
         label="Temporary Address Ward"
         items={temporaryWards}
         selectedValue={formData.temporaryAddressWard}
-        onValueChange={(value) => handleInputChange("temporaryAddressWard", value)}
+        onValueChange={(value) =>
+          handleInputChange("temporaryAddressWard", value)
+        }
         enabled={!!formData.temporaryAddressDistrict}
       />
       {errors.temporaryAddressWard && (
@@ -510,7 +529,9 @@ const CreateDriverIdentificationScreen = ({ navigation }) => {
       <InputField
         label="Temporary Street Address"
         value={formData.temporaryStreetAddress}
-        onChangeText={(value) => handleInputChange("temporaryStreetAddress", value)}
+        onChangeText={(value) =>
+          handleInputChange("temporaryStreetAddress", value)
+        }
         placeholder="Enter your street address"
       />
       {errors.temporaryStreetAddress && (
@@ -522,14 +543,18 @@ const CreateDriverIdentificationScreen = ({ navigation }) => {
         value={formData.issueDate}
         onChange={(value) => handleInputChange("issueDate", value)}
       />
-      {errors.issueDate && <Text style={styles.errorText}>{errors.issueDate}</Text>}
+      {errors.issueDate && (
+        <Text style={styles.errorText}>{errors.issueDate}</Text>
+      )}
 
       <DatePickerField
         label="Expiry Date"
         value={formData.expiryDate}
         onChange={(value) => handleInputChange("expiryDate", value)}
       />
-      {errors.expiryDate && <Text style={styles.errorText}>{errors.expiryDate}</Text>}
+      {errors.expiryDate && (
+        <Text style={styles.errorText}>{errors.expiryDate}</Text>
+      )}
 
       <InputField
         label="Issued By"
@@ -537,75 +562,84 @@ const CreateDriverIdentificationScreen = ({ navigation }) => {
         onChangeText={(value) => handleInputChange("issuedBy", value)}
         placeholder="Enter issuer"
       />
-      {errors.issuedBy && <Text style={styles.errorText}>{errors.issuedBy}</Text>}
+      {errors.issuedBy && (
+        <Text style={styles.errorText}>{errors.issuedBy}</Text>
+      )}
 
-      <TouchableOpacity style={styles.submitButton} onPress={handleSubmit} disabled={isLoading}>
-        {isLoading ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.submitButtonText}>Submit</Text>}
+      <TouchableOpacity
+        style={styles.submitButton}
+        onPress={handleSubmit}
+        disabled={isLoading}
+      >
+        {isLoading ? (
+          <ActivityIndicator size="small" color="#fff" />
+        ) : (
+          <Text style={styles.submitButtonText}>Submit</Text>
+        )}
       </TouchableOpacity>
     </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-
   // ... existing styles
   errorText: {
-   color: "red",
-   fontSize: 12,
-   marginTop: 5,
- },
- container: {
-   padding: 20,
-   backgroundColor: "#f9f9f9",
-   flexGrow: 1,
- },
- title: {
-   fontSize: 18,
-   fontWeight: "bold",
-   textAlign: "center",
-   marginTop: 30,
-   marginBottom: 20,
-   color: "#00b5ec",
- },
- inputContainer: {
-   marginBottom: 15,
- },
- label: {
-   fontSize: 16,
-   marginBottom: 5,
-   color: "#333",
- },
- required: {
-   color: "red",
- },
- input: {
-   borderWidth: 1,
-   borderColor: "#ddd",
-   borderRadius: 8,
-   padding: 10,
-   backgroundColor: "#fff",
-   fontSize: 14,
- },
- picker: {
-   borderWidth: 1,
-   borderColor: "#ddd",
-   borderRadius: 8,
-   backgroundColor: "#fff",
- },
- submitButton: {
-   backgroundColor: "#00b5ec",
-   padding: 15,
-   borderRadius: 8,
-   alignItems: "center",
- },
- disabledButton: {
-   backgroundColor: "#ccc",
- },
- submitButtonText: {
-   color: "#fff",
-   fontSize: 16,
-   fontWeight: "bold",
- },
+    color: "red",
+    fontSize: 12,
+    marginTop: 5,
+  },
+  container: {
+    padding: 20,
+    backgroundColor: "#f9f9f9",
+    flexGrow: 1,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginTop: 30,
+    marginBottom: 20,
+    color: "#00b5ec",
+  },
+  inputContainer: {
+    marginBottom: 15,
+  },
+  label: {
+    fontSize: 16,
+    marginBottom: 5,
+    color: "#333",
+  },
+  required: {
+    color: "red",
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 8,
+    padding: 10,
+    backgroundColor: "#fff",
+    fontSize: 14,
+  },
+  picker: {
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 8,
+    backgroundColor: "#fff",
+  },
+  submitButton: {
+    backgroundColor: "#00b5ec",
+    padding: 15,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  disabledButton: {
+    backgroundColor: "#ccc",
+  },
+  submitButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
 });
 
 export default CreateDriverIdentificationScreen;

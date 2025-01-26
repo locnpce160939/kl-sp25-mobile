@@ -1,8 +1,17 @@
-import React, { useContext, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, Image } from "react-native";
+import React, { useContext, useState, useEffect, useCallback } from "react"; // Import useEffect
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  SafeAreaView,
+  Image,
+} from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { AuthContext } from "../../contexts/AuthContext";
-import { useNavigation } from "@react-navigation/native";
+import { loadStatusDriverDocument } from "../../services/MenuService";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 
 const ProfileScreen = () => {
   const { logout } = useContext(AuthContext);
@@ -12,24 +21,68 @@ const ProfileScreen = () => {
   const handleLogout = () => {
     logout();
   };
+  const [driverDocuments, setDriverDocuments] = useState({
+    license: false,
+    vehicle: false,
+    identification: false,
+  });
+  const [isLoading, setIsLoading] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      const fetchData = async () => {
+        setIsLoading(true);
+        const data = await loadStatusDriverDocument();
+        if (data) {
+          setDriverDocuments(data);
+        }
+        setIsLoading(false);
+      };
+
+      fetchData();
+      return () => {};
+    }, [])
+  );
 
   const sections = [
     {
       title: "Phần 1",
       items: [
-        { id: 1, icon: "calendar-outline", label: "Đặt lịch", screen: "Schedule" },
-        { 
-          id: 2, 
-          icon: "business-outline", 
-          label: "Hồ sơ Tài xế", 
+        {
+          id: 1,
+          icon: "calendar-outline",
+          label: "Đặt lịch",
+          screen: "Schedule",
+        },
+        {
+          id: 2,
+          icon: "document-text-outline",
+          label: "Hồ sơ Tài xế",
           subItems: [
-            { id: 6, icon: "car-outline", label: "Hồ sơ phương tiện", screen: "VehicleScreen" },
-            { id: 7, icon: "document-outline", label: "Giấy phép lái xe", screen: "LicenseScreen" }
-          ]
+            {
+              id: 5,
+              icon: "card-outline",
+              label: "Căn cước công dân",
+              screen: "CreateDriverIdentificationScreen",
+              status: driverDocuments.identification,
+            },
+            {
+              id: 6,
+              icon: "car-outline",
+              label: "Hồ sơ phương tiện",
+              screen: "VehicleScreen",
+              status: driverDocuments.vehicle,
+            },
+            {
+              id: 7,
+              icon: "document-outline",
+              label: "Giấy phép lái xe",
+              screen: "LicenseScreen",
+              status: driverDocuments.license,
+            },
+          ],
         },
         { id: 3, icon: "person-add-outline", label: "Giới thiệu bạn bè" },
-        { id: 4, icon: "card-outline", label: "Gói hội viên" },
-        { id: 5, icon: "car-sport-outline", label: "Trở thành tài xế Xanh SM" },
       ],
     },
     {
@@ -62,22 +115,38 @@ const ProfileScreen = () => {
                 <Ionicons name={item.icon} size={24} color="#555" />
               </View>
               <Text style={styles.label}>{item.label}</Text>
-              {(item.screen || item.subItems) && <Ionicons name="chevron-forward-outline" size={20} color="#888" />}
+              {(item.screen || item.subItems) && (
+                <Ionicons
+                  name="chevron-forward-outline"
+                  size={20}
+                  color="#888"
+                />
+              )}
             </TouchableOpacity>
-            
-            {item.subItems && expandedItem === item.id && item.subItems.map((subItem) => (
-              <TouchableOpacity
-                key={subItem.id}
-                style={[styles.row, styles.subItemRow]}
-                onPress={() => navigation.navigate(subItem.screen)}
-              >
-                <View style={styles.iconContainer}>
-                  <Ionicons name={subItem.icon} size={20} color="#777" />
-                </View>
-                <Text style={styles.subItemLabel}>{subItem.label}</Text>
-                <Ionicons name="chevron-forward-outline" size={20} color="#888" />
-              </TouchableOpacity>
-            ))}
+
+            {item.subItems &&
+              expandedItem === item.id &&
+              item.subItems.map((subItem) => (
+                <TouchableOpacity
+                  key={subItem.id}
+                  style={{ flexDirection: "row", padding: 10, marginLeft: 20 }}
+                  onPress={() => navigation.navigate(subItem.screen)}
+                >
+                  <View style={{ marginRight: 10 }}>
+                    <Ionicons name={subItem.icon} size={20} color="#777" />
+                  </View>
+                  <Text style={{ flex: 1 }}>{subItem.label}</Text>
+                  <Ionicons
+                    name={
+                      subItem.status
+                        ? "checkmark-circle-outline"
+                        : "close-circle-outline"
+                    }
+                    size={20}
+                    color={subItem.status ? "green" : "orange"}
+                  />
+                </TouchableOpacity>
+              ))}
           </View>
         ))}
       </View>
@@ -88,7 +157,10 @@ const ProfileScreen = () => {
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView}>
         <View style={styles.headerContainer}>
-          <Image source={require("../../assets/BgcLogin.jpg")} style={styles.headerImage} />
+          <Image
+            source={require("../../assets/BgcLogin.jpg")}
+            style={styles.headerImage}
+          />
         </View>
         {renderSections()}
         <View style={styles.logoutContainer}>
@@ -129,10 +201,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     backgroundColor: "#fff",
   },
-  subItemRow: {
-    paddingLeft: 40,
-    backgroundColor: "#f9f9f9",
-  },
   iconContainer: {
     width: 30,
     alignItems: "center",
@@ -141,11 +209,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: "#333",
-  },
-  subItemLabel: {
-    flex: 1,
-    fontSize: 14,
-    color: "#555",
   },
   logoutContainer: {
     padding: 20,
