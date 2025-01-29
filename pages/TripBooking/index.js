@@ -459,7 +459,7 @@ const TripBooking = () => {
                 ]}
                 onPress={() => openLocationPicker("pickup")}
               >
-                <Text>{titlePickup}</Text>
+                <Text>{titlePickup || 'Vị trí hiện tại của bạn'}</Text>
               </TouchableOpacity>
               {errors.pickupLocation && (
                 <Text style={styles.errorText}>{errors.pickupLocation}</Text>
