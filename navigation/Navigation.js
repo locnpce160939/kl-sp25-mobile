@@ -15,7 +15,6 @@ import TripBooking from "../pages/TripBooking";
 import LicenseScreen from "../pages/Lincese/licenseScreen";
 import VehicleScreen from "../pages/Vehicle/vehicleScreen";
 import DriverIdentificationScreen from "../pages/Indentification/DriverIdentificationScreen";
-import CreateDriverIdentificationScreen from "../pages/Auth/CreateDriverIdentificationScreen";
 import ChatScreen from "../pages/Chat";
 
 const Stack = createNativeStackNavigator();
