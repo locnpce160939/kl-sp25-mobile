@@ -162,31 +162,9 @@ const LicenseScreen = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  // const takePhoto = async (view) => {
-  //   try {
-  //     const result = await ImagePicker.launchCameraAsync({
-  //       mediaTypes: 'images',
-  //       allowsEditing: true,
-  //       aspect: [4, 3],
-  //       quality: 0.5,
-  //     });
-
-  //     if (!result.canceled) {
-  //       setLicenseDetails(prev => ({
-  //         ...prev,
-  //         [view]: result.assets[0].uri
-  //       }));
-  //       setErrors(prev => ({ ...prev, [view]: null }));
-  //     }
-  //   } catch (error) {
-  //     Alert.alert('Lỗi', 'Không thể chụp ảnh');
-  //     console.error('Image capture error:', error);
-  //   }
-  // };
-
   const selectImage = async (view) => {
     try {
-      const result = await ImagePicker.launchImageLibraryAsync({
+      const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [4, 3],
@@ -216,16 +194,17 @@ const LicenseScreen = () => {
       if (!token)
         throw new Error("Token không tồn tại. Vui lòng đăng nhập lại.");
 
-      const requestDTO = JSON.stringify({
+      // Tạo đối tượng requestDTO
+      const requestDTO = {
         licenseNumber: licenseDetails.licenseNumber,
         licenseType: licenseDetails.licenseType,
         issuedDate: new Date(licenseDetails.issuedDate).toISOString(),
         expiryDate: new Date(licenseDetails.expiryDate).toISOString(),
         issuingAuthority: licenseDetails.issuingAuthority,
-      });
+      };
 
       const formData = new FormData();
-      formData.append("requestDTO", requestDTO);
+      formData.append("requestDTO", JSON.stringify(requestDTO));
 
       // Add images
       if (licenseDetails.frontView) {
@@ -235,10 +214,8 @@ const LicenseScreen = () => {
           name: "front.jpg",
         };
         formData.append("frontFile", frontFile);
-        // Log kiểm tra frontFile
-        console.log("FrontFile:", frontFile);
-        console.log("Front view URI:", licenseDetails.frontView);
       }
+
       if (licenseDetails.backView) {
         const backFile = {
           uri: licenseDetails.backView,
@@ -246,9 +223,6 @@ const LicenseScreen = () => {
           name: "back.jpg",
         };
         formData.append("backFile", backFile);
-        // Log kiểm tra frontFile
-        console.log("backFile:", backFile);
-        console.log("Back View URI:", licenseDetails.backView);
       }
 
       console.log("FormData:", formData);
@@ -262,17 +236,18 @@ const LicenseScreen = () => {
           headers: {
             Authorization: `Bearer ${token.trim()}`,
             Accept: "application/json",
+            "Content-Type": "multipart/form-data",
           },
         }
       );
 
       if (status === 200) {
-        Alert.alert("Thành công", "Tạo giấy phép thành công.");
+        Alert.alert("Thành công", "Cập nhật giấy phép thành công.");
         setLicenseId(data.data.licenseId);
       } else {
         Alert.alert(
           "Lỗi",
-          `Không thể tạo giấy phép. Mã lỗi: ${response.status}`
+          `Không thể cập nhật giấy phép. Mã lỗi: ${response.status}`
         );
       }
     } catch (error) {
@@ -503,7 +478,6 @@ const LicenseScreen = () => {
             </TouchableOpacity>
           </>
         )}
-
         {showDatePicker && (
           <DateTimePicker
             value={
@@ -512,11 +486,11 @@ const LicenseScreen = () => {
                   ? new Date(licenseDetails.issuedDate)
                   : new Date()
                 : licenseDetails.expiryDate
-                ? new Date(licenseDetails.expiryDate)
-                : new Date()
+                  ? new Date(licenseDetails.expiryDate)
+                  : new Date()
             }
             mode="date"
-            display="default"
+            display="spinner" // Sử dụng "spinner" cho iOS
             onChange={handleDateChange}
           />
         )}
@@ -535,7 +509,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   header: {
-    marginTop: Platform.OS === "ios" ? 50 : 30,
+    marginTop: Platform.OS === "ios" ? 20 : 10,
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 20,
