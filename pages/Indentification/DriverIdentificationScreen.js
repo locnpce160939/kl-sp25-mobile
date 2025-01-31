@@ -238,9 +238,12 @@ const DriverIdentificationScreen = ({ navigation }) => {
   const [isEditMode, setIsEditMode] = useState(false);
   useEffect(() => {
     const fetchData = async () => {
+      try {
       const data = await getDriverIdentificationById();
       if (data) {
         setIsEditMode(true);
+
+        
 
         // Đảm bảo lấy đúng thuộc tính `code` và `fullName` từ `templateLocations`
         setProvinces(
@@ -296,6 +299,8 @@ const DriverIdentificationScreen = ({ navigation }) => {
           issueDate: data.issueDate || "",
           expiryDate: data.expiryDate || "",
           issuedBy: data.issuedBy || "",
+          frontFile: data.frontView ? { uri: data.frontView } : null,
+          backFile: data.backView ? { uri: data.backView } : null,
         });
   
         // Xử lý thay đổi tỉnh thành nếu có
@@ -307,7 +312,11 @@ const DriverIdentificationScreen = ({ navigation }) => {
         }
       }else {
         setIsEditMode(false);
+        
       }
+    } catch (error) {
+      setIsEditMode(false); // Đảm bảo isEditMode = false khi có lỗi
+    }
     };
   
     fetchData();
@@ -331,7 +340,7 @@ const DriverIdentificationScreen = ({ navigation }) => {
       }
   
       const res = await axios.get(
-        `${BASE_URl}/api/registerDriver/identification/getByAccountId`,
+        `${BASE_URl}/api/registerDriver/identification`,
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -446,7 +455,7 @@ const handleDistrictChange = async (value, addressType) => {
 
   const handleSubmit = async () => {
     if (isLoading) return;
-   // if (!validateForm()) return;
+   if (!validateForm()) return;
   
     setIsLoading(true);
     try {
@@ -466,86 +475,107 @@ const handleDistrictChange = async (value, addressType) => {
         return;
       }
   
-      const data = await getDriverIdentificationById();
-      if (data && data.idNumber) {
-        await updateDriverIdentification(formData, accessToken);
-      } else {
-        if (!formData.idNumber) {
-          Alert.alert("Error", "Please enter ID Number before submitting.");
-          setIsLoading(false);
-          return;
-        }
-        await createDriverIdentification(formData, navigation);
-      }
-    } catch (error) {
-      console.error("Error during form submission:", error);
-      const errorMessage = error.response?.data?.message || "An error occurred during submission.";
-      Alert.alert("Error", errorMessage);
-    } finally {
+    //  const data = await getDriverIdentificationById();
+       // Check if we're in edit mode instead of checking data existence
+    if (isEditMode) {
+      await updateDriverIdentification(formData);
+    } else {
+      // if (!formData.idNumber) {
+      //   Alert.alert("Error", "Please enter ID Number before submitting.");
+      //   setIsLoading(false);
+      //   return;
+      // }
+      await createDriverIdentification(formData, navigation);
+    }
+  } catch (error) {
+    console.error("Error during form submission:", error);
+    const errorMessage = error.response?.data?.message || "An error occurred during submission.";
+    Alert.alert("Error", errorMessage);
+  } finally {
+    setIsLoading(false);
+  }
+};
+  
+  
+  
+ const updateDriverIdentification = async (updatedData) => {
+  try {
+    setIsLoading(true);
+    const userInfo = await AsyncStorage.getItem("userInfo");
+    if (!userInfo) {
+      Alert.alert("Error", "No user information found. Please login again.");
       setIsLoading(false);
+      return null;
     }
-  };
-  
-  
-  
-  const updateDriverIdentification = async (updatedData) => {
-    try {
-      setIsLoading(true); // Bắt đầu loading
-  
-      // Lấy token từ AsyncStorage
-      const userInfoString = await AsyncStorage.getItem("userInfo");
-      if (!userInfoString) {
-        Alert.alert("Error", "No user information found. Please login again.");
-        setIsLoading(false);
-        return null;
-      }
-      const parsedUserInfo = JSON.parse(userInfoString);
-      const accessToken = parsedUserInfo?.data?.access_token;
-  
-      if (!accessToken) {
-        Alert.alert("Error", "Missing access token. Please login again.");
-        setIsLoading(false);
-        return null;
-      }
-       // Kiểm tra xem driver identification đã tồn tại chưa
-    
-       if (!updatedData.idNumber) {
-        Alert.alert("Error", "ID Number is missing. Cannot update.");
-        setIsLoading(false);
-        return null;
-      }
-    
-  
-      // Gửi yêu cầu update
-      const response = await axios.put(
-        `${BASE_URl}/api/registerDriver/updateDriverIdentification`,
-        updatedData,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json", // Nếu payload là JSON
-          },
-        }
-      );
-  
-      setIsLoading(false); // Kết thúc loading
-  
-      // Kiểm tra kết quả
-      if (response.status === 200) {
-        Alert.alert("Success", "Driver identification updated successfully.");
-      } else {
-        Alert.alert("Error", response.data.message || "Failed to update identification.");
-      }
-    } catch (error) {
-      console.error("Error updating driver identification:", error);
-      setIsLoading(false); // Kết thúc loading
-      if (error.response) {
-        Alert.alert("Error", error.response.data.message || "An error occurred.");
-      } else {
-        Alert.alert("Error", "An unknown error occurred.");
+
+    const { access_token } = JSON.parse(userInfo)?.data;
+    if (!access_token) {
+      Alert.alert("Error", "Missing access token. Please login again.");
+      setIsLoading(false);
+      return null;
+    }
+
+    // if (!updatedData.idNumber) {
+    //   Alert.alert("Error", "ID Number is missing. Cannot update.");
+    //   setIsLoading(false);
+    //   return null;
+    // }
+
+
+    const requestDTO = {
+      idNumber: updatedData.idNumber,
+      fullName: updatedData.fullName,
+      gender: updatedData.gender,
+      birthday: updatedData.birthday,
+      country: updatedData.country,
+      permanentAddressWard: updatedData.permanentAddressWard,
+      permanentAddressDistrict: updatedData.permanentAddressDistrict,
+      permanentAddressProvince: updatedData.permanentAddressProvince,
+      permanentStreetAddress: updatedData.permanentStreetAddress,
+      temporaryAddressWard: updatedData.temporaryAddressWard,
+      temporaryAddressDistrict: updatedData.temporaryAddressDistrict,
+      temporaryAddressProvince: updatedData.temporaryAddressProvince,
+      temporaryStreetAddress: updatedData.temporaryStreetAddress,
+      issueDate: updatedData.issueDate,
+      expiryDate: updatedData.expiryDate,
+      issuedBy: updatedData.issuedBy,
+    };
+
+    const formData = new FormData();
+    formData.append("requestDTO", JSON.stringify(requestDTO));
+
+    if (updatedData.frontFile?.uri) {
+      // Only append to FormData if it's a new image (not a URL)
+      if (!updatedData.frontFile.uri.startsWith('http')) {
+        formData.append('frontFile', updatedData.frontFile);
       }
     }
-  };
+    
+    if (updatedData.backFile?.uri) {
+      // Only append to FormData if it's a new image (not a URL)
+      if (!updatedData.backFile.uri.startsWith('http')) {
+        formData.append('backFile', updatedData.backFile);
+      }
+    }
+
+    const response = await axios.put(
+      `${BASE_URl}/api/registerDriver/identification`,
+      formData,
+      { headers: { Authorization: `Bearer ${access_token}`, 'Content-Type': 'multipart/form-data' }}
+    );
+
+    setIsLoading(false);
+    if (response.status === 200) {
+      Alert.alert("Success", "Driver identification updated successfully.");
+    } else {
+      Alert.alert("Error", response.data.message || "Failed to update identification.");
+    }
+  } catch (error) {
+    console.error("Error updating driver identification:", error);
+    setIsLoading(false);
+    Alert.alert("Error", error.response?.data.message || "An unknown error occurred.");
+  }
+};
   
   
   
@@ -721,7 +751,12 @@ const handleDistrictChange = async (value, addressType) => {
   label="Ảnh mặt trước CCCD"
   image={formData.frontFile}
   onImageSelect={(response) => {
-    handleInputChange('frontFile', response.assets[0]);
+    const imageFile = response.assets[0];
+    handleInputChange('frontFile', {
+      uri: imageFile.uri,
+      type: imageFile.type || 'image/jpeg',
+      name: imageFile.fileName || 'photo.jpg'
+    });
   }}
 />
 {errors.frontFile && <Text style={styles.errorText}>{errors.frontFile}</Text>}
@@ -730,20 +765,25 @@ const handleDistrictChange = async (value, addressType) => {
   label="Ảnh mặt sau CCCD"
   image={formData.backFile}
   onImageSelect={(response) => {
-    handleInputChange('backFile', response.assets[0]);
+    const imageFile = response.assets[0];
+    handleInputChange('backFile', {
+      uri: imageFile.uri,
+      type: imageFile.type || 'image/jpeg',
+      name: imageFile.fileName || 'photo.jpg'
+    });
   }}
 />
 {errors.backFile && <Text style={styles.errorText}>{errors.backFile}</Text>}
 
-      <TouchableOpacity 
-      style={styles.submitButton} 
-      onPress={handleSubmit} 
-      disabled={isLoading}>
-      
-        <Text style={styles.buttonText}>
-        {isEditMode  ? "Save" : "Submit"}
-      </Text>
-      </TouchableOpacity>
+<TouchableOpacity 
+  style={styles.submitButton} 
+  onPress={handleSubmit} 
+  disabled={isLoading}
+>
+  <Text style={styles.buttonText}>
+    {isEditMode ? "Save" : "Submit"}
+  </Text>
+</TouchableOpacity>
     </ScrollView>
   );
 };
