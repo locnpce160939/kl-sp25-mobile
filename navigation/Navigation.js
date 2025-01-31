@@ -14,6 +14,7 @@ import ScheduleScreen from "../pages/Schedule/scheduleScreen";
 import TripBooking from "../pages/TripBooking";
 import LicenseScreen from "../pages/Lincese/licenseScreen";
 import VehicleScreen from "../pages/Vehicle/vehicleScreen";
+import DriverIdentificationScreen from "../pages/Indentification/DriverIdentificationScreen";
 import CreateDriverIdentificationScreen from "../pages/Auth/CreateDriverIdentificationScreen";
 import ChatScreen from "../pages/Chat";
 
@@ -56,8 +57,8 @@ const Navigation = () => {
               options={{ headerShown: false }}
             />
             <Stack.Screen
-              name="CreateDriverIdentificationScreen"
-              component={CreateDriverIdentificationScreen}
+              name="DriverIdentificationScreen"
+              component={DriverIdentificationScreen}
               options={{ headerShown: false }}
             />
             <Stack.Screen

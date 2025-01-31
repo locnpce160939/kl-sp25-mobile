@@ -63,7 +63,7 @@ const ProfileScreen = () => {
               id: 5,
               icon: "card-outline",
               label: "Căn cước công dân",
-              screen: "CreateDriverIdentificationScreen",
+              screen: "DriverIdentificationScreen",
               status: driverDocuments.identification,
             },
             {
