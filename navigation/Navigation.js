@@ -14,7 +14,7 @@ import ScheduleScreen from "../pages/Schedule/scheduleScreen";
 import TripBooking from "../pages/TripBooking";
 import LicenseScreen from "../pages/Lincese/licenseScreen";
 import VehicleScreen from "../pages/Vehicle/vehicleScreen";
-import CreateDriverIdentificationScreen from "../pages/Auth/CreateDriverIdentificationScreen";
+import DriverIdentificationScreen from "../pages/Indentification/DriverIdentificationScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -55,8 +55,8 @@ const Navigation = () => {
               options={{ headerShown: false }}
             />
             <Stack.Screen
-              name="CreateDriverIdentificationScreen"
-              component={CreateDriverIdentificationScreen}
+              name="DriverIdentificationScreen"
+              component={DriverIdentificationScreen}
               options={{ headerShown: false }}
             />
           </>

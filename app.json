@@ -13,6 +13,15 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app needs access to your photos to upload ID card images.",
+          "cameraPermission": "The app needs access to your camera to capture ID card images."
+        }
+      ]
+    ],
     "ios": {
       "jsEngine": "jsc",
       "supportsTablet": true,

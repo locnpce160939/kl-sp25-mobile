@@ -261,52 +261,132 @@ export const AuthProvider = ({ children }) => {
   };
 
   // ================================== Create Driver Identification ========================================
+
+  
   const createDriverIdentification = async (formData, navigation) => {
+    if (isLoading) return;
+  
+    setIsLoading(true);
     try {
-      setIsLoading(true);
-
-      // Lấy thông tin từ AsyncStorage
+      const checkFileSize = (file) => {
+        console.log("File size:", file.size);
+        const maxSize = 5 * 1024 * 1024; // 5MB
+        if (file.size > maxSize) {
+          throw new Error("Kích thước file quá lớn. Tối đa 5MB");
+        }
+      };
+  
       const userInfoString = await AsyncStorage.getItem("userInfo");
-
       if (!userInfoString) {
-        Alert.alert("Error", "No user information found. Please login again.");
-        setIsLoading(false);
+        Alert.alert("Lỗi", "Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại.");
         return;
       }
-
-      // Parse thông tin user
+  
       const parsedUserInfo = JSON.parse(userInfoString);
       const accessToken = parsedUserInfo?.data?.access_token;
-
-      if (!accessToken) {
-        Alert.alert("Error", "No access token found. Please login again.");
-        setIsLoading(false);
+  
+      if (!accessToken || typeof accessToken !== 'string') {
+        Alert.alert("Lỗi", "Token không hợp lệ. Vui lòng đăng nhập lại.");
         return;
       }
-
-      // Gọi API
-      const res = await axios.post(
-        `${BASE_URl}/api/registerDriver/createDriverIdentification`,
-        formData,
+  
+      console.log("Access Token:", accessToken);
+  
+      const formDataToSend = new FormData();
+  
+      if (formData.frontFile) {
+        checkFileSize(formData.frontFile);
+        formDataToSend.append("frontFile", {
+          uri: formData.frontFile.uri,
+          type: 'image/jpeg',
+          name: 'front.jpeg',
+        });
+      } else {
+        throw new Error("Thiếu ảnh mặt trước CCCD/CMND");
+      }
+  
+      if (formData.backFile) {
+        checkFileSize(formData.backFile);
+        formDataToSend.append("backFile", {
+          uri: formData.backFile.uri,
+          type: 'image/jpeg',
+          name: 'back.jpeg',
+        });
+      } else {
+        throw new Error("Thiếu ảnh mặt sau CCCD/CMND");
+      }
+  
+      const requestDTO = {
+        idNumber: formData.idNumber,
+        fullName: formData.fullName,
+        gender: formData.gender,
+        birthday: formData.birthday,
+        country: formData.country,
+        permanentAddressWard: formData.permanentAddressWard,
+        permanentAddressDistrict: formData.permanentAddressDistrict,
+        permanentAddressProvince: formData.permanentAddressProvince,
+        permanentStreetAddress: formData.permanentStreetAddress,
+        temporaryAddressWard: formData.temporaryAddressWard,
+        temporaryAddressDistrict: formData.temporaryAddressDistrict,
+        temporaryAddressProvince: formData.temporaryAddressProvince,
+        temporaryStreetAddress: formData.temporaryStreetAddress,
+        issueDate: formData.issueDate,
+        expiryDate: formData.expiryDate,
+        issuedBy: formData.issuedBy,
+      };
+  
+      formDataToSend.append("requestDTO", JSON.stringify(requestDTO));
+  
+      console.log("Data to send:");
+      for (let pair of formDataToSend.entries()) {
+          console.log(pair[0], pair[1]);
+      }
+      
+      const response = await axios.post(
+        `${BASE_URl}/api/registerDriver/identification`,
+        formDataToSend,
         {
-          headers: { Authorization: `Bearer ${accessToken}` },
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'multipart/form-data',
+            'Accept': 'application/json',
+          },
+          timeout: 300000 // 5 phút
         }
       );
-
-      if (res.status === 200 && res.data.code === 200) {
-        Alert.alert("Success", "Driver identification created successfully!");
-        navigation.navigate("CreateDriverIdentificationScreen");
-      } else {
-        Alert.alert("Error", res.data.message || "An error occurred.");
+  
+      console.log("Response from server:", response.data);
+  
+      if (response.status === 200 || response.status === 201) {
+        Alert.alert("Thành công", "Đã tạo thông tin CCCD/CMND thành công");
+        navigation.goBack();
       }
+  
     } catch (error) {
-      const errorMessage =
-        error.response?.data?.message || "An unknown error occurred.";
-      Alert.alert("Error", errorMessage);
+      console.error("Error details:", {
+        message: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        headers: error.response?.headers
+      });
+  
+      let errorMessage = "Đã xảy ra lỗi khi tạo thông tin CCCD/CMND";
+  
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+  
+      Alert.alert("Lỗi", errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
+  
+  
+  
 
   // ================================== ConfirmOTP ========================================
   const confirmOtp = (
