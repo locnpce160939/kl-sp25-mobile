@@ -45,7 +45,7 @@ const ScheduleScreen = () => {
   });
 
   const [isMapVisible, setIsMapVisible] = useState(false);
-  const [selectingPoint, setSelectingPoint] = useState("start");
+  const [selectingPoint, setSelectingPoint] = useState("end");
 
   // Platform specific date picker handling
   const showPicker = (type) => {
@@ -103,21 +103,17 @@ const ScheduleScreen = () => {
 
   const handleMapPress = (event) => {
     const { coordinate } = event.nativeEvent;
-
     if (selectingPoint === "start") {
       setLocations((prev) => ({
         ...prev,
         startLocation: coordinate,
       }));
-
       setSelectingPoint("end");
     } else {
       setLocations((prev) => ({
         ...prev,
         endLocation: coordinate,
       }));
-      setIsMapVisible(false);
-      setSelectingPoint("start");
     }
     handleBlur("location");
   };
@@ -193,6 +189,10 @@ const ScheduleScreen = () => {
             latitudeDelta: 0.005,
             longitudeDelta: 0.005,
           });
+          setLocations((prevLocations) => ({
+            ...prevLocations,
+            startLocation: { latitude, longitude },
+          }));
         } else {
           setInitialRegion({
             latitude: 10.03,
@@ -249,11 +249,20 @@ const ScheduleScreen = () => {
     );
   };
 
+  useEffect(() => {
+    console.log(
+      "🚀 ~ ScheduleScreen ~ locations.startLocation:",
+      locations.startLocation
+    );
+    console.log(
+      "🚀 ~ ScheduleScreen ~ locations.endLocation:",
+      locations.endLocation
+    );
+    console.log("====================================");
+  }, [locations.startLocation, locations.endLocation]);
+
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
+    <KeyboardAvoidingView style={{ flex: 1 }}>
       <TouchableWithoutFeedback>
         <View style={styles.container}>
           <Text style={styles.label}>Địa điểm *</Text>
@@ -329,6 +338,7 @@ const ScheduleScreen = () => {
           >
             <Text style={styles.saveButtonText}>Lưu</Text>
           </TouchableOpacity>
+
           {/* Map Modal */}
           <Modal visible={isMapVisible} animationType="slide">
             <View style={styles.modalContainer}>
@@ -344,19 +354,20 @@ const ScheduleScreen = () => {
                 style={styles.map}
                 initialRegion={initialRegion}
                 onPress={handleMapPress}
+                key={`map-${locations.endLocation?.latitude}-${locations.endLocation?.longitude}`}
               >
                 {locations.startLocation && (
                   <Marker
                     coordinate={locations.startLocation}
                     title="Điểm bắt đầu"
-                    pinColor="green" // Màu sắc cho Marker điểm bắt đầu
+                    pinColor="green"
                   />
                 )}
                 {locations.endLocation && (
                   <Marker
                     coordinate={locations.endLocation}
                     title="Điểm kết thúc"
-                    pinColor="red" // Màu sắc cho Marker điểm kết thúc
+                    pinColor="red"
                   />
                 )}
               </MapView>
@@ -368,7 +379,7 @@ const ScheduleScreen = () => {
                   setSelectingPoint("start");
                 }}
               >
-                <Text style={styles.resetButtonText}>Reset</Text>
+                <Text style={styles.resetButtonText}>Chọn lại</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -378,7 +389,7 @@ const ScheduleScreen = () => {
                   setSelectingPoint("start");
                 }}
               >
-                <Text style={styles.closeButtonText}>Đóng</Text>
+                <Text style={styles.closeButtonText}>Xác nhận </Text>
               </TouchableOpacity>
             </View>
           </Modal>
@@ -428,7 +439,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   modalHeader: {
-    padding: 15,
     backgroundColor: "#f5f5f5",
     alignItems: "center",
   },
@@ -440,11 +450,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   resetButton: {
+    position: "absolute",
     backgroundColor: "#FF3B30",
-    padding: 5,
+    height: 50,
     alignItems: "center",
-    marginBottom: 5,
-    borderRadius: 8,
+    justifyContent: "center",
+    margin: 20,
+    bottom: 10,
+    padding: 10,
+    borderRadius: 10,
   },
   resetButtonText: {
     color: "#fff",
@@ -452,12 +466,21 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   closeButton: {
-    backgroundColor: "#333",
-    padding: 15,
+    position: "absolute",
+    backgroundColor: "#00b5ec",
+    height: 50,
     alignItems: "center",
+    justifyContent: "center",
+    margin: 20,
+    bottom: 10,
+    right: 10,
+    padding: 10,
+    borderRadius: 10,
   },
   closeButtonText: {
     color: "#fff",
+    fontSize: 16,
+    fontWeight: 600,
     fontSize: 16,
   },
   saveButton: {

@@ -96,8 +96,8 @@ const HomeScreen = () => {
         <Ionicons name="add-outline" size={30} color="#888" />
         <Text style={styles.searchText}>Tạo đơn hàng?</Text>
       </TouchableOpacity>
-      <View style={styles.quickAddressContainer}>
-        <TouchableOpacity style={styles.quickAddressButton}>
+      <View style={styles.quickAddressContainer} >
+        <TouchableOpacity style={styles.quickAddressButton} onPress={() => navigation.navigate("Chat")}>
           <Image
             source={require("../../assets/BgcLogin.jpg")}
             style={styles.addIcon}
@@ -128,7 +128,7 @@ const HomeScreen = () => {
   const renderServices = () => (
     <View style={styles.servicesGrid}>
       {services.map((service) => (
-        <TouchableOpacity key={service.id} style={styles.serviceItem}>
+        <TouchableOpacity key={service.id} style={styles.serviceItem} onPress={() => navigation.navigate("Chat")}>
           <View style={styles.serviceIconContainer}>
             {service.hot && (
               <View style={styles.hotBadge}>
