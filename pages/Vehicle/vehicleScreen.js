@@ -9,6 +9,7 @@ import {
     ScrollView,
     ActivityIndicator,
     Platform,
+    Image,
 } from "react-native";
 import axios from "axios";
 import { BASE_URl } from "../../configUrl";
@@ -17,8 +18,10 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { AuthContext } from "../../contexts/AuthContext";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { useNavigation } from "@react-navigation/native";
+import * as ImagePicker from "expo-image-picker";
 
 const VehicleScreen = () => {
+    // State và biến
     const [viewMode, setViewMode] = useState("list");
     const [vehicles, setVehicles] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -35,21 +38,36 @@ const VehicleScreen = () => {
         dimensions: "",
         insuranceStatus: "",
         registrationExpiryDate: "",
+        frontView: null, // Ảnh mặt trước
+        backView: null,  // Ảnh mặt sau
     });
     const [errors, setErrors] = useState({});
     const [showPicker, setShowPicker] = useState(false);
+    const [currentDateField, setCurrentDateField] = useState(null);
 
+    // Effect để fetch danh sách xe khi vào chế độ list
     useEffect(() => {
         if (viewMode === "list") fetchVehicleList();
     }, [viewMode]);
 
+    // Yêu cầu quyền truy cập camera
+    useEffect(() => {
+        (async () => {
+            const { status } = await ImagePicker.requestCameraPermissionsAsync();
+            if (status !== "granted") {
+                Alert.alert("Lỗi", "Cần cấp quyền truy cập camera để sử dụng tính năng này!");
+            }
+        })();
+    }, []);
+
+    // Hàm fetch danh sách xe
     const fetchVehicleList = async () => {
         setLoading(true);
         try {
             const token = await AsyncStorage.getItem("token");
             if (!token) throw new Error("Token không tồn tại. Vui lòng đăng nhập lại.");
 
-            const response = await axios.get(`${BASE_URl}/api/registerDriver/vehicles/getByAccountId`, {
+            const response = await axios.get(`${BASE_URl}/api/registerDriver/vehicle`, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                     "Content-Type": "application/json",
@@ -66,38 +84,53 @@ const VehicleScreen = () => {
             setLoading(false);
         }
     };
-
+    // Hàm xử lý lỗi
     const handleVehicleError = async (error) => {
         if (error.response?.status === 401) {
-            Alert.alert(
-                "Phiên đăng nhập hết hạn",
-                "Vui lòng đăng nhập lại.",
-                [
-                    {
-                        text: "OK",
-                        onPress: async () => {
-                            await logout();
-                        },
-                    },
-                ],
-                { cancelable: false }
-            );
+            Alert.alert("Phiên đăng nhập hết hạn", "Vui lòng đăng nhập lại.", [
+                { text: "OK", onPress: async () => { await logout(); } },
+            ], { cancelable: false });
         } else if (error.response?.data?.message === "Vehicle not found") {
             console.log("Không tìm thấy phương tiện.");
-        } else if (error.response?.status === 400){
+        } else if (error.response?.status === 400) {
             Alert.alert(error.response?.data?.message);
             console.log("Error fetching Vehicle details:", error);
-        }else {
-            Alert.alert("Somthing went wrong",error);
+        } else {
+            Alert.alert("Something went wrong", error);
             console.log("Error fetching Vehicle details:", error);
         }
     };
 
+    // Hàm chọn ảnh
+    const selectImage = async (field) => {
+        try {
+            const result = await ImagePicker.launchCameraAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                aspect: [4, 3],
+                quality: 0.5,
+            });
+
+            if (!result.canceled) {
+                setFormData((prev) => ({
+                    ...prev,
+                    [field]: result.assets[0].uri,
+                }));
+                setErrors((prev) => ({ ...prev, [field]: "" }));
+            }
+        } catch (error) {
+            Alert.alert("Lỗi", "Không thể chọn ảnh");
+            console.error("Image picker error:", error);
+        }
+    };
+
+    // Hàm xử lý thay đổi input
     const handleInputChange = (field, value) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
         setErrors((prev) => ({ ...prev, [field]: "" }));
     };
 
+    // Hàm chọn xe từ danh sách
     const handleSelectVehicle = (vehicle) => {
         setVehicleId(vehicle.vehicleId);
         setFormData({
@@ -110,10 +143,13 @@ const VehicleScreen = () => {
             dimensions: vehicle.dimensions,
             insuranceStatus: vehicle.insuranceStatus,
             registrationExpiryDate: vehicle.registrationExpiryDate.split("T")[0],
+            frontView: vehicle.frontView,
+            backView: vehicle.backView
         });
         setViewMode("form");
     };
 
+    // Hàm tạo mới xe
     const handleCreateNew = () => {
         setVehicleId(null);
         setFormData({
@@ -130,12 +166,25 @@ const VehicleScreen = () => {
         setViewMode("form");
     };
 
+    // Hàm quay lại danh sách
     const handleBackToList = () => {
         setViewMode("list");
     };
 
+    // Hàm kiểm tra hợp lệ dữ liệu
     const validateFormData = () => {
-        const { licensePlate, vehicleType, make, model, year, capacity, dimensions, insuranceStatus, registrationExpiryDate } = formData;
+        const {
+            licensePlate,
+            vehicleType,
+            make,
+            model,
+            year,
+            capacity,
+            dimensions,
+            insuranceStatus,
+            registrationExpiryDate,
+        } = formData;
+
         let formErrors = {};
 
         if (!licensePlate) formErrors.licensePlate = "Biển số xe là bắt buộc.";
@@ -161,46 +210,73 @@ const VehicleScreen = () => {
         return Object.keys(formErrors).length === 0;
     };
 
+    // Hàm tạo hoặc cập nhật xe
     const createOrUpdateVehicle = async () => {
         if (!validateFormData()) return;
 
         setLoading(true);
         try {
             const token = await AsyncStorage.getItem("token");
-            if (!token) throw new Error("Token không tồn tại. Vui lòng đăng nhập lại.");
+            if (!token) throw new Error("Token không tồn tại");
 
-            const formattedDate = `${formData.registrationExpiryDate}T00:00:00.000`;
-            const url = vehicleId
-                ? `${BASE_URl}/api/registerDriver/updateVehicle/${vehicleId}`
-                : `${BASE_URl}/api/registerDriver/createNewVehicle`;
+            const formDataToSend = new FormData();
 
-            const method = vehicleId ? "put" : "post";
+            const requestDTO = JSON.stringify({
+                vehicleId: vehicleId || null,
+                licensePlate: formData.licensePlate,
+                vehicleType: formData.vehicleType,
+                make: formData.make,
+                model: formData.model,
+                year: parseInt(formData.year),
+                capacity: parseInt(formData.capacity),
+                dimensions: formData.dimensions,
+                insuranceStatus: formData.insuranceStatus,
+                registrationExpiryDate: `${formData.registrationExpiryDate}T00:00:00.000`
+            });
+
+            formDataToSend.append("requestDTO", requestDTO);
+
+            if (formData.frontView) {
+                formDataToSend.append("frontFile", {
+                    uri: formData.frontView,
+                    type: "image/jpeg",
+                    name: "front.jpg"
+                });
+            }
+
+            if (formData.backView) {
+                formDataToSend.append("backFile", {
+                    uri: formData.backView,
+                    type: "image/jpeg",
+                    name: "back.jpg"
+                });
+            }
 
             const response = await axios({
-                method,
-                url,
+                method: vehicleId ? 'put' : 'post',
+                url: `${BASE_URl}/api/registerDriver/vehicle`,
                 headers: {
                     Authorization: `Bearer ${token}`,
-                    "Content-Type": "application/json",
-                    "Accept": "application/json",
+                    'Content-Type': 'multipart/form-data',
                 },
-                data: { ...formData, registrationExpiryDate: formattedDate },
+                data: formDataToSend,
+                transformRequest: (data, headers) => {
+                    return data;
+                },
             });
 
             if (response.status === 200) {
-                Alert.alert("Thông báo", "Thông tin xe đã được lưu.");
+                Alert.alert("Thông báo", "Thông tin xe đã được lưu");
                 setViewMode("list");
-            } else {
-                Alert.alert("Thông báo", response.data.message || "Có lỗi xảy ra.");
             }
         } catch (error) {
             handleVehicleError(error);
-            console.log("Error: ", error.response?.status || error);
         } finally {
             setLoading(false);
         }
     };
 
+    // Render danh sách xe
     const renderList = () => (
         <View style={styles.listContainer}>
             <ScrollView contentContainerStyle={styles.container}>
@@ -218,10 +294,16 @@ const VehicleScreen = () => {
                         {vehicles.length > 0 ? (
                             vehicles.map((vehicle, index) => (
                                 <View key={vehicle.vehicleId} style={styles.vehicleItem}>
-                                    <Ionicons name="car" size={40} color="#007AFF" style={styles.vehicleIcon} />
+                                    {vehicle.frontView ? (
+                                        <Image
+                                            source={{ uri: vehicle.frontView }}
+                                            style={styles.vehicleIcon}
+                                        />
+                                    ) : (
+                                        <Ionicons name="car" size={40} color="#007AFF" style={styles.vehicleIcon} />
+                                    )}
                                     <View style={styles.vehicleInfo}>
                                         <Text style={styles.vehicleName}>{vehicle.make} {vehicle.model}</Text>
-                                        {/* <Text style={styles.vehicleDetail}>STT: {index + 1}</Text> */}
                                         <Text style={styles.vehicleDetail}>Ngày hết hạn: {new Date(vehicle.registrationExpiryDate).toLocaleDateString()}</Text>
                                     </View>
                                     <TouchableOpacity
@@ -246,6 +328,75 @@ const VehicleScreen = () => {
         </View>
     );
 
+    //Nhập dữ liệu 
+    const inputFields = [
+        { field: "licensePlate", label: "Biển số xe" },
+        { field: "vehicleType", label: "Loại xe" },
+        { field: "make", label: "Hãng xe" },
+        { field: "model", label: "Mẫu xe" },
+        { field: "year", label: "Năm sản xuất" },
+        { field: "capacity", label: "Sức chứa" },
+        { field: "dimensions", label: "Kích thước" },
+        { field: "insuranceStatus", label: "Tình trạng bảo hiểm" },
+        { field: "registrationExpiryDate", label: "Ngày hết hạn đăng ký" },
+    ];
+
+    const renderImageSection = (field, label) => (
+        <View style={styles.imageContainer}>
+            <Text style={styles.label}>{label}</Text>
+            {formData[field] ? (
+                <View style={styles.imageWrapper}>
+                    <Image
+                        source={{ uri: formData[field] }} // Sử dụng Image để hiển thị ảnh
+                        style={styles.vehicleImage}
+                    />
+                    <TouchableOpacity
+                        style={styles.retakeButton}
+                        onPress={() => selectImage(field)}
+                    >
+                        <Text style={styles.retakeButtonText}>Chụp lại</Text>
+                    </TouchableOpacity>
+                </View>
+            ) : (
+                <TouchableOpacity
+                    style={[styles.uploadButton, errors[field] && styles.inputError]}
+                    onPress={() => selectImage(field)}
+                >
+                    <Ionicons name="camera" size={24} color="#007AFF" />
+                    <Text style={styles.uploadButtonText}>Chụp ảnh</Text>
+                </TouchableOpacity>
+            )}
+            {errors[field] && <Text style={styles.errorText}>{errors[field]}</Text>}
+        </View>
+    );
+
+    const renderDateField = (label, field) => (
+        <View style={styles.inputContainer}>
+            <Text style={styles.label}>{label}</Text>
+            <TouchableOpacity
+                onPress={() => {
+                    setCurrentDateField(field);
+                    setShowPicker(true);
+                }}
+            >
+                <TextInput
+                    style={[styles.input, errors[field] && styles.inputError]}
+                    value={
+                        formData[field]
+                            ? new Date(formData[field]).toLocaleDateString("vi-VN")
+                            : ""
+                    }
+                    editable={false}
+                    placeholder="Chọn ngày"
+                    placeholderTextColor="#999"
+                    pointerEvents="none"
+                />
+            </TouchableOpacity>
+            {errors[field] && <Text style={styles.errorText}>{errors[field]}</Text>}
+        </View>
+    );
+
+    // Render form nhập thông tin xe
     const renderForm = () => (
         <ScrollView contentContainerStyle={styles.container}>
             <View style={styles.header}>
@@ -257,42 +408,35 @@ const VehicleScreen = () => {
                 </Text>
             </View>
 
-            {Object.entries(formData).map(([field, value]) => (
-                <View key={field} style={styles.inputContainer}>
-                    <Text style={styles.label}>
-                        {{
-                            licensePlate: "Biển số xe",
-                            vehicleType: "Loại xe",
-                            make: "Hãng xe",
-                            model: "Mẫu xe",
-                            year: "Năm sản xuất",
-                            capacity: "Sức chứa",
-                            dimensions: "Kích thước",
-                            insuranceStatus: "Tình trạng bảo hiểm",
-                            registrationExpiryDate: "Ngày hết hạn đăng ký",
-                        }[field]}
-                    </Text>
-                    {field === "registrationExpiryDate" ? (
-                        <TouchableOpacity onPress={() => setShowPicker(true)}>
-                            <TextInput
-                                style={[styles.input, errors[field] && styles.inputError]}
-                                placeholder="Chọn ngày"
-                                value={value}
-                                editable={false}
-                            />
-                        </TouchableOpacity>
-                    ) : (
+            {/* Các trường nhập liệu */}
+            {inputFields.map(({ field, label }) => {
+                if (field === "registrationExpiryDate") {
+                    return (
+                        <View key={field}>
+                            {renderDateField(label, field)}
+                        </View>
+                    );
+                }
+                return (
+                    <View key={field} style={styles.inputContainer}>
+                        <Text style={styles.label}>{label}</Text>
                         <TextInput
                             style={[styles.input, errors[field] && styles.inputError]}
-                            placeholder="Nhập thông tin"
-                            value={value}
+                            placeholder={`Nhập ${label.toLowerCase()}`}
+                            value={formData[field]}
                             keyboardType={field === "year" || field === "capacity" ? "numeric" : "default"}
                             onChangeText={(text) => handleInputChange(field, text)}
                         />
-                    )}
-                    {errors[field] && <Text style={styles.errorText}>{errors[field]}</Text>}
-                </View>
-            ))}
+                        {errors[field] && <Text style={styles.errorText}>{errors[field]}</Text>}
+                    </View>
+                );
+            })}
+
+            {/* Ảnh mặt trước */}
+            {renderImageSection("frontView", "Ảnh mặt trước")}
+
+            {/* Ảnh mặt sau */}
+            {renderImageSection("backView", "Ảnh mặt sau")}
 
             <TouchableOpacity style={styles.button} onPress={createOrUpdateVehicle}>
                 <Text style={styles.buttonText}>{vehicleId ? "Cập nhật" : "Tạo mới"}</Text>
@@ -300,21 +444,21 @@ const VehicleScreen = () => {
 
             {showPicker && (
                 <DateTimePicker
-                    value={new Date(formData.registrationExpiryDate || Date.now())}
+                    value={new Date(formData[currentDateField] || Date.now())}
                     mode="date"
-                    display="default"
+                    display="spinner"
                     onChange={(event, selectedDate) => {
                         setShowPicker(false);
                         if (selectedDate) {
                             const formattedDate = selectedDate.toISOString().split("T")[0];
-                            setFormData((prev) => ({ ...prev, registrationExpiryDate: formattedDate }));
+                            setFormData((prev) => ({ ...prev, [currentDateField]: formattedDate }));
                         }
                     }}
                 />
             )}
         </ScrollView>
     );
-
+    // Render giao diện chính
     return viewMode === "list" ? renderList() : renderForm();
 };
 
@@ -364,6 +508,9 @@ const styles = StyleSheet.create({
         }),
     },
     vehicleIcon: {
+        width: 60,
+        height: 60,
+        borderRadius: 8,
         marginRight: 15,
     },
     vehicleInfo: {
@@ -455,6 +602,46 @@ const styles = StyleSheet.create({
     },
     loader: {
         marginTop: 20,
+    },
+    uploadButton: {
+        backgroundColor: "#f0f0f0",
+        padding: 15,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: "#007AFF",
+        alignItems: "center",
+        justifyContent: "center",
+        flexDirection: "row",
+    },
+    uploadButtonText: {
+        color: "#007AFF",
+        fontSize: 16,
+        marginLeft: 10,
+        fontWeight: "bold",
+    },
+    retakeButton: {
+        backgroundColor: "#007AFF",
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        borderRadius: 4,
+        marginTop: 8,
+    },
+    retakeButtonText: {
+        color: "#fff",
+        fontSize: 14,
+        fontWeight: "bold",
+    },
+    vehicleImage: {
+        width: "100%",
+        height: 200,
+        borderRadius: 8,
+        marginBottom: 10,
+    },
+    imageContainer: {
+        marginBottom: 20,
+    },
+    imageWrapper: {
+        alignItems: "center",
     },
 });
 
