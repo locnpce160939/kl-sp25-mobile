@@ -8,7 +8,11 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Image
+  Platform,
+  Image,
+  Modal,
+  Dimensions,
+  Pressable
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import DateTimePicker from "@react-native-community/datetimepicker";
@@ -21,31 +25,37 @@ import { RadioButton } from "react-native-paper";
 
 import * as ImagePicker from 'expo-image-picker';
 
+
+
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+
 const ImageCameraField = ({ label, image, onImageSelect }) => {
-  // Xin quyền truy cập camera khi component mount
+  const [isVisible, setIsVisible] = useState(false);
+
   useEffect(() => {
     (async () => {
-      const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission denied', 'Sorry, we need camera permissions to make this work!');
+      const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
+      const { status: mediaStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      
+      if (cameraStatus !== 'granted' || mediaStatus !== 'granted') {
+        Alert.alert('Permission denied', 'We need camera and media library permissions to make this work!');
       }
     })();
   }, []);
 
   const openCamera = async () => {
+    setIsVisible(false);
     try {
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [4, 3],
         quality: 0.7,
-       // quality: 0.5, // Giảm chất lượng ảnh xuống 50%
         maxWidth: 1000,
         maxHeight: 1000,
       });
 
       if (!result.canceled) {
-        // Trong expo-image-picker mới nhất, ảnh nằm trong assets array
         const imageAsset = result.assets[0];
         onImageSelect({
           assets: [{
@@ -58,6 +68,34 @@ const ImageCameraField = ({ label, image, onImageSelect }) => {
     } catch (error) {
       console.log('Error capturing image:', error);
       Alert.alert('Error', 'Failed to capture image. Please try again.');
+    }
+  };
+
+  const openImagePicker = async () => {
+    setIsVisible(false);
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.7,
+        maxWidth: 1000,
+        maxHeight: 1000,
+      });
+
+      if (!result.canceled) {
+        const imageAsset = result.assets[0];
+        onImageSelect({
+          assets: [{
+            uri: imageAsset.uri,
+            type: 'image/jpeg',
+            name: 'photo.jpg'
+          }]
+        });
+      }
+    } catch (error) {
+      console.log('Error selecting image:', error);
+      Alert.alert('Error', 'Failed to select image. Please try again.');
     }
   };
 
@@ -84,20 +122,62 @@ const ImageCameraField = ({ label, image, onImageSelect }) => {
             />
             <TouchableOpacity 
               style={styles.retakeButton}
-              onPress={openCamera}
+              onPress={() => setIsVisible(true)}
             >
-              <Text style={styles.retakeText}>Chụp lại</Text>
+              <Text style={styles.retakeText}>Chọn lại</Text>
             </TouchableOpacity>
           </View>
         ) : (
           <TouchableOpacity 
             style={styles.cameraButton} 
-            onPress={openCamera}
+            onPress={() => setIsVisible(true)}
           >
-            <Text style={styles.cameraButtonText}>Chụp ảnh</Text>
+            <Text style={styles.cameraButtonText}>Chọn ảnh</Text>
           </TouchableOpacity>
         )}
       </View>
+
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={isVisible}
+        onRequestClose={() => setIsVisible(false)}
+      >
+        <Pressable 
+          style={styles.modalOverlay}
+          onPress={() => setIsVisible(false)}
+        >
+          <View style={styles.bottomSheet}>
+            <View style={styles.bottomSheetContent}>
+              <View style={styles.bottomSheetHeader}>
+                <View style={styles.handleBar} />
+                <Text style={styles.bottomSheetTitle}>Vui lòng chọn phương thức</Text>
+              </View>
+
+              <TouchableOpacity 
+                style={styles.optionButton} 
+                onPress={openCamera}
+              >
+                <Text style={styles.optionText}>Chụp ảnh</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.optionButton} 
+                onPress={openImagePicker}
+              >
+                <Text style={styles.optionText}>Chọn từ thư viện</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.optionButton, styles.cancelButton]} 
+                onPress={() => setIsVisible(false)}
+              >
+                <Text style={styles.cancelText}>Hủy</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Pressable>
+      </Modal>
     </View>
   );
 };
@@ -145,31 +225,59 @@ const PickerField = ({ label, items, selectedValue, onValueChange, enabled = tru
 
 const DatePickerField = ({ label, value, onChange }) => {
   const [show, setShow] = useState(false);
-
+  const [tempDate, setTempDate] = useState(new Date());
 
   const handleDateChange = (event, selectedDate) => {
-    setShow(false);
-    if (selectedDate) {
-      const formattedDate = new Date(selectedDate).toISOString().split(".")[0];
-      onChange(formattedDate);
+    if (Platform.OS === 'android') {
+      setShow(false);
+      if (selectedDate) {
+        const formattedDate = selectedDate.toISOString().split(".")[0];
+        onChange(formattedDate);
+      }
+    } else {
+      setTempDate(selectedDate || tempDate);
     }
   };
 
-  const formatDisplayDate = (dateValue) => {
-    if (!dateValue) return "Select a date";
-    return dateValue.split("T")[0];
+  const handleIOSConfirm = () => {
+    setShow(false);
+    const formattedDate = tempDate.toISOString().split(".")[0];
+    onChange(formattedDate);
   };
 
   return (
     <View style={styles.inputContainer}>
       <Text style={styles.label}>{label}</Text>
       <TouchableOpacity
-        style={styles.input}
+        style={styles.dateButton}
         onPress={() => setShow(true)}
       >
-        <Text style={styles.inputText}>{value ? formatDisplayDate(value) : "Select a date"}</Text>
+        <Text style={styles.dateButtonText}>
+          {value ? value.split("T")[0] : "Select a date"}
+        </Text>
       </TouchableOpacity>
-      {show && (
+
+      {Platform.OS === 'ios' && show && (
+        <View style={styles.iosDatePickerContainer}>
+          <View style={styles.iosDatePickerHeader}>
+            <TouchableOpacity onPress={() => setShow(false)}>
+              <Text style={styles.iosDatePickerCancel}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleIOSConfirm}>
+              <Text style={styles.iosDatePickerDone}>Done</Text>
+            </TouchableOpacity>
+          </View>
+          <DateTimePicker
+            value={value ? new Date(value) : new Date()}
+            mode="date"
+            display="spinner"
+            onChange={handleDateChange}
+            style={styles.iosDatePicker}
+          />
+        </View>
+      )}
+
+      {Platform.OS === 'android' && show && (
         <DateTimePicker
           value={value ? new Date(value) : new Date()}
           mode="date"
@@ -790,40 +898,122 @@ const handleDistrictChange = async (value, addressType) => {
 
 const styles = StyleSheet.create({
 
+  inputContainer: {
+    marginBottom: 15,
+  },
+  label: {
+    fontSize: 16,
+    marginBottom: 5,
+    color: "#333",
+    fontWeight: '500',
+  },
+  required: {
+    color: "red",
+  },
+  guideContainer: {
+    backgroundColor: '#f8f9fa',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 10,
+  },
+  guideText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#495057',
+    marginBottom: 8,
+  },
+  guideItem: {
+    fontSize: 13,
+    color: '#6c757d',
+    marginBottom: 4,
+    lineHeight: 18,
+  },
   imageContainer: {
     position: 'relative',
+    borderRadius: 12,
+    overflow: 'hidden',
+    elevation: 3,
   },
   imagePreview: {
     width: '100%',
     height: 200,
-    borderRadius: 8,
-    marginVertical: 10,
+    borderRadius: 12,
   },
   cameraButton: {
     backgroundColor: '#00b5ec',
     padding: 15,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: 'center',
-    marginVertical: 10,
   },
   cameraButtonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   retakeButton: {
     position: 'absolute',
     right: 10,
-    bottom: 20,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    padding: 8,
-    borderRadius: 4,
+    bottom: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
   },
   retakeText: {
     color: '#fff',
     fontSize: 14,
+    fontWeight: '500',
   },
-
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  bottomSheet: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    minHeight: SCREEN_HEIGHT * 0.25,
+  },
+  bottomSheetContent: {
+    padding: 20,
+  },
+  bottomSheetHeader: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  handleBar: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#DDD',
+    borderRadius: 2,
+    marginBottom: 10,
+  },
+  bottomSheetTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  optionButton: {
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EFEFEF',
+  },
+  optionText: {
+    fontSize: 16,
+    color: '#00b5ec',
+    textAlign: 'center',
+  },
+  cancelButton: {
+    borderBottomWidth: 0,
+    marginTop: 10,
+  },
+  cancelText: {
+    fontSize: 16,
+    color: '#FF3B30',
+    textAlign: 'center',
+    fontWeight: '600',
+  },
 
   radioGroup: {
     flexDirection: 'row', // Entire group in one row
@@ -892,6 +1082,47 @@ const styles = StyleSheet.create({
    fontSize: 16,
    fontWeight: "bold",
  },
+
+ //-------------date---------
+   dateButton: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 10,
+    backgroundColor: '#fff',
+  },
+  dateButtonText: {
+    color: '#333',
+    fontSize: 14,
+  },
+  iosDatePickerContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'white',
+    zIndex: 1000,
+  },
+  iosDatePickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: 10,
+    backgroundColor: '#f8f8f8',
+    borderTopWidth: 1,
+    borderColor: '#ddd',
+  },
+  iosDatePicker: {
+    height: 200,
+  },
+  iosDatePickerCancel: {
+    color: '#007AFF',
+    fontSize: 16,
+  },
+  iosDatePickerDone: {
+    color: '#007AFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
  
 });
 
