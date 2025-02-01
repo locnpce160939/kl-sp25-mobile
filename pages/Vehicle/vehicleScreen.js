@@ -303,7 +303,9 @@ const VehicleScreen = () => {
                                     )}
                                     <View style={styles.vehicleInfo}>
                                         <Text style={styles.vehicleName}>{vehicle.make} {vehicle.model}</Text>
-                                        <Text style={styles.vehicleDetail}>Ngày hết hạn: {new Date(vehicle.registrationExpiryDate).toLocaleDateString()}</Text>
+                                        <Text style={styles.vehicleDetail}>
+                                            Ngày hết hạn: {new Date(vehicle.registrationExpiryDate).toLocaleDateString("vi-VN")}
+                                        </Text>
                                     </View>
                                     <TouchableOpacity
                                         style={styles.manageButton}
@@ -422,6 +424,7 @@ const VehicleScreen = () => {
                     value={new Date(formData.registrationExpiryDate || Date.now())}
                     mode="date"
                     display="spinner"
+                    preferredDatePickerStyle="wheels"
                     onChange={(event, selectedDate) => {
                         setShowPicker(false);
                         if (selectedDate) {

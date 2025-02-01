@@ -414,7 +414,7 @@ const LicenseScreen = () => {
           style={[styles.input, errors[field] && styles.inputError]}
           value={
             licenseDetails[field]
-              ? new Date(licenseDetails[field]).toLocaleDateString()
+              ? new Date(licenseDetails[field]).toLocaleDateString("vi-VN")
               : ""
           }
           editable={false}
@@ -491,6 +491,7 @@ const LicenseScreen = () => {
             }
             mode="date"
             display="spinner" // Sử dụng "spinner" cho iOS
+            preferredDatePickerStyle="wheels"
             onChange={handleDateChange}
           />
         )}
