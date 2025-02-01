@@ -406,6 +406,7 @@ const LicenseScreen = () => {
       <Text style={styles.label}>{label}</Text>
       <TouchableOpacity
         onPress={() => {
+          console.log("helllooooooooo");
           setCurrentField(field);
           setShowDatePicker(true);
         }}
@@ -420,6 +421,7 @@ const LicenseScreen = () => {
           editable={false}
           placeholder={"Chọn ngày"}
           placeholderTextColor={"#999"}
+          pointerEvents="none"
         />
       </TouchableOpacity>
       {errors[field] && <Text style={styles.errorText}>{errors[field]}</Text>}

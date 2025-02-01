@@ -43,6 +43,7 @@ const VehicleScreen = () => {
     });
     const [errors, setErrors] = useState({});
     const [showPicker, setShowPicker] = useState(false);
+    const [currentDateField, setCurrentDateField] = useState(null);
 
     // Effect để fetch danh sách xe khi vào chế độ list
     useEffect(() => {
@@ -303,9 +304,7 @@ const VehicleScreen = () => {
                                     )}
                                     <View style={styles.vehicleInfo}>
                                         <Text style={styles.vehicleName}>{vehicle.make} {vehicle.model}</Text>
-                                        <Text style={styles.vehicleDetail}>
-                                            Ngày hết hạn: {new Date(vehicle.registrationExpiryDate).toLocaleDateString("vi-VN")}
-                                        </Text>
+                                        <Text style={styles.vehicleDetail}>Ngày hết hạn: {new Date(vehicle.registrationExpiryDate).toLocaleDateString()}</Text>
                                     </View>
                                     <TouchableOpacity
                                         style={styles.manageButton}
@@ -371,6 +370,32 @@ const VehicleScreen = () => {
         </View>
     );
 
+    const renderDateField = (label, field) => (
+        <View style={styles.inputContainer}>
+            <Text style={styles.label}>{label}</Text>
+            <TouchableOpacity
+                onPress={() => {
+                    setCurrentDateField(field);
+                    setShowPicker(true);
+                }}
+            >
+                <TextInput
+                    style={[styles.input, errors[field] && styles.inputError]}
+                    value={
+                        formData[field]
+                            ? new Date(formData[field]).toLocaleDateString("vi-VN")
+                            : ""
+                    }
+                    editable={false}
+                    placeholder="Chọn ngày"
+                    placeholderTextColor="#999"
+                    pointerEvents="none"
+                />
+            </TouchableOpacity>
+            {errors[field] && <Text style={styles.errorText}>{errors[field]}</Text>}
+        </View>
+    );
+
     // Render form nhập thông tin xe
     const renderForm = () => (
         <ScrollView contentContainerStyle={styles.container}>
@@ -384,19 +409,17 @@ const VehicleScreen = () => {
             </View>
 
             {/* Các trường nhập liệu */}
-            {inputFields.map(({ field, label }) => (
-                <View key={field} style={styles.inputContainer}>
-                    <Text style={styles.label}>{label}</Text>
-                    {field === "registrationExpiryDate" ? (
-                        <TouchableOpacity onPress={() => setShowPicker(true)}>
-                            <TextInput
-                                style={[styles.input, errors[field] && styles.inputError]}
-                                placeholder="Chọn ngày"
-                                value={formData[field]}
-                                editable={false}
-                            />
-                        </TouchableOpacity>
-                    ) : (
+            {inputFields.map(({ field, label }) => {
+                if (field === "registrationExpiryDate") {
+                    return (
+                        <View key={field}>
+                            {renderDateField(label, field)} {/* Sử dụng hàm hiển thị ngày */}
+                        </View>
+                    );
+                }
+                return (
+                    <View key={field} style={styles.inputContainer}>
+                        <Text style={styles.label}>{label}</Text>
                         <TextInput
                             style={[styles.input, errors[field] && styles.inputError]}
                             placeholder={`Nhập ${label.toLowerCase()}`}
@@ -404,10 +427,10 @@ const VehicleScreen = () => {
                             keyboardType={field === "year" || field === "capacity" ? "numeric" : "default"}
                             onChangeText={(text) => handleInputChange(field, text)}
                         />
-                    )}
-                    {errors[field] && <Text style={styles.errorText}>{errors[field]}</Text>}
-                </View>
-            ))}
+                        {errors[field] && <Text style={styles.errorText}>{errors[field]}</Text>}
+                    </View>
+                );
+            })}
 
             {/* Ảnh mặt trước */}
             {renderImageSection("frontView", "Ảnh mặt trước")}
@@ -421,15 +444,14 @@ const VehicleScreen = () => {
 
             {showPicker && (
                 <DateTimePicker
-                    value={new Date(formData.registrationExpiryDate || Date.now())}
+                    value={new Date(formData[currentDateField] || Date.now())}
                     mode="date"
                     display="spinner"
-                    preferredDatePickerStyle="wheels"
                     onChange={(event, selectedDate) => {
                         setShowPicker(false);
                         if (selectedDate) {
                             const formattedDate = selectedDate.toISOString().split("T")[0];
-                            setFormData((prev) => ({ ...prev, registrationExpiryDate: formattedDate }));
+                            setFormData((prev) => ({ ...prev, [currentDateField]: formattedDate }));
                         }
                     }}
                 />
