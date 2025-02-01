@@ -10,6 +10,7 @@ import {
   SafeAreaView,
   ActivityIndicator,
   Platform,
+  Image,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import axios from "axios";
@@ -18,6 +19,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { AuthContext } from "../../contexts/AuthContext";
 import Ionicons from "react-native-vector-icons/Ionicons";
+import * as ImagePicker from "expo-image-picker";
 
 const LicenseScreen = () => {
   const navigation = useNavigation();
@@ -27,6 +29,8 @@ const LicenseScreen = () => {
     issuedDate: "",
     expiryDate: "",
     issuingAuthority: "",
+    frontView: null,
+    backView: null,
   });
   const [licenseId, setLicenseId] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -36,6 +40,15 @@ const LicenseScreen = () => {
   const { logout } = useContext(AuthContext);
 
   useEffect(() => {
+    (async () => {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          "Lỗi",
+          "Cần cấp quyền truy cập camera để sử dụng tính năng này!"
+        );
+      }
+    })();
     fetchLicenseDetails();
   }, []);
 
@@ -48,12 +61,9 @@ const LicenseScreen = () => {
 
       const {
         data: { data: licenseData },
-      } = await axios.get(
-        `${BASE_URl}/api/registerDriver/license/getByAccountId`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      } = await axios.get(`${BASE_URl}/api/registerDriver/license`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
       if (licenseData) {
         setLicenseId(licenseData.licenseId);
@@ -61,6 +71,8 @@ const LicenseScreen = () => {
           ...licenseData,
           issuedDate: new Date(licenseData.issuedDate).toISOString(),
           expiryDate: new Date(licenseData.expiryDate).toISOString(),
+          frontView: licenseData.frontView,
+          backView: licenseData.backView,
         });
       } else {
         setLicenseId(null);
@@ -80,6 +92,8 @@ const LicenseScreen = () => {
       issuedDate: "",
       expiryDate: "",
       issuingAuthority: "",
+      frontView: null,
+      backView: null,
     });
   };
 
@@ -129,6 +143,12 @@ const LicenseScreen = () => {
     if (!licenseDetails.expiryDate) {
       newErrors.expiryDate = "Ngày hết hạn là bắt buộc.";
     }
+    if (!licenseDetails.frontView) {
+      newErrors.frontView = "Ảnh mặt trước giấy phép là bắt buộc.";
+    }
+    if (!licenseDetails.backView) {
+      newErrors.backView = "Ảnh mặt sau giấy phép là bắt buộc.";
+    }
     if (
       licenseDetails.issuedDate &&
       licenseDetails.expiryDate &&
@@ -142,6 +162,29 @@ const LicenseScreen = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  const selectImage = async (view) => {
+    try {
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.5,
+      });
+
+      if (!result.canceled) {
+        // Cập nhật ảnh vào state
+        setLicenseDetails((prev) => ({
+          ...prev,
+          [view]: result.assets[0].uri,
+        }));
+        setErrors((prev) => ({ ...prev, [view]: null }));
+      }
+    } catch (error) {
+      Alert.alert("Lỗi", "Không thể chọn ảnh");
+      console.error("Image picker error:", error);
+    }
+  };
+
   const updateLicenseDetails = async () => {
     if (!validateInputs()) return;
 
@@ -151,30 +194,72 @@ const LicenseScreen = () => {
       if (!token)
         throw new Error("Token không tồn tại. Vui lòng đăng nhập lại.");
 
-      const updatedDetails = {
-        ...licenseDetails,
+      // Tạo đối tượng requestDTO
+      const requestDTO = {
+        licenseNumber: licenseDetails.licenseNumber,
+        licenseType: licenseDetails.licenseType,
         issuedDate: new Date(licenseDetails.issuedDate).toISOString(),
         expiryDate: new Date(licenseDetails.expiryDate).toISOString(),
+        issuingAuthority: licenseDetails.issuingAuthority,
       };
 
-      const { status } = await axios.put(
-        `${BASE_URl}/api/registerDriver/updateLicense/${licenseId}`,
-        updatedDetails,
+      const formData = new FormData();
+      formData.append("requestDTO", JSON.stringify(requestDTO));
+
+      // Add images
+      if (licenseDetails.frontView) {
+        const frontFile = {
+          uri: licenseDetails.frontView,
+          type: "image/jpeg",
+          name: "front.jpg",
+        };
+        formData.append("frontFile", frontFile);
+      }
+
+      if (licenseDetails.backView) {
+        const backFile = {
+          uri: licenseDetails.backView,
+          type: "image/jpeg",
+          name: "back.jpg",
+        };
+        formData.append("backFile", backFile);
+      }
+
+      console.log("FormData:", formData);
+      console.log("RequestDTO:", requestDTO);
+      console.log("Token:", token);
+
+      const { data, status } = await axios.put(
+        `${BASE_URl}/api/registerDriver/license`,
+        formData,
         {
           headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
+            Authorization: `Bearer ${token.trim()}`,
+            Accept: "application/json",
+            "Content-Type": "multipart/form-data",
           },
         }
       );
 
       if (status === 200) {
         Alert.alert("Thành công", "Cập nhật giấy phép thành công.");
+        setLicenseId(data.data.licenseId);
       } else {
-        Alert.alert("Lỗi", "Không thể cập nhật giấy phép.");
+        Alert.alert(
+          "Lỗi",
+          `Không thể cập nhật giấy phép. Mã lỗi: ${response.status}`
+        );
       }
     } catch (error) {
       handleLicenseError(error);
+      console.error("Error fetching License details:", error);
+      if (error.response) {
+        console.log("API Error:", error.response.data);
+      } else if (error.request) {
+        console.log("Request Error:", error.request);
+      } else {
+        console.log("General Error:", error.message);
+      }
     } finally {
       setLoading(false);
     }
@@ -189,31 +274,59 @@ const LicenseScreen = () => {
       if (!token)
         throw new Error("Token không tồn tại. Vui lòng đăng nhập lại.");
 
-      const newLicenseDetails = {
-        ...licenseDetails,
+      // Tạo đối tượng requestDTO
+      const requestDTO = {
+        licenseNumber: licenseDetails.licenseNumber,
+        licenseType: licenseDetails.licenseType,
         issuedDate: new Date(licenseDetails.issuedDate).toISOString(),
         expiryDate: new Date(licenseDetails.expiryDate).toISOString(),
+        issuingAuthority: licenseDetails.issuingAuthority,
       };
 
+      const formData = new FormData();
+      formData.append("requestDTO", JSON.stringify(requestDTO));
+
+      if (licenseDetails.frontView) {
+        const frontFile = {
+          uri: licenseDetails.frontView,
+          type: "image/jpeg",
+          name: "front.jpg",
+        };
+        formData.append("frontFile", frontFile);
+      }
+
+      if (licenseDetails.backView) {
+        const backFile = {
+          uri: licenseDetails.backView,
+          type: "image/jpeg",
+          name: "back.jpg",
+        };
+        formData.append("backFile", backFile);
+      }
+
+      // Gửi request
       const { data, status } = await axios.post(
-        `${BASE_URl}/api/registerDriver/createNewLicense`,
-        newLicenseDetails,
+        `${BASE_URl}/api/registerDriver/license`,
+        formData,
         {
           headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
+            Authorization: `Bearer ${token.trim()}`,
+            Accept: "application/json",
+            "Content-Type": "multipart/form-data",
           },
         }
       );
 
+      // Xử lý phản hồi
       if (status === 200) {
-        Alert.alert("Thành công", "Tạo giấy phép thành công.");
-        setLicenseId(data.data.licenseId);
+        // Xử lý thành công nếu status = 200
+        alert("License registered successfully!");
       } else {
-        Alert.alert("Lỗi", "Không thể tạo giấy phép.");
+        throw new Error("Đăng ký giấy phép thất bại");
       }
     } catch (error) {
-      handleLicenseError(error);
+      console.error(error);
+      alert(error.message || "Đã có lỗi xảy ra!");
     } finally {
       setLoading(false);
     }
@@ -245,6 +358,35 @@ const LicenseScreen = () => {
     setShowDatePicker(false);
   };
 
+  const renderImageSection = (view, label) => (
+    <View style={styles.imageContainer}>
+      <Text style={styles.label}>{label}</Text>
+      {licenseDetails[view] ? (
+        <View style={styles.imageWrapper}>
+          <Image
+            source={{ uri: licenseDetails[view] }}
+            style={styles.licenseImage}
+          />
+          <TouchableOpacity
+            style={styles.retakeButton}
+            onPress={() => selectImage(view)}
+          >
+            <Text style={styles.retakeButtonText}>Chụp lại</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <TouchableOpacity
+          style={[styles.uploadButton, errors[view] && styles.inputError]}
+          onPress={() => selectImage(view)}
+        >
+          <Ionicons name="camera" size={24} color="#007AFF" />
+          <Text style={styles.uploadButtonText}>Chụp ảnh</Text>
+        </TouchableOpacity>
+      )}
+      {errors[view] && <Text style={styles.errorText}>{errors[view]}</Text>}
+    </View>
+  );
+
   const renderInputField = (label, field, placeholder) => (
     <View style={styles.inputContainer}>
       <Text style={styles.label}>{label}</Text>
@@ -264,6 +406,7 @@ const LicenseScreen = () => {
       <Text style={styles.label}>{label}</Text>
       <TouchableOpacity
         onPress={() => {
+          console.log("helllooooooooo");
           setCurrentField(field);
           setShowDatePicker(true);
         }}
@@ -272,12 +415,13 @@ const LicenseScreen = () => {
           style={[styles.input, errors[field] && styles.inputError]}
           value={
             licenseDetails[field]
-              ? new Date(licenseDetails[field]).toLocaleDateString()
+              ? new Date(licenseDetails[field]).toLocaleDateString("vi-VN")
               : ""
           }
           editable={false}
           placeholder={"Chọn ngày"}
           placeholderTextColor={"#999"}
+          pointerEvents="none"
         />
       </TouchableOpacity>
       {errors[field] && <Text style={styles.errorText}>{errors[field]}</Text>}
@@ -324,7 +468,8 @@ const LicenseScreen = () => {
               "issuingAuthority",
               "Nhập cơ quan cấp"
             )}
-
+            {renderImageSection("frontView", "Mặt trước giấy phép")}
+            {renderImageSection("backView", "Mặt sau giấy phép")}
             <TouchableOpacity
               style={styles.saveButton}
               onPress={licenseId ? updateLicenseDetails : createNewLicense}
@@ -335,7 +480,6 @@ const LicenseScreen = () => {
             </TouchableOpacity>
           </>
         )}
-
         {showDatePicker && (
           <DateTimePicker
             value={
@@ -344,11 +488,12 @@ const LicenseScreen = () => {
                   ? new Date(licenseDetails.issuedDate)
                   : new Date()
                 : licenseDetails.expiryDate
-                ? new Date(licenseDetails.expiryDate)
-                : new Date()
+                  ? new Date(licenseDetails.expiryDate)
+                  : new Date()
             }
             mode="date"
-            display="default"
+            display="spinner" // Sử dụng "spinner" cho iOS
+            preferredDatePickerStyle="wheels"
             onChange={handleDateChange}
           />
         )}
@@ -367,7 +512,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   header: {
-    marginTop: Platform.OS === "ios" ? 50 : 30,
+    marginTop: Platform.OS === "ios" ? 20 : 10,
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 20,
@@ -431,6 +576,45 @@ const styles = StyleSheet.create({
   },
   loader: {
     marginTop: 20,
+  },
+  imageContainer: {
+    marginBottom: 20,
+  },
+  imageWrapper: {
+    alignItems: "center",
+  },
+  licenseImage: {
+    width: "100%",
+    height: 200,
+    borderRadius: 8,
+    marginBottom: 10,
+  },
+  uploadButton: {
+    backgroundColor: "#f0f0f0",
+    padding: 20,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderStyle: "dashed",
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+  },
+  uploadButtonText: {
+    color: "#007AFF",
+    fontSize: 16,
+    marginLeft: 10,
+  },
+  retakeButton: {
+    backgroundColor: "#007AFF",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 4,
+    marginTop: 8,
+  },
+  retakeButtonText: {
+    color: "#fff",
+    fontSize: 14,
   },
 });
 

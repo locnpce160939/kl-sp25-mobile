@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect, useCallback } from "react"; // Import useEffect
+import React, { useContext, useState, useEffect, useCallback } from "react"; 
 import {
   View,
   Text,
@@ -7,7 +7,8 @@ import {
   ScrollView,
   SafeAreaView,
   Image,
-} from "react-native";
+  Alert,
+} from "react-native"; 
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { AuthContext } from "../../contexts/AuthContext";
 import { loadStatusDriverDocument } from "../../services/MenuService";
@@ -17,6 +18,8 @@ const ProfileScreen = () => {
   const { logout } = useContext(AuthContext);
   const navigation = useNavigation();
   const [expandedItem, setExpandedItem] = useState(null);
+  const [showMissingInfoBanner, setShowMissingInfoBanner] = useState(false);
+  const [showNoLicenseBanner, setShowNoLicenseBanner] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -31,12 +34,26 @@ const ProfileScreen = () => {
   useFocusEffect(
     useCallback(() => {
       const fetchData = async () => {
-        setIsLoading(true);
-        const data = await loadStatusDriverDocument();
-        if (data) {
-          setDriverDocuments(data);
+        try {
+          setIsLoading(true);
+          const data = await loadStatusDriverDocument();
+          if (data) {
+            setDriverDocuments(data);
+            setShowNoLicenseBanner(!data.license);
+            setShowMissingInfoBanner(!data.license && !data.vehicle && !data.identification);
+          }
+        } catch (error) {
+          if (error.response?.status === 401) {
+            Alert.alert(
+              "Phiên đăng nhập hết hạn",
+              "Vui lòng đăng nhập lại",
+              [{ text: "OK", onPress: () => logout() }],
+              { cancelable: false }
+            );
+          }
+        } finally {
+          setIsLoading(false);
         }
-        setIsLoading(false);
       };
 
       fetchData();
@@ -63,7 +80,7 @@ const ProfileScreen = () => {
               id: 5,
               icon: "card-outline",
               label: "Căn cước công dân",
-              screen: "DriverIdentificationScreen",
+              screen: "CreateDriverIdentificationScreen",
               status: driverDocuments.identification,
             },
             {
@@ -99,6 +116,30 @@ const ProfileScreen = () => {
   const renderSections = () => {
     return sections.map((section) => (
       <View key={section.title} style={styles.section}>
+        {section.title === "Phần 1" && showNoLicenseBanner && (
+          <View style={[styles.bannerCard, { backgroundColor: "#ffcc00" }]}>
+            <View style={styles.bannerContent}>
+              <Text style={styles.bannerText}>
+                Bạn chưa có thông tin Giấy Phép Lái Xe, vui lòng bổ sung!
+              </Text>
+              <TouchableOpacity onPress={() => navigation.navigate("LicenseScreen")}>
+                <Ionicons name="chevron-forward-outline" size={30} color="#333" style={styles.bannerArrow} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+        {section.title === "Phần 1" && showMissingInfoBanner && (
+          <View style={[styles.bannerCard, { backgroundColor: "#ffcc00" }]}>
+            <View style={styles.bannerContent}>
+              <Text style={styles.bannerText}>
+                Thông tin tài xế còn thiếu, vui lòng bổ sung
+              </Text>
+              <TouchableOpacity onPress={() => navigation.navigate("LicenseScreen")}>
+                <Ionicons name="chevron-forward-outline" size={30} color="#333" style={styles.bannerArrow} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
         {section.items.map((item) => (
           <View key={item.id}>
             <TouchableOpacity
@@ -162,6 +203,11 @@ const ProfileScreen = () => {
             style={styles.headerImage}
           />
         </View>
+        {showMissingInfoBanner && (
+          <View style={{ backgroundColor: "#c4f0ff", padding: 10, margin: 20 }}>
+            <Text style={{ color: "#333" }}>Bạn chưa điền thông tin trên app</Text>
+          </View>
+        )}
         {renderSections()}
         <View style={styles.logoutContainer}>
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
@@ -224,6 +270,30 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "bold",
+  },
+  bannerCard: {
+    backgroundColor: "#c4f0ff",
+    marginHorizontal: 20,
+    marginBottom: 10,
+    padding: 12,
+    borderRadius: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+  },
+  bannerText: {
+    color: "#333",
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  bannerContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  bannerArrow: {
+    // marginLeft: 5,
   },
 });
 
