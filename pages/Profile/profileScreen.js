@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect, useCallback } from "react"; 
+import React, { useContext, useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -8,7 +8,7 @@ import {
   SafeAreaView,
   Image,
   Alert,
-} from "react-native"; 
+} from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { AuthContext } from "../../contexts/AuthContext";
 import { loadStatusDriverDocument } from "../../services/MenuService";
@@ -40,7 +40,9 @@ const ProfileScreen = () => {
           if (data) {
             setDriverDocuments(data);
             setShowNoLicenseBanner(!data.license);
-            setShowMissingInfoBanner(!data.license && !data.vehicle && !data.identification);
+            setShowMissingInfoBanner(
+              !data.license && !data.vehicle && !data.identification
+            );
           }
         } catch (error) {
           if (error.response?.status === 401) {
@@ -80,7 +82,7 @@ const ProfileScreen = () => {
               id: 5,
               icon: "card-outline",
               label: "Căn cước công dân",
-              screen: "CreateDriverIdentificationScreen",
+              screen: "DriverIdentificationScreen",
               status: driverDocuments.identification,
             },
             {
@@ -100,7 +102,12 @@ const ProfileScreen = () => {
           ],
         },
         { id: 3, icon: "person-add-outline", label: "Giới thiệu bạn bè" },
-        { id: 5, icon: "car-outline", label: "Đơn hàng mới",screen: "RightTrip" },
+        {
+          id: 5,
+          icon: "car-outline",
+          label: "Đơn hàng mới",
+          screen: "RightTrip",
+        },
       ],
     },
     {
@@ -123,8 +130,15 @@ const ProfileScreen = () => {
               <Text style={styles.bannerText}>
                 Bạn chưa có thông tin Giấy Phép Lái Xe, vui lòng bổ sung!
               </Text>
-              <TouchableOpacity onPress={() => navigation.navigate("LicenseScreen")}>
-                <Ionicons name="chevron-forward-outline" size={30} color="#333" style={styles.bannerArrow} />
+              <TouchableOpacity
+                onPress={() => navigation.navigate("LicenseScreen")}
+              >
+                <Ionicons
+                  name="chevron-forward-outline"
+                  size={30}
+                  color="#333"
+                  style={styles.bannerArrow}
+                />
               </TouchableOpacity>
             </View>
           </View>
@@ -135,8 +149,15 @@ const ProfileScreen = () => {
               <Text style={styles.bannerText}>
                 Thông tin tài xế còn thiếu, vui lòng bổ sung
               </Text>
-              <TouchableOpacity onPress={() => navigation.navigate("LicenseScreen")}>
-                <Ionicons name="chevron-forward-outline" size={30} color="#333" style={styles.bannerArrow} />
+              <TouchableOpacity
+                onPress={() => navigation.navigate("LicenseScreen")}
+              >
+                <Ionicons
+                  name="chevron-forward-outline"
+                  size={30}
+                  color="#333"
+                  style={styles.bannerArrow}
+                />
               </TouchableOpacity>
             </View>
           </View>
@@ -206,7 +227,9 @@ const ProfileScreen = () => {
         </View>
         {showMissingInfoBanner && (
           <View style={{ backgroundColor: "#c4f0ff", padding: 10, margin: 20 }}>
-            <Text style={{ color: "#333" }}>Bạn chưa điền thông tin trên app</Text>
+            <Text style={{ color: "#333" }}>
+              Bạn chưa điền thông tin trên app
+            </Text>
           </View>
         )}
         {renderSections()}
