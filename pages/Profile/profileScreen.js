@@ -100,6 +100,7 @@ const ProfileScreen = () => {
           ],
         },
         { id: 3, icon: "person-add-outline", label: "Giới thiệu bạn bè" },
+        { id: 5, icon: "car-outline", label: "Đơn hàng mới",screen: "RightTrip" },
       ],
     },
     {
