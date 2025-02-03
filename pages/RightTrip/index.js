@@ -27,7 +27,7 @@ const RightTrip = () => {
   const fetchTripData = async () => {
     try {
       const token = await AsyncStorage.getItem("token");
-      const response = await axios.get(`${BASE_URl}/api/trip-matching/12`, {
+      const response = await axios.get(`${BASE_URl}/api/trip-matching`, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
@@ -36,6 +36,9 @@ const RightTrip = () => {
       });
       if (response.status === 200) {
         setTripData(response.data.data);
+        if (response.data.data.length === 0) {
+          setError("No trips found");
+        }
       } else {
         setError("Failed to fetch data");
       }
@@ -113,7 +116,7 @@ const RightTrip = () => {
               <Icon
                 name="location-on"
                 size={24}
-                color="#666"
+                color="#00b5ec"
                 style={styles.locationIcon}
               />
               <Text style={styles.modalLocationText}>
@@ -131,7 +134,7 @@ const RightTrip = () => {
               <Icon
                 name="location-on"
                 size={24}
-                color="#666"
+                color="#00b5ec"
                 style={styles.locationIcon}
               />
               <Text style={styles.modalLocationText}>
@@ -145,7 +148,7 @@ const RightTrip = () => {
             <Text style={styles.modalSectionTitle}>Common points</Text>
             <View style={styles.timingContainer}>
               <View style={styles.timeBox}>
-                <Icon name="schedule" size={20} color="#666" />
+                <Icon name="schedule" size={20} color="#00b5ec" />
                 <View style={styles.timeInfo}>
                   <Text style={styles.timeLabel}>Pickup</Text>
                   <Text style={styles.timeValue}>
@@ -154,7 +157,7 @@ const RightTrip = () => {
                 </View>
               </View>
               <View style={styles.timeBox}>
-                <Icon name="schedule" size={20} color="#666" />
+                <Icon name="schedule" size={20} color="#00b5ec" />
                 <View style={styles.timeInfo}>
                   <Text style={styles.timeLabel}>Dropoff</Text>
                   <Text style={styles.timeValue}>
