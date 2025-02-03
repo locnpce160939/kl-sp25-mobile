@@ -43,6 +43,30 @@ const ImageCameraField = ({ label, image, onImageSelect }) => {
     })();
   }, []);
 
+  const prepareImageForUpload = async (result) => {
+    if (!result.canceled && result.assets[0]) {
+      const imageAsset = result.assets[0];
+      // Get file extension from URI
+      const uriParts = imageAsset.uri.split('.');
+      const fileExtension = uriParts[uriParts.length - 1];
+
+      // Create file name with proper extension
+      const fileName = `photo.${fileExtension}`;
+
+      // Prepare the image object
+      const imageFile = {
+        uri: Platform.OS === 'ios' ? imageAsset.uri.replace('file://', '') : imageAsset.uri,
+        type: `image/${fileExtension}`,
+        name: fileName,
+        size: imageAsset.fileSize // Add file size if available
+      };
+
+      onImageSelect({
+        assets: [imageFile]
+      });
+    }
+  };
+
   const openCamera = async () => {
     setIsVisible(false);
     try {
@@ -55,16 +79,7 @@ const ImageCameraField = ({ label, image, onImageSelect }) => {
         maxHeight: 1000,
       });
 
-      if (!result.canceled) {
-        const imageAsset = result.assets[0];
-        onImageSelect({
-          assets: [{
-            uri: imageAsset.uri,
-            type: 'image/jpeg',
-            name: 'photo.jpg'
-          }]
-        });
-      }
+      await prepareImageForUpload(result);
     } catch (error) {
       console.log('Error capturing image:', error);
       Alert.alert('Error', 'Failed to capture image. Please try again.');
@@ -83,16 +98,7 @@ const ImageCameraField = ({ label, image, onImageSelect }) => {
         maxHeight: 1000,
       });
 
-      if (!result.canceled) {
-        const imageAsset = result.assets[0];
-        onImageSelect({
-          assets: [{
-            uri: imageAsset.uri,
-            type: 'image/jpeg',
-            name: 'photo.jpg'
-          }]
-        });
-      }
+      await prepareImageForUpload(result);
     } catch (error) {
       console.log('Error selecting image:', error);
       Alert.alert('Error', 'Failed to select image. Please try again.');
@@ -202,26 +208,136 @@ const InputField = ({
   </View>
 );
 
-const PickerField = ({ label, items, selectedValue, onValueChange, enabled = true }) => (
-  <View style={styles.inputContainer}>
-    <Text style={styles.label}>
-      {label} <Text style={styles.required}>*</Text>
-    </Text>
-    <Picker
-      selectedValue={selectedValue}
-      onValueChange={(value) => onValueChange(value)}
-      style={styles.picker}
-      enabled={enabled}
-      mode="dropdown" // 'dropdown' hoặc 'dialog' tùy thuộc vào trải nghiệm mong muốn
-    >
-      <Picker.Item label="Select an option" value="" />
-      {items.map((item) => (
-        <Picker.Item key={item.id } label={item.fullName} value={item.id} />
-      ))}
-    </Picker>
-  </View>
-);
+const PickerField = ({ label, items, selectedValue, onValueChange, enabled = true }) => {
+  const [isVisible, setIsVisible] = useState(false);
+  const [temporaryValue, setTemporaryValue] = useState(selectedValue);
 
+  useEffect(() => {
+    setTemporaryValue(selectedValue);
+  }, [selectedValue]);
+
+  const handleDone = useCallback(() => {
+    setIsVisible(false);
+    if (temporaryValue !== selectedValue) {
+      onValueChange(temporaryValue);
+    }
+  }, [temporaryValue, selectedValue, onValueChange]);
+
+  const handleCancel = useCallback(() => {
+    setIsVisible(false);
+    setTemporaryValue(selectedValue);
+  }, [selectedValue]);
+
+  // Improved display text function
+  const getDisplayText = useCallback(() => {
+    if (!items || !Array.isArray(items)) return "Select an option";
+    
+    // Find the selected item
+    const selectedItem = items.find(item => String(item.id) === String(selectedValue));
+    
+    // Debug log to check the values
+    console.log('Selected Value:', selectedValue);
+    console.log('Selected Item:', selectedItem);
+    console.log('Items:', items);
+    
+    // Return the fullName if found, otherwise return placeholder
+    return selectedItem?.fullName || "Select an option";
+  }, [items, selectedValue]);
+
+  return (
+    <View style={styles.inputContainer}>
+      <Text style={styles.label}>
+        {label} <Text style={styles.required}>*</Text>
+      </Text>
+
+      {Platform.OS === 'ios' ? (
+        <>
+          <TouchableOpacity 
+            style={[
+              styles.pickerButton, 
+              !enabled && styles.pickerButtonDisabled
+            ]}
+            onPress={() => enabled && setIsVisible(true)}
+            disabled={!enabled}
+          >
+            <Text 
+              style={[
+                styles.pickerButtonText,
+                !selectedValue && styles.placeholderText,
+                !enabled && styles.pickerButtonTextDisabled
+              ]}
+              numberOfLines={1}
+            >
+              {getDisplayText()}
+            </Text>
+            <Text style={styles.pickerArrow}>▼</Text>
+          </TouchableOpacity>
+
+          <Modal
+            animationType="slide"
+            transparent={true}
+            visible={isVisible}
+            onRequestClose={handleCancel}
+          >
+            <View style={styles.modalOverlay}>
+              <Pressable 
+                style={styles.modalDismiss} 
+                onPress={handleCancel}
+              />
+              <View style={styles.modalContent}>
+                <View style={styles.modalHeader}>
+                  <TouchableOpacity onPress={handleCancel}>
+                    <Text style={styles.modalCancel}>Cancel</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.modalTitle}>{label}</Text>
+                  <TouchableOpacity onPress={handleDone}>
+                    <Text style={styles.modalDone}>Done</Text>
+                  </TouchableOpacity>
+                </View>
+                <Picker
+                  selectedValue={temporaryValue}
+                  onValueChange={(value) => {
+                    console.log('Picker value changed:', value);
+                    setTemporaryValue(value);
+                  }}
+                  enabled={enabled}
+                >
+                  <Picker.Item label="Select an option" value="" />
+                  {items.map((item) => (
+                    <Picker.Item 
+                      key={String(item.id)}
+                      label={item.fullName}
+                      value={String(item.id)}
+                    />
+                  ))}
+                </Picker>
+              </View>
+            </View>
+          </Modal>
+        </>
+      ) : (
+        <View style={styles.androidPickerContainer}>
+          <Picker
+            selectedValue={selectedValue}
+            onValueChange={onValueChange}
+            enabled={enabled}
+            style={[styles.picker, !enabled && styles.pickerDisabled]}
+            mode="dropdown"
+          >
+            <Picker.Item label="Select an option" value="" />
+            {items.map((item) => (
+              <Picker.Item 
+                key={String(item.id)}
+                label={item.fullName}
+                value={String(item.id)}
+              />
+            ))}
+          </Picker>
+        </View>
+      )}
+    </View>
+  );
+};
 
 const DatePickerField = ({ label, value, onChange }) => {
   const [show, setShow] = useState(false);
@@ -347,84 +463,71 @@ const DriverIdentificationScreen = ({ navigation }) => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-      const data = await getDriverIdentificationById();
-      if (data) {
-        setIsEditMode(true);
-
+        setIsLoading(true);
+        const data = await getDriverIdentificationById();
         
-
-        // Đảm bảo lấy đúng thuộc tính `code` và `fullName` từ `templateLocations`
-        setProvinces(
-          data.permanentAddress.province.templateLocations.map((province) => ({
-            id: province.code,
-            fullName: province.fullName,
-          }))
-        );
-        
+        if (data && (data.idNumber || data.fullName || data.driverIdentificationId)) {
+          setIsEditMode(true);
   
-        setPermanentDistricts(
-          data.permanentAddress.district.templateLocations.map((district) => ({
-            id: district.code,
-            fullName: district.fullName,
-          }))
-        );
+          // Create a sequence of async operations
+          const loadAddressData = async () => {
+            // Load permanent address data
+            if (data.permanentAddress?.province?.id) {
+              const permanentDistricts = await getDistricts(data.permanentAddress.province.id);
+              setPermanentDistricts(permanentDistricts);
   
-        setPermanentWards(
-          data.permanentAddress.ward.templateLocations.map((ward) => ({
-            id: ward.code,
-            fullName: ward.fullName,
-          }))
-        );
-        setTemporaryDistricts(
-          data.temporaryAddress.district.templateLocations.map((district) => ({
-            id: district.code,
-            fullName: district.fullName,
-          }))
-        );
+              if (data.permanentAddress?.district?.id) {
+                const permanentWards = await getWards(data.permanentAddress.district.id);
+                setPermanentWards(permanentWards);
+              }
+            }
   
-        setTemporaryWards(
-          data.temporaryAddress.ward.templateLocations.map((ward) => ({
-            id: ward.code,
-            fullName: ward.fullName,
-          }))
-        );
+            // Load temporary address data
+            if (data.temporaryAddress?.province?.id) {
+              const temporaryDistricts = await getDistricts(data.temporaryAddress.province.id);
+              setTemporaryDistricts(temporaryDistricts);
   
-        // Đặt giá trị cho form
-        setFormData({
-          idNumber: data.idNumber || "",
-          fullName : data.fullName || "",
-          gender : data.gender || "",
-          birthday : data.birthday || "",
-          country : data.country || "",
-          permanentAddressWard: data.permanentAddress.ward.id || "",
-          permanentAddressDistrict: data.permanentAddress.district.id || "",
-          permanentAddressProvince: data.permanentAddress.province.id || "",
-          permanentStreetAddress: data.permanentAddress.streetAddress || "",
-          temporaryAddressWard: data.temporaryAddress.ward.id || "",
-          temporaryAddressDistrict: data.temporaryAddress.district.id || "",
-          temporaryAddressProvince: data.temporaryAddress.province.id || "",
-          temporaryStreetAddress: data.temporaryAddress.streetAddress || "",
-          issueDate: data.issueDate || "",
-          expiryDate: data.expiryDate || "",
-          issuedBy: data.issuedBy || "",
-          frontFile: data.frontView ? { uri: data.frontView } : null,
-          backFile: data.backView ? { uri: data.backView } : null,
-        });
+              if (data.temporaryAddress?.district?.id) {
+                const temporaryWards = await getWards(data.temporaryAddress.district.id);
+                setTemporaryWards(temporaryWards);
+              }
+            }
+          };
   
-        // Xử lý thay đổi tỉnh thành nếu có
-        if (data.permanentAddress.province.id) {
-          handleProvinceChange(data.permanentAddress.province.id, "permanent");
+          // Set form data
+          setFormData({
+            idNumber: data.idNumber || "",
+            fullName: data.fullName || "",
+            gender: data.gender || "",
+            birthday: data.birthday || "",
+            country: data.country || "",
+            permanentAddressWard: data.permanentAddress?.ward?.id ? String(data.permanentAddress.ward.id) : "",
+            permanentAddressDistrict: data.permanentAddress?.district?.id ? String(data.permanentAddress.district.id) : "",
+            permanentAddressProvince: data.permanentAddress?.province?.id ? String(data.permanentAddress.province.id) : "",
+            permanentStreetAddress: data.permanentAddress?.streetAddress || "",
+           temporaryAddressWard: data.temporaryAddress?.ward?.id ? String(data.temporaryAddress.ward.id) : "",
+           temporaryAddressDistrict: data.temporaryAddress?.district?.id ? String(data.temporaryAddress.district.id) : "",
+           temporaryAddressProvince: data.temporaryAddress?.province?.id ? String(data.temporaryAddress.province.id) : "",
+            temporaryStreetAddress: data.temporaryAddress?.streetAddress || "",
+            issueDate: data.issueDate || "",
+            expiryDate: data.expiryDate || "",
+            issuedBy: data.issuedBy || "",
+            frontFile: data.frontView ? { uri: data.frontView } : null,
+            backFile: data.backView ? { uri: data.backView } : null,
+          });
+  
+          // Load address data after setting form data
+          await loadAddressData();
+        } else {
+          setIsEditMode(false);
         }
-        if (data.temporaryAddress?.province?.id) {
-          handleProvinceChange(data.temporaryAddress.province.id, "temporary");
-        }
-      }else {
+      } catch (error) {
+        console.error('Error loading data:', error);
         setIsEditMode(false);
-        
+      } finally {
+       
+        setIsLoading(false);
       }
-    } catch (error) {
-      setIsEditMode(false); // Đảm bảo isEditMode = false khi có lỗi
-    }
     };
   
     fetchData();
@@ -483,56 +586,68 @@ const DriverIdentificationScreen = ({ navigation }) => {
   
 
   const handleProvinceChange = async (value, addressType) => {
-    const selectedProvince = provinces.find((province) => province.id === value);
-    if (selectedProvince) {
-      try {
-        const districtsData = await getDistricts(selectedProvince.id);
+    if (!value) return;
   
-        if (addressType === "permanent") {
-          // Reset wards and set new districts
-          setPermanentDistricts(districtsData);
-          setPermanentWards([]); // Reset wards
-          handleInputChange("permanentAddressProvince", value);
-          handleInputChange("permanentAddressDistrict", ""); // Reset district
-          handleInputChange("permanentAddressWard", ""); // Reset ward
-        } else {
-          // Reset wards and set new districts
-          setTemporaryDistricts(districtsData);
-          setTemporaryWards([]); // Reset wards
-          handleInputChange("temporaryAddressProvince", value);
-          handleInputChange("temporaryAddressDistrict", ""); // Reset district
-          handleInputChange("temporaryAddressWard", ""); // Reset ward
-        }
-      } catch (error) {
-        Alert.alert("Error", "Failed to load districts.");
+    try {
+      const districtsData = await getDistricts(value);
+  
+      if (addressType === "permanent") {
+        // Update state in a single batch
+        setFormData(prev => ({
+          ...prev,
+          permanentAddressProvince: value,
+          permanentAddressDistrict: "",
+          permanentAddressWard: "",
+        }));
+        setPermanentDistricts(districtsData);
+        setPermanentWards([]);
+      } else {
+        // Update state in a single batch
+        setFormData(prev => ({
+          ...prev,
+          temporaryAddressProvince: value,
+          temporaryAddressDistrict: "",
+          temporaryAddressWard: "",
+        }));
+        setTemporaryDistricts(districtsData);
+        setTemporaryWards([]);
       }
+    } catch (error) {
+      console.error("Error loading districts:", error);
+      Alert.alert("Error", "Failed to load districts.");
     }
   };
   
 
-const handleDistrictChange = async (value, addressType) => {
-  const districts = addressType === "permanent" ? permanentDistricts : temporaryDistricts;
-  const selectedDistrict = districts.find((district) => district.id === value);
-  if (selectedDistrict) {
+  const handleDistrictChange = async (value, addressType) => {
+    if (!value) return;
+  
     try {
-      const wardsData = await getWards(selectedDistrict.id);
-
+      const wardsData = await getWards(value);
+  
       if (addressType === "permanent") {
-        // Cập nhật danh sách phường/xã và reset ward
+        // Update state in a single batch
+        setFormData(prev => ({
+          ...prev,
+          permanentAddressDistrict: value,
+          permanentAddressWard: "",
+        }));
         setPermanentWards(wardsData);
-        handleInputChange("permanentAddressDistrict", value);
-        handleInputChange("permanentAddressWard", ""); // Reset ward
       } else {
-        // Cập nhật danh sách phường/xã và reset ward
+        // Update state in a single batch
+        setFormData(prev => ({
+          ...prev,
+          temporaryAddressDistrict: value,
+          temporaryAddressWard: "",
+        }));
         setTemporaryWards(wardsData);
-        handleInputChange("temporaryAddressDistrict", value);
-        handleInputChange("temporaryAddressWard", ""); // Reset ward
       }
     } catch (error) {
+      console.error("Error loading wards:", error);
       Alert.alert("Error", "Failed to load wards.");
     }
-  }
-};
+  };
+  
 
   const handleGenderChange = (value) => {
     setFormData({ ...formData, gender: value });
@@ -585,16 +700,15 @@ const handleDistrictChange = async (value, addressType) => {
   
     //  const data = await getDriverIdentificationById();
        // Check if we're in edit mode instead of checking data existence
-    if (isEditMode) {
-      await updateDriverIdentification(formData);
-    } else {
-      // if (!formData.idNumber) {
-      //   Alert.alert("Error", "Please enter ID Number before submitting.");
-      //   setIsLoading(false);
-      //   return;
-      // }
-      await createDriverIdentification(formData, navigation);
-    }
+       if (isEditMode) {
+        // Update existing record
+        await updateDriverIdentification(formData);
+        Alert.alert("Success", "Driver identification updated successfully.");
+      } else {
+        // Create new record
+        await createDriverIdentification(formData, navigation);
+        Alert.alert("Success", "Driver identification created successfully.");
+      }
   } catch (error) {
     console.error("Error during form submission:", error);
     const errorMessage = error.response?.data?.message || "An error occurred during submission.";
@@ -710,24 +824,36 @@ const handleDistrictChange = async (value, addressType) => {
       {errors.fullName && <Text style={styles.errorText}>{errors.fullName}</Text>}
 
       <View>
-      <Text style={styles.label}>Gender <Text style={styles.required}>*</Text></Text>
-      <View style={styles.radioGroup}>
-  <View style={styles.radioItem}>
-    <RadioButton
-      value="male"
-      status={formData.gender === "male" ? "checked" : "unchecked"}
-      onPress={() => handleGenderChange("male")}
-    />
-    <Text style={styles.radioText}>Male</Text>
+      <View style={styles.inputContainer}>
+  <Text style={styles.label}>Gender <Text style={styles.required}>*</Text></Text>
+  <View style={styles.genderGroup}>
+    <TouchableOpacity 
+      style={[
+        styles.genderOption, 
+        formData.gender === 'male' && styles.genderOptionSelected
+      ]} 
+      onPress={() => handleGenderChange('male')}
+    >
+      <Text style={[
+        styles.genderText,
+        formData.gender === 'male' && styles.genderTextSelected
+      ]}>Male</Text>
+    </TouchableOpacity>
+    
+    <TouchableOpacity 
+      style={[
+        styles.genderOption, 
+        formData.gender === 'female' && styles.genderOptionSelected
+      ]} 
+      onPress={() => handleGenderChange('female')}
+    >
+      <Text style={[
+        styles.genderText,
+        formData.gender === 'female' && styles.genderTextSelected
+      ]}>Female</Text>
+    </TouchableOpacity>
   </View>
-  <View style={styles.radioItem}>
-    <RadioButton
-      value="female"
-      status={formData.gender === "female" ? "checked" : "unchecked"}
-      onPress={() => handleGenderChange("female")}
-    />
-    <Text style={styles.radioText}>Female</Text>
-  </View>
+  {errors.gender && <Text style={styles.errorText}>{errors.gender}</Text>}
 </View>
       {errors.gender && <Text style={styles.errorText}>{errors.gender}</Text>}
     </View>
@@ -884,12 +1010,15 @@ const handleDistrictChange = async (value, addressType) => {
 {errors.backFile && <Text style={styles.errorText}>{errors.backFile}</Text>}
 
 <TouchableOpacity 
-  style={styles.submitButton} 
-  onPress={handleSubmit} 
+  style={[
+    styles.submitButton,
+    isLoading && styles.disabledButton
+  ]} 
+  onPress={handleSubmit}
   disabled={isLoading}
 >
-  <Text style={styles.buttonText}>
-    {isEditMode ? "Save" : "Submit"}
+  <Text style={styles.submitButtonText}>
+    {isLoading ? 'Processing...' : isEditMode ? 'Save' : 'Submit'}
   </Text>
 </TouchableOpacity>
     </ScrollView>
@@ -1015,15 +1144,15 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  radioGroup: {
-    flexDirection: 'row', // Entire group in one row
-    alignItems: 'center', // Vertically center
-    gap: 20 // Space between radio button groups
-  },
-  radioItem: {
-    flexDirection: 'row', // Radio button and text in row
-    alignItems: 'center'
-  },
+  // radioGroup: {
+  //   flexDirection: 'row', // Entire group in one row
+  //   alignItems: 'center', // Vertically center
+  //   gap: 20 // Space between radio button groups
+  // },
+  // radioItem: {
+  //   flexDirection: 'row', // Radio button and text in row
+  //   alignItems: 'center'
+  // },
   // ... existing styles
   errorText: {
    color: "red",
@@ -1069,19 +1198,22 @@ const styles = StyleSheet.create({
    backgroundColor: "#fff",
  },
  submitButton: {
-   backgroundColor: "#00b5ec",
-   padding: 15,
-   borderRadius: 8,
-   alignItems: "center",
- },
- disabledButton: {
-   backgroundColor: "#ccc",
- },
- submitButtonText: {
-   color: "#fff",
-   fontSize: 16,
-   fontWeight: "bold",
- },
+  backgroundColor: "#00b5ec",
+  padding: 15,
+  borderRadius: 8,
+  alignItems: "center",
+  marginTop: 20,
+  marginBottom: 30,
+},
+disabledButton: {
+  backgroundColor: "#cccccc",
+  opacity: 0.7,
+},
+submitButtonText: {
+  color: "#ffffff",
+  fontSize: 16,
+  fontWeight: "bold",
+},
 
  //-------------date---------
    dateButton: {
@@ -1123,6 +1255,122 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+
+  //-----gender
+  genderGroup: {
+    flexDirection: 'row',
+    gap: 15,
+    marginTop: 5,
+  },
+  genderOption: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 25,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  genderOptionSelected: {
+    backgroundColor: '#00b5ec',
+    borderColor: '#00b5ec',
+  },
+  genderText: {
+    fontSize: 14,
+    color: '#333',
+  },
+  genderTextSelected: {
+    color: '#fff',
+    fontWeight: '500',
+  },
+  //-------------address
+ pickerButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    backgroundColor: '#fff',
+    minHeight: 45,
+  },
+  pickerButtonDisabled: {
+    backgroundColor: '#f5f5f5',
+    borderColor: '#e0e0e0',
+  },
+  pickerButtonText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#333',
+  },
+  pickerButtonTextDisabled: {
+    color: '#999',
+  },
+  placeholderText: {
+    color: '#999',
+  },
+  pickerArrow: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 8,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'flex-end',
+  },
+  modalDismiss: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+  },
+  
+  modalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    maxHeight: '70%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  modalCancel: {
+    fontSize: 16,
+    color: '#007AFF',
+  },
+  modalDone: {
+    fontSize: 16,
+    color: '#007AFF',
+    fontWeight: '600',
+  },
+  androidPickerContainer: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    overflow: 'hidden',
+  },
+  // picker: {
+  //   height: 45,
+  //   backgroundColor: '#fff',
+  // },
+  // pickerDisabled: {
+  //   backgroundColor: '#f5f5f5',
+  //   color: '#999',
+  // }
  
 });
 
