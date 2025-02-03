@@ -29,7 +29,11 @@
         "googleMapsApiKey": "t0vRyftUba3uIEnx5JlMJta2ff3B03BEUVg0xHWw"
       },
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Ứng dụng cần quyền truy cập vị trí của bạn để hiển thị vị trí hiện tại."
+        "NSLocationWhenInUseUsageDescription": "Ứng dụng cần quyền truy cập vị trí của bạn để hiển thị vị trí hiện tại.",
+        "NSCameraUsageDescription": "Ứng dụng cần quyền truy cập camera để chụp ảnh.",
+        "NSPhotoLibraryUsageDescription": "Ứng dụng cần quyền truy cập vào thư viện ảnh để chọn ảnh.",
+        "NSPhotoLibraryAddUsageDescription": "Ứng dụng cần quyền để lưu ảnh vào thư viện."
+     
       }
     },
     "android": {
