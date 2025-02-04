@@ -15,6 +15,8 @@ import Navigation from "../../navigation/Navigation";
 import { useNavigation } from "@react-navigation/native";
 import * as Location from "expo-location";
 import { getUserInfo } from "../../services/ProfileService";
+
+
 const { width } = Dimensions.get("window");
 
 const HomeScreen = () => {
