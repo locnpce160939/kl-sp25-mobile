@@ -108,6 +108,12 @@ const ProfileScreen = () => {
           label: "Đơn hàng mới",
           screen: "RightTrip",
         },
+        {
+          id: 6,
+          icon: "cart-outline",
+          label: "Đơn hàng của bạn",
+          screen: "Order",
+        },
       ],
     },
     {

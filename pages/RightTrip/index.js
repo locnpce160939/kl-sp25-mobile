@@ -49,6 +49,30 @@ const RightTrip = () => {
     }
   };
 
+  const handleAccept = async (id) => {
+    try {
+      const token = await AsyncStorage.getItem("token");
+      const response = await axios.get(
+        `${BASE_URl}/api/trip-matching/accept/${id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      if (response.status === 200) {
+        alert("Success", response.data.data);
+        fetchTripData();
+      } else {
+        alert("Failed to accept trip");
+        fet;
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || "Error accepting trip");
+    }
+  };
+
   const formatDateTime = (dateString) => {
     if (!dateString) return "Not set";
     const date = new Date(dateString);
@@ -219,7 +243,7 @@ const RightTrip = () => {
           <View style={styles.actionButtons}>
             <TouchableOpacity
               style={[styles.actionButton, styles.denyButton]}
-              onPress={() => handleDeny(selectedTrip.id)}
+              onPress={() => alert("Deny trip")}
             >
               <Text style={styles.buttonText}>Deny</Text>
             </TouchableOpacity>
