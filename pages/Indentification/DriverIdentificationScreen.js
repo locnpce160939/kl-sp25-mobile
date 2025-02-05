@@ -20,7 +20,6 @@ import { AuthContext } from "../../contexts/AuthContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import { BASE_URl } from "../../configUrl";
-import { RadioButton } from "react-native-paper";
 //import { launchCamera } from 'react-native-image-picker';
 
 import * as ImagePicker from 'expo-image-picker';
