@@ -1,0 +1,724 @@
+import React, { useEffect, useRef, useState } from "react";
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  Modal,
+  ActivityIndicator,
+  Dimensions,
+} from "react-native";
+import axios from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import Icon from "react-native-vector-icons/MaterialIcons";
+import MapView, { Marker } from "react-native-maps";
+import io from "socket.io-client";
+
+const Order = () => {
+  const [bookings, setBookings] = useState([]);
+  const [selectedBooking, setSelectedBooking] = useState(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [socket, setSocket] = useState(null);
+  const [location, setLocation] = useState({
+    latitude: 10.762622,
+    longitude: 106.660172,
+  });
+  const socketRef = useRef(null);
+  const lastSendTime = useRef(0);
+  const sendInterval = 1000;
+
+  useEffect(() => {
+    fetchBookings();
+  }, []);
+
+  const fetchBookings = async () => {
+    try {
+      const token = await AsyncStorage.getItem("token");
+      const response = await axios.get(
+        "https://api.ftcs.online/api/tripBookings/getByAccountId",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.data.code === 200) {
+        setBookings(response.data.data);
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchBookingDetails = async (bookingId) => {
+    try {
+      const token = await AsyncStorage.getItem("token");
+      const response = await axios.get(
+        `https://api.ftcs.online/api/tripBookings/${bookingId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.data.code === 200) {
+        setSelectedBooking(response.data.data);
+        setModalVisible(true);
+      }
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "Not set";
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  useEffect(() => {
+    // Khởi tạo kết nối socket
+    const newSocket = io("wss://api.ftcs.online", {
+      transports: ["websocket"],
+      query: {
+        username: "testCustomer",
+        room: "1028",
+      },
+      upgrade: false,
+    });
+
+    // Xử lý kết nối thành công
+    newSocket.on("connect", () => {
+      console.log("Connected to WebSocket server Customer");
+      console.log("Socket ID:", newSocket.id);
+      console.log("====================================");
+    });
+
+    // Lắng nghe sự kiện LOCATION
+    newSocket.on("LOCATION", (data) => {
+      try {
+        const locationData = JSON.parse(data.content);
+        if (locationData && locationData.locationDriver) {
+          const [lat, lng] = locationData.locationDriver.split(",").map(Number);
+
+          if (!isNaN(lat) && !isNaN(lng)) {
+            setLocation({
+              latitude: lat,
+              longitude: lng,
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Error processing location data:", error);
+      }
+    });
+
+    // Xử lý các sự kiện lỗi
+    newSocket.on("connect_error", (error) => {
+      console.error("Connection error:", error);
+    });
+
+    newSocket.on("disconnect", (reason) => {
+      console.log("Disconnected:", reason);
+      // Thử kết nối lại sau 5 giây
+      setTimeout(() => {
+        newSocket.connect();
+      }, 5000);
+    });
+
+    setSocket(newSocket);
+
+    // Cleanup khi component unmount
+    return () => {
+      newSocket.disconnect();
+    };
+  }, []);
+
+  // useEffect(() => {
+  //   // Kết nối với Socket.IO server
+  //   socketRef.current = io("wss://api.ftcs.online", {
+  //     query: {
+  //       username: "testDriver",
+  //       room: "1029",
+  //     },
+  //     transports: ["websocket"],
+  //     upgrade: false,
+  //     forceNew: true,
+  //   });
+
+  //   socketRef.current.on("connect", () => {
+  //     console.log("Socket.IO connected");
+  //   });
+
+  //   socketRef.current.on("LOCATION_SEND", (data) => {
+  //     console.log("Received LOCATION_SEND event:", data);
+  //     try {
+  //       let locationData =
+  //         typeof data.content === "string"
+  //           ? JSON.parse(data.content)
+  //           : data.content;
+  //       if (locationData && locationData.locationDriver) {
+  //         const [lat, lng] = locationData.locationDriver.split(",");
+  //         setLocation({
+  //           latitude: parseFloat(lat),
+  //           longitude: parseFloat(lng),
+  //         });
+  //       }
+  //     } catch (error) {
+  //       console.error("Error processing location data:", error);
+  //     }
+  //   });
+
+  //   socketRef.current.on("disconnect", () => {
+  //     console.log("Socket.IO disconnected");
+  //   });
+
+  //   return () => {
+  //     socketRef.current.disconnect();
+  //   };
+  // }, []);
+
+  // const sendLocation = (latLng) => {
+  //   const now = Date.now();
+  //   if (now - lastSendTime.current >= sendInterval) {
+  //     const payload = {
+  //       messageType: "LOCATION_SEND",
+  //       content: JSON.stringify({
+  //         id: 1,
+  //         locationDriver: `${latLng.latitude},${latLng.longitude}`,
+  //       }),
+  //     };
+  //     console.log("Sending location:", payload);
+  //     socketRef.current.emit("LOCATION_SEND", payload);
+  //     lastSendTime.current = now;
+  //   }
+  // };
+
+  const renderBookingCard = (booking) => (
+    <TouchableOpacity
+      key={booking.bookingId}
+      style={styles.card}
+      onPress={() => fetchBookingDetails(booking.bookingId)}
+    >
+      <View style={styles.cardHeader}>
+        <Text style={styles.bookingId}>Booking #{booking.bookingId}</Text>
+        <Text style={styles.status}>{booking.status}</Text>
+      </View>
+      <View style={styles.cardContent}>
+        <View style={styles.locationContainer}>
+          <Icon name="location-on" size={20} color="#666" />
+          <Text style={styles.locationText} numberOfLines={2}>
+            From: {booking.startLocationAddress}
+          </Text>
+        </View>
+        <View style={styles.locationContainer}>
+          <Icon name="location-on" size={20} color="#666" />
+          <Text style={styles.locationText} numberOfLines={2}>
+            To: {booking.endLocationAddress}
+          </Text>
+        </View>
+        <View style={styles.infoRow}>
+          <Text style={styles.label}>Type: {booking.bookingType}</Text>
+          <Text style={styles.label}>Capacity: {booking.capacity}</Text>
+        </View>
+        <Text style={styles.date}>
+          Booking Date: {formatDate(booking.bookingDate)}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
+
+  const renderDetailModal = () => {
+    if (!selectedBooking) return null;
+
+    return (
+      <Modal
+        visible={modalVisible}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          {/* Modal Header */}
+          <View style={styles.modalHeader}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => setModalVisible(false)}
+            >
+              <Icon name="arrow-back" size={24} color="#000" />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Booking Details</Text>
+          </View>
+
+          <ScrollView style={styles.modalContent}>
+            {/* Status Card */}
+            <View style={styles.statusCard}>
+              <View style={styles.statusHeader}>
+                <Icon name="local-taxi" size={24} color="#0066cc" />
+                <Text style={styles.statusTitle}>
+                  Status: {selectedBooking.status}
+                </Text>
+              </View>
+              <View style={styles.bookingMeta}>
+                <Text style={styles.bookingId}>
+                  Booking #{selectedBooking.bookingId}
+                </Text>
+                <Text style={styles.bookingType}>
+                  {selectedBooking.bookingType}
+                </Text>
+              </View>
+            </View>
+
+            {/* Location Card */}
+            <View style={styles.detailCard}>
+              <Text style={styles.cardTitle}>Trip Details</Text>
+              <View style={styles.locationItem}>
+                <View style={styles.locationDot}>
+                  <View style={[styles.dot, styles.startDot]} />
+                  <View style={styles.verticalLine} />
+                </View>
+                <View style={styles.locationContent}>
+                  <Text style={styles.locationLabel}>Pickup Location</Text>
+                  <Text style={styles.locationAddress}>
+                    {selectedBooking.startLocationAddress}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.locationItem}>
+                <View style={styles.locationDot}>
+                  <View style={[styles.dot, styles.endDot]} />
+                </View>
+                <View style={styles.locationContent}>
+                  <Text style={styles.locationLabel}>Dropoff Location</Text>
+                  <Text style={styles.locationAddress}>
+                    {selectedBooking.endLocationAddress}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Driver Card */}
+            {selectedBooking.driver && (
+              <View style={styles.detailCard}>
+                <Text style={styles.cardTitle}>Driver Information</Text>
+                <View style={styles.driverInfo}>
+                  <View style={styles.driverAvatar}>
+                    <Icon name="account-circle" size={40} color="#0066cc" />
+                  </View>
+                  <View style={styles.driverDetails}>
+                    <Text style={styles.driverName}>
+                      {selectedBooking.driver.fullName}
+                    </Text>
+                    <View style={styles.contactInfo}>
+                      <Icon name="phone" size={16} color="#666" />
+                      <Text style={styles.contactText}>
+                        {selectedBooking.driver.phone}
+                      </Text>
+                    </View>
+                    <View style={styles.contactInfo}>
+                      <Icon name="email" size={16} color="#666" />
+                      <Text style={styles.contactText}>
+                        {selectedBooking.driver.email}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* Trip Agreement Card */}
+            {selectedBooking.tripAgreement && (
+              <View style={styles.detailCard}>
+                <Text style={styles.cardTitle}>Trip Agreement</Text>
+                <View style={styles.agreementGrid}>
+                  <View style={styles.agreementItem}>
+                    <Icon name="check-circle" size={20} color="#28a745" />
+                    <Text style={styles.agreementLabel}>Agreement Status</Text>
+                    <Text style={styles.agreementValue}>
+                      {selectedBooking.tripAgreement.agreementStatus}
+                    </Text>
+                  </View>
+                  <View style={styles.agreementItem}>
+                    <Icon name="payment" size={20} color="#ffc107" />
+                    <Text style={styles.agreementLabel}>Payment Status</Text>
+                    <Text style={styles.agreementValue}>
+                      {selectedBooking.tripAgreement.paymentStatus}
+                    </Text>
+                  </View>
+                  <View style={styles.agreementItem}>
+                    <Icon name="timer" size={20} color="#17a2b8" />
+                    <Text style={styles.agreementLabel}>Duration</Text>
+                    <Text style={styles.agreementValue}>
+                      {selectedBooking.tripAgreement.estimatedDuration} mins
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* Dates Card */}
+            <View style={styles.detailCard}>
+              <Text style={styles.cardTitle}>Important Dates</Text>
+              <View style={styles.dateGrid}>
+                <View style={styles.dateItem}>
+                  <Icon name="event" size={20} color="#666" />
+                  <Text style={styles.dateLabel}>Booking Date</Text>
+                  <Text style={styles.dateValue}>
+                    {formatDate(selectedBooking.bookingDate)}
+                  </Text>
+                </View>
+                <View style={styles.dateItem}>
+                  <Icon name="event-busy" size={20} color="#dc3545" />
+                  <Text style={styles.dateLabel}>Expiration</Text>
+                  <Text style={styles.dateValue}>
+                    {formatDate(selectedBooking.expirationDate)}
+                  </Text>
+                </View>
+                <View style={styles.dateItem}>
+                  <Icon name="update" size={20} color="#666" />
+                  <Text style={styles.dateLabel}>Last Updated</Text>
+                  <Text style={styles.dateValue}>
+                    {formatDate(selectedBooking.updateAt)}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Location Tracking */}
+            <MapView
+              style={styles.map}
+              initialRegion={{
+                latitude: location.latitude,
+                longitude: location.longitude,
+                latitudeDelta: 0.01,
+                longitudeDelta: 0.01,
+              }}
+            >
+              <Marker
+                coordinate={{
+                  latitude: location.latitude,
+                  longitude: location.longitude,
+                }}
+                title="Vị trí tài xế"
+              />
+            </MapView>
+            {/* <MapView
+              style={styles.map}
+              initialRegion={{
+                latitude: location.latitude,
+                longitude: location.longitude,
+                latitudeDelta: 0.05,
+                longitudeDelta: 0.05,
+              }}
+              onPress={(e) => {
+                const { latitude, longitude } = e.nativeEvent.coordinate;
+                setLocation({ latitude, longitude });
+                sendLocation({ latitude, longitude });
+              }}
+            >
+              <Marker coordinate={location} />
+            </MapView> */}
+          </ScrollView>
+        </View>
+      </Modal>
+    );
+    F;
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color="#0066cc" />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.centerContainer}>
+        <Text style={styles.errorText}>{error}</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <ScrollView>{bookings.map(renderBookingCard)}</ScrollView>
+      {renderDetailModal()}
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#f5f5f5",
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  card: {
+    backgroundColor: "white",
+    margin: 10,
+    borderRadius: 10,
+    padding: 15,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  cardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 10,
+  },
+  map: {
+    width: Dimensions.get("window").width,
+    height: Dimensions.get("window").height - 100,
+  },
+  bookingId: {
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  status: {
+    color: "#0066cc",
+    fontWeight: "500",
+  },
+  cardContent: {
+    gap: 8,
+  },
+  locationContainer: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+  },
+  locationText: {
+    flex: 1,
+    color: "#666",
+  },
+  infoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  label: {
+    color: "#666",
+  },
+  date: {
+    color: "#666",
+    fontSize: 12,
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: "#f8f9fa",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    backgroundColor: "white",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  backButton: {
+    padding: 8,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginLeft: 16,
+  },
+  modalContent: {
+    flex: 1,
+    padding: 16,
+  },
+  statusCard: {
+    backgroundColor: "white",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  statusHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  statusTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginLeft: 12,
+    color: "#0066cc",
+  },
+  bookingMeta: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  bookingId: {
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  bookingType: {
+    fontSize: 14,
+    color: "#666",
+    backgroundColor: "#f0f0f0",
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 16,
+  },
+  detailCard: {
+    backgroundColor: "white",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 16,
+    color: "#333",
+  },
+  locationItem: {
+    flexDirection: "row",
+    marginBottom: 16,
+  },
+  locationDot: {
+    width: 24,
+    alignItems: "center",
+  },
+  dot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  startDot: {
+    backgroundColor: "#28a745",
+  },
+  endDot: {
+    backgroundColor: "#dc3545",
+  },
+  verticalLine: {
+    width: 2,
+    height: "100%",
+    backgroundColor: "#e0e0e0",
+    position: "absolute",
+    top: 12,
+    left: 11,
+  },
+  locationContent: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  locationLabel: {
+    fontSize: 12,
+    color: "#666",
+    marginBottom: 4,
+  },
+  locationAddress: {
+    fontSize: 14,
+    color: "#333",
+  },
+  driverInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  driverAvatar: {
+    marginRight: 16,
+  },
+  driverDetails: {
+    flex: 1,
+  },
+  driverName: {
+    fontSize: 16,
+    fontWeight: "500",
+    marginBottom: 8,
+  },
+  contactInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  contactText: {
+    marginLeft: 8,
+    color: "#666",
+  },
+  agreementGrid: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    flexWrap: "wrap",
+  },
+  agreementItem: {
+    alignItems: "center",
+    width: "30%",
+  },
+  agreementLabel: {
+    fontSize: 12,
+    color: "#666",
+    marginTop: 8,
+    marginBottom: 4,
+    textAlign: "center",
+  },
+  agreementValue: {
+    fontSize: 14,
+    color: "#333",
+    fontWeight: "500",
+    textAlign: "center",
+  },
+  dateGrid: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    flexWrap: "wrap",
+  },
+  dateItem: {
+    alignItems: "center",
+    width: "30%",
+  },
+  dateLabel: {
+    fontSize: 12,
+    color: "#666",
+    marginTop: 8,
+    marginBottom: 4,
+    textAlign: "center",
+  },
+  dateValue: {
+    fontSize: 12,
+    color: "#333",
+    textAlign: "center",
+  },
+  errorText: {
+    color: "red",
+    fontSize: 16,
+  },
+});
+
+export default Order;

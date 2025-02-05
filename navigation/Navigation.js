@@ -17,6 +17,7 @@ import VehicleScreen from "../pages/Vehicle/vehicleScreen";
 import DriverIdentificationScreen from "../pages/Indentification/DriverIdentificationScreen";
 import ChatScreen from "../pages/Chat";
 import RightTrip from "../pages/RightTrip";
+import Order from "../pages/Order";
 
 const Stack = createNativeStackNavigator();
 
@@ -68,6 +69,10 @@ const Navigation = () => {
             <Stack.Screen
               name="RightTrip"
               component={RightTrip}
+            />
+            <Stack.Screen
+              name="Order"
+              component={Order}
             />
           </>
         ) : (
