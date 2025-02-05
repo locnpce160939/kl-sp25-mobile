@@ -103,25 +103,50 @@ const VehicleScreen = () => {
 
     // Hàm chọn ảnh
     const selectImage = async (field) => {
-        try {
-            const result = await ImagePicker.launchCameraAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                allowsEditing: true,
-                aspect: [4, 3],
-                quality: 0.5,
-            });
-
-            if (!result.canceled) {
-                setFormData((prev) => ({
-                    ...prev,
-                    [field]: result.assets[0].uri,
-                }));
-                setErrors((prev) => ({ ...prev, [field]: "" }));
-            }
-        } catch (error) {
-            Alert.alert("Lỗi", "Không thể chọn ảnh");
-            console.error("Image picker error:", error);
-        }
+        Alert.alert(
+            "Chọn nguồn ảnh",
+            "Chọn chụp ảnh hoặc lấy từ thư viện",
+            [
+                {
+                    text: "Camera",
+                    onPress: async () => {
+                        const result = await ImagePicker.launchCameraAsync({
+                            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                            allowsEditing: true,
+                            aspect: [4, 3],
+                            quality: 0.5,
+                        });
+                        if (!result.canceled) {
+                            setFormData((prev) => ({
+                                ...prev,
+                                [field]: result.assets[0].uri,
+                            }));
+                            setErrors((prev) => ({ ...prev, [field]: "" }));
+                        }
+                    },
+                },
+                {
+                    text: "Thư viện",
+                    onPress: async () => {
+                        const result = await ImagePicker.launchImageLibraryAsync({
+                            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                            allowsEditing: true,
+                            aspect: [4, 3],
+                            quality: 0.5,
+                        });
+                        if (!result.canceled) {
+                            setFormData((prev) => ({
+                                ...prev,
+                                [field]: result.assets[0].uri,
+                            }));
+                            setErrors((prev) => ({ ...prev, [field]: "" }));
+                        }
+                    },
+                },
+                { text: "Hủy", style: "cancel" },
+            ],
+            { cancelable: true }
+        );
     };
 
     // Hàm xử lý thay đổi input
@@ -459,7 +484,23 @@ const VehicleScreen = () => {
         </ScrollView>
     );
     // Render giao diện chính
-    return viewMode === "list" ? renderList() : renderForm();
+    return viewMode === "list" ? (
+        <View style={styles.listContainer}>
+            {loading ? (
+                <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />
+            ) : (
+                renderList()
+            )}
+        </View>
+    ) : (
+        <ScrollView contentContainerStyle={styles.container}>
+            {loading ? (
+                <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />
+            ) : (
+                renderForm()
+            )}
+        </ScrollView>
+    );
 };
 
 const styles = StyleSheet.create({
@@ -636,6 +677,7 @@ const styles = StyleSheet.create({
         height: 200,
         borderRadius: 8,
         marginBottom: 10,
+        borderWidth: 1,
     },
     imageContainer: {
         marginBottom: 20,

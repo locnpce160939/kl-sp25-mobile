@@ -18,8 +18,9 @@ const ProfileScreen = () => {
   const { logout } = useContext(AuthContext);
   const navigation = useNavigation();
   const [expandedItem, setExpandedItem] = useState(null);
-  const [showMissingInfoBanner, setShowMissingInfoBanner] = useState(false);
-  const [showNoLicenseBanner, setShowNoLicenseBanner] = useState(false);
+  const [showLicenseBanner, setShowLicenseBanner] = useState(false);
+  const [showVehicleBanner, setShowVehicleBanner] = useState(false);
+  const [showIdentificationBanner, setShowIdentificationBanner] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -31,6 +32,26 @@ const ProfileScreen = () => {
   });
   const [isLoading, setIsLoading] = useState(false);
 
+  const updateBannerStates = (data) => {
+    if (!data.license) {
+      setShowLicenseBanner(true);
+      setShowVehicleBanner(false);
+      setShowIdentificationBanner(false);
+    } else if (!data.vehicle) {
+      setShowLicenseBanner(false);
+      setShowVehicleBanner(true);
+      setShowIdentificationBanner(false);
+    } else if (!data.identification) {
+      setShowLicenseBanner(false);
+      setShowVehicleBanner(false);
+      setShowIdentificationBanner(true);
+    } else {
+      setShowLicenseBanner(false);
+      setShowVehicleBanner(false);
+      setShowIdentificationBanner(false);
+    }
+  };
+
   useFocusEffect(
     useCallback(() => {
       const fetchData = async () => {
@@ -39,8 +60,7 @@ const ProfileScreen = () => {
           const data = await loadStatusDriverDocument();
           if (data) {
             setDriverDocuments(data);
-            setShowNoLicenseBanner(!data.license);
-            setShowMissingInfoBanner(!data.license && !data.vehicle && !data.identification);
+            updateBannerStates(data);
           }
         } catch (error) {
           if (error.response?.status === 401) {
@@ -116,11 +136,11 @@ const ProfileScreen = () => {
   const renderSections = () => {
     return sections.map((section) => (
       <View key={section.title} style={styles.section}>
-        {section.title === "Phần 1" && showNoLicenseBanner && (
+        {section.title === "Phần 1" && showLicenseBanner && (
           <View style={[styles.bannerCard, { backgroundColor: "#ffcc00" }]}>
             <View style={styles.bannerContent}>
               <Text style={styles.bannerText}>
-                Bạn chưa có thông tin Giấy Phép Lái Xe, vui lòng bổ sung!
+                Bạn chưa có thông tin GPLX, vui lòng bổ sung!
               </Text>
               <TouchableOpacity onPress={() => navigation.navigate("LicenseScreen")}>
                 <Ionicons name="chevron-forward-outline" size={30} color="#333" style={styles.bannerArrow} />
@@ -128,13 +148,21 @@ const ProfileScreen = () => {
             </View>
           </View>
         )}
-        {section.title === "Phần 1" && showMissingInfoBanner && (
+        {section.title === "Phần 1" && showVehicleBanner && (
           <View style={[styles.bannerCard, { backgroundColor: "#ffcc00" }]}>
             <View style={styles.bannerContent}>
-              <Text style={styles.bannerText}>
-                Thông tin tài xế còn thiếu, vui lòng bổ sung
-              </Text>
-              <TouchableOpacity onPress={() => navigation.navigate("LicenseScreen")}>
+              <Text style={styles.bannerText}>Bạn chưa có thông tin phương tiện, vui lòng bổ sung!</Text>
+              <TouchableOpacity onPress={() => navigation.navigate("VehicleScreen")}>
+                <Ionicons name="chevron-forward-outline" size={30} color="#333" style={styles.bannerArrow} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+        {section.title === "Phần 1" && showIdentificationBanner && (
+          <View style={[styles.bannerCard, { backgroundColor: "#ffcc00" }]}>
+            <View style={styles.bannerContent}>
+              <Text style={styles.bannerText}>Bạn chưa có thông tin CCCD, vui lòng bổ sung!</Text>
+              <TouchableOpacity onPress={() => navigation.navigate("DriverIdentificationScreen")}>
                 <Ionicons name="chevron-forward-outline" size={30} color="#333" style={styles.bannerArrow} />
               </TouchableOpacity>
             </View>
@@ -203,11 +231,6 @@ const ProfileScreen = () => {
             style={styles.headerImage}
           />
         </View>
-        {showMissingInfoBanner && (
-          <View style={{ backgroundColor: "#c4f0ff", padding: 10, margin: 20 }}>
-            <Text style={{ color: "#333" }}>Bạn chưa điền thông tin trên app</Text>
-          </View>
-        )}
         {renderSections()}
         <View style={styles.logoutContainer}>
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
@@ -284,16 +307,13 @@ const styles = StyleSheet.create({
   },
   bannerText: {
     color: "#333",
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "500",
   },
   bannerContent: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-  },
-  bannerArrow: {
-    // marginLeft: 5,
   },
 });
 
