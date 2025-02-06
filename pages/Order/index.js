@@ -14,6 +14,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import MapView, { Marker } from "react-native-maps";
 import io from "socket.io-client";
+import { useNavigation } from '@react-navigation/native';
 const Order = () => {
   const [bookings, setBookings] = useState([]);
   const [selectedBooking, setSelectedBooking] = useState(null);
@@ -221,6 +222,8 @@ const Order = () => {
     </TouchableOpacity>
   );
   const renderDetailModal = () => {
+
+    const navigation = useNavigation();
     if (!selectedBooking) return null;
     return (
       <Modal
@@ -287,32 +290,50 @@ const Order = () => {
             </View>
             {/* Driver Card */}
             {selectedBooking.driver && (
-              <View style={styles.detailCard}>
-                <Text style={styles.cardTitle}>Driver Information</Text>
-                <View style={styles.driverInfo}>
-                  <View style={styles.driverAvatar}>
-                    <Icon name="account-circle" size={40} color="#0066cc" />
-                  </View>
-                  <View style={styles.driverDetails}>
-                    <Text style={styles.driverName}>
-                      {selectedBooking.driver.fullName}
-                    </Text>
-                    <View style={styles.contactInfo}>
-                      <Icon name="phone" size={16} color="#666" />
-                      <Text style={styles.contactText}>
-                        {selectedBooking.driver.phone}
-                      </Text>
-                    </View>
-                    <View style={styles.contactInfo}>
-                      <Icon name="email" size={16} color="#666" />
-                      <Text style={styles.contactText}>
-                        {selectedBooking.driver.email}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              </View>
-            )}
+  <View style={styles.detailCard}>
+    <Text style={styles.cardTitle}>Driver Information</Text>
+    <View style={styles.driverInfo}>
+      <View style={styles.driverAvatar}>
+        <Icon name="account-circle" size={40} color="#0066cc" />
+      </View>
+      <View style={styles.driverDetails}>
+        <Text style={styles.driverName}>
+          {selectedBooking.driver.fullName}
+        </Text>
+        <View style={styles.contactInfo}>
+          <Icon name="phone" size={16} color="#666" />
+          <Text style={styles.contactText}>
+            {selectedBooking.driver.phone}
+          </Text>
+        </View>
+        <View style={styles.contactInfo}>
+          <Icon name="email" size={16} color="#666" />
+          <Text style={styles.contactText}>
+            {selectedBooking.driver.email}
+          </Text>
+        </View>
+        
+        {/* Thêm nút chat */}
+        <TouchableOpacity 
+  style={styles.chatButton}
+  onPress={() => {
+    console.log("Booking ID:", selectedBooking.bookingId);  // This will show the correct booking ID
+    navigation.navigate('ChatCustomer', {
+      driverId: selectedBooking.driver.accountId,  // Changed from id to accountId
+      driverName: selectedBooking.driver.fullName,
+      bookingId: selectedBooking.bookingId,
+    });
+  }}
+>
+  <Icon name="chat" size={20} color="#fff" />
+  <Text style={styles.chatButtonText}>Chat with Driver</Text>
+</TouchableOpacity>
+
+
+      </View>
+    </View>
+  </View>
+)}
             {/* Trip Agreement Card */}
             {selectedBooking.tripAgreement && (
               <View style={styles.detailCard}>
@@ -685,5 +706,19 @@ const styles = StyleSheet.create({
     color: "red",
     fontSize: 16,
   },
+  //_____chat
+  chatButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0066cc',
+    padding: 8,
+    borderRadius: 8,
+    marginTop: 10,
+  },
+  chatButtonText: {
+    color: '#fff',
+    marginLeft: 8,
+    fontSize: 14,
+  }
 });
 export default Order;

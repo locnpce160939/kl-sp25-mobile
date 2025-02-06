@@ -83,9 +83,9 @@ const HomeScreen = () => {
     {
       id: 4,
       icon: "business-outline",
-      label: "Thêm công ty",
+      label: "Chat",
       color: "#eab308",
-      navigate: "Chat"
+      navigate: "ChatDriver"
     },
   ];
   const renderBanner = () => (
@@ -123,6 +123,15 @@ const HomeScreen = () => {
       >
         <Ionicons name="add-outline" size={24} color="#00b5ec" />
         <Text style={styles.searchText}>Tạo đơn hàng?</Text>
+      </TouchableOpacity>
+
+      {/* Nút Chat */}
+      <TouchableOpacity 
+        style={styles.chatButton}
+        onPress={() => navigation.navigate("ChatDriver")}
+      >
+        <Ionicons name="chatbubble-ellipses-outline" size={24} color="#ffffff" />
+        <Text style={styles.chatText}>Chat</Text>
       </TouchableOpacity>
     </View>
   );
@@ -357,6 +366,30 @@ const styles = StyleSheet.create({
     height: 200,
     resizeMode: "cover",
   },
+  //----------chat
+  headerActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  
+  chatButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#00b5ec', 
+    padding: 12,
+    borderRadius: 12,
+    marginLeft: 10,
+  },
+  
+  chatText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+  
   
 });
 
