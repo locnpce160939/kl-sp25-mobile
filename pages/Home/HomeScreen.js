@@ -97,7 +97,7 @@ const HomeScreen = () => {
         <Text style={styles.searchText}>Tạo đơn hàng?</Text>
       </TouchableOpacity>
       <View style={styles.quickAddressContainer} >
-        <TouchableOpacity style={styles.quickAddressButton} onPress={() => navigation.navigate("Chat")}>
+        <TouchableOpacity style={styles.quickAddressButton}>
           <Image
             source={require("../../assets/BgcLogin.jpg")}
             style={styles.addIcon}

@@ -29,7 +29,7 @@ const ScheduleScreen = () => {
   const [dateType, setDateType] = useState(null); // 'start' or 'end'
   const [availableCapacity, setAvailableCapacity] = useState("");
   const [initialRegion, setInitialRegion] = useState(null);
-
+  const [selectingLocationType, setSelectingLocationType] = useState(null);
   const [touched, setTouched] = useState({
     location: false,
     startDay: false,
@@ -103,18 +103,18 @@ const ScheduleScreen = () => {
 
   const handleMapPress = (event) => {
     const { coordinate } = event.nativeEvent;
-    if (selectingPoint === "start") {
+    if (selectingLocationType === "start") {
       setLocations((prev) => ({
         ...prev,
         startLocation: coordinate,
       }));
-      setSelectingPoint("end");
     } else {
       setLocations((prev) => ({
         ...prev,
         endLocation: coordinate,
       }));
     }
+    setIsMapVisible(false);
     handleBlur("location");
   };
 
@@ -166,6 +166,11 @@ const ScheduleScreen = () => {
         Alert.alert("Error", error.response?.data?.message || "Đã xảy ra lỗi!");
       }
     }
+  };
+
+  const openLocationSelector = (type) => {
+    setSelectingLocationType(type);
+    setIsMapVisible(true);
   };
 
   const formatLocation = (location) => {
@@ -265,26 +270,40 @@ const ScheduleScreen = () => {
     <KeyboardAvoidingView style={{ flex: 1 }}>
       <TouchableWithoutFeedback>
         <View style={styles.container}>
-          <Text style={styles.label}>Địa điểm *</Text>
+          <Text style={styles.label}>Điểm bắt đầu *</Text>
           <TouchableOpacity
             style={[
               styles.locationInput,
               touched.location && errors.location && styles.errorInput,
             ]}
-            onPress={() => setIsMapVisible(true)}
+            onPress={() => openLocationSelector("start")}
           >
             <Text>
-              {locations.startLocation && locations.endLocation
-                ? `${formatLocation(
-                    locations.startLocation
-                  )} → ${formatLocation(locations.endLocation)}`
-                : "Chọn điểm bắt đầu và kết thúc"}
+              {locations.startLocation
+                ? formatLocation(locations.startLocation)
+                : "Chọn điểm bắt đầu"}
+            </Text>
+          </TouchableOpacity>
+
+          <Text style={styles.label}>Điểm kết thúc *</Text>
+          <TouchableOpacity
+            style={[
+              styles.locationInput,
+              touched.location && errors.location && styles.errorInput,
+            ]}
+            onPress={() => openLocationSelector("end")}
+          >
+            <Text>
+              {locations.endLocation
+                ? formatLocation(locations.endLocation)
+                : "Chọn điểm kết thúc"}
             </Text>
           </TouchableOpacity>
           {touched.location && errors.location && (
             <Text style={styles.errorText}>{errors.location}</Text>
           )}
 
+          {/* Keep existing date and capacity inputs */}
           <Text style={styles.label}>Ngày bắt đầu *</Text>
           <TouchableOpacity
             style={[
@@ -344,7 +363,7 @@ const ScheduleScreen = () => {
             <View style={styles.modalContainer}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalHeaderText}>
-                  {selectingPoint === "start"
+                  {selectingLocationType === "start"
                     ? "Chọn điểm bắt đầu"
                     : "Chọn điểm kết thúc"}
                 </Text>
@@ -354,7 +373,6 @@ const ScheduleScreen = () => {
                 style={styles.map}
                 initialRegion={initialRegion}
                 onPress={handleMapPress}
-                key={`map-${locations.endLocation?.latitude}-${locations.endLocation?.longitude}`}
               >
                 {locations.startLocation && (
                   <Marker
@@ -375,8 +393,11 @@ const ScheduleScreen = () => {
               <TouchableOpacity
                 style={styles.resetButton}
                 onPress={() => {
-                  setLocations({ startLocation: null, endLocation: null });
-                  setSelectingPoint("start");
+                  if (selectingLocationType === "start") {
+                    setLocations((prev) => ({ ...prev, startLocation: null }));
+                  } else {
+                    setLocations((prev) => ({ ...prev, endLocation: null }));
+                  }
                 }}
               >
                 <Text style={styles.resetButtonText}>Chọn lại</Text>
@@ -384,12 +405,9 @@ const ScheduleScreen = () => {
 
               <TouchableOpacity
                 style={styles.closeButton}
-                onPress={() => {
-                  setIsMapVisible(false);
-                  setSelectingPoint("start");
-                }}
+                onPress={() => setIsMapVisible(false)}
               >
-                <Text style={styles.closeButtonText}>Xác nhận </Text>
+                <Text style={styles.closeButtonText}>Xác nhận</Text>
               </TouchableOpacity>
             </View>
           </Modal>
@@ -410,6 +428,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 8,
     color: "#333",
+  },
+  locationInput: {
+    backgroundColor: "#f5f5f5",
+    padding: 15,
+    borderRadius: 8,
+    marginBottom: 16,
+    flexDirection: "row",
+    alignItems: "center",
   },
   input: {
     backgroundColor: "#f5f5f5",

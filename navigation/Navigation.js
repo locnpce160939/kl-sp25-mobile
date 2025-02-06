@@ -15,7 +15,7 @@ import TripBooking from "../pages/TripBooking";
 import LicenseScreen from "../pages/Lincese/licenseScreen";
 import VehicleScreen from "../pages/Vehicle/vehicleScreen";
 import CreateDriverIdentificationScreen from "../pages/Auth/CreateDriverIdentificationScreen";
-import ChatScreen from "../pages/Chat";
+import ViewTrip from "../pages/TripBooking/view";
 
 const Stack = createNativeStackNavigator();
 
@@ -61,8 +61,8 @@ const Navigation = () => {
               options={{ headerShown: false }}
             />
             <Stack.Screen
-              name="Chat"
-              component={ChatScreen}
+              name="ViewTrip"
+              component={ViewTrip}
             />
           </>
         ) : (
