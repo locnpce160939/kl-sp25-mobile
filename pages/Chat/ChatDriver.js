@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -13,7 +13,6 @@ import Ionicons from "react-native-vector-icons/Ionicons";
 import io from "socket.io-client";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-// Config WebSocket
 const HOST = "https://api.ftcs.online";
 const SOCKET_URL = "wss://api.ftcs.online";
 const TRIP_BOOKING_ID = 4;
@@ -24,19 +23,35 @@ const ChatDriver = () => {
   const [token, setToken] = useState(null);
   const [currentUserId, setCurrentUserId] = useState(null);
   const [socket, setSocket] = useState(null);
+  const flatListRef = useRef(null);
 
-  // Lấy userId từ token
+  const scrollToBottom = () => {
+    if (flatListRef.current && messages.length > 0) {
+      flatListRef.current.scrollToEnd({ animated: true });
+    }
+  };
+
   function getUserIdFromToken(token) {
     try {
-      const payload = JSON.parse(atob(token.split(".")[1])); // Decode JWT payload
-      return payload.account.id; // Extract user ID
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      return payload.account.id;
     } catch (error) {
       console.error("❌ Error decoding token:", error);
       return null;
     }
   }
 
-  // Lấy token từ AsyncStorage và thiết lập WebSocket
+  useEffect(() => {
+    fetchToken();
+  }, []);
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    if (messages.length > 0) {
+      setTimeout(scrollToBottom, 100);
+    }
+  }, [messages]);
+
   const fetchToken = async () => {
     try {
       const userInfoString = await AsyncStorage.getItem("userInfo");
@@ -53,7 +68,6 @@ const ChatDriver = () => {
     }
   };
 
-  // Kết nối WebSocket
   const connectWebSocket = (accessToken, userId) => {
     const newSocket = io(SOCKET_URL, {
       query: { username: `user_${userId}`, room: userId.toString() },
@@ -67,7 +81,11 @@ const ChatDriver = () => {
         const content = JSON.parse(data.content);
         setMessages((prevMessages) => [
           ...prevMessages,
-          { id: Date.now().toString(), text: content.message, sender: "driver" },
+          {
+            id: Date.now().toString(),
+            text: content.message,
+            sender: "driver",
+          },
         ]);
       } catch (error) {
         console.error("❌ Error parsing message:", error);
@@ -77,70 +95,86 @@ const ChatDriver = () => {
     setSocket(newSocket);
   };
 
-  // Lấy lịch sử tin nhắn từ API
   const fetchMessageHistory = async (accessToken, userId) => {
     try {
-      const response = await fetch(`${HOST}/api/chat-message/${TRIP_BOOKING_ID}`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-      });
+      const response = await fetch(
+        `${HOST}/api/chat-message/${TRIP_BOOKING_ID}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
       const result = await response.json();
       if (result.code === 200) {
-        setMessages(
-          result.data.map((msg) => ({
-            id: msg.createAt,
-            text: msg.messageContent,
-            sender: msg.senderId === userId ? "user" : "driver",
-          }))
-        );
+        const formattedMessages = result.data.map((msg) => ({
+          id: msg.createAt,
+          text: msg.messageContent,
+          sender: msg.senderId === userId ? "user" : "driver",
+        }));
+        setMessages(formattedMessages);
       }
     } catch (error) {
       console.error("❌ Error fetching message history:", error);
     }
   };
 
-  // Gửi tin nhắn
   const sendMessage = () => {
     if (inputText.trim() && socket) {
       const payload = {
         messageType: "MESSAGE_SEND",
-        content: JSON.stringify({ tripBookingId: TRIP_BOOKING_ID, message: inputText }),
+        content: JSON.stringify({
+          tripBookingId: TRIP_BOOKING_ID,
+          message: inputText,
+        }),
         room: currentUserId.toString(),
         username: `user_${currentUserId}`,
       };
 
       socket.emit("MESSAGE_SEND", payload);
-      setMessages([...messages, { id: Date.now().toString(), text: inputText, sender: "user" }]);
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        { id: Date.now().toString(), text: inputText, sender: "user" },
+      ]);
       setInputText("");
     }
   };
 
-  // Load token khi mở màn hình
-  useEffect(() => {
-    fetchToken();
-    return () => socket && socket.disconnect(); // Ngắt kết nối WebSocket khi rời màn hình
-  }, []);
-
-  // Render tin nhắn
   const renderMessage = ({ item }) => (
-    <View style={[styles.messageContainer, item.sender === "user" ? styles.userMessage : styles.driverMessage]}>
-      <Text style={styles.messageText}>{item.text}</Text>
+    <View
+      style={[
+        styles.messageContainer,
+        item.sender === "user" ? styles.userMessage : styles.driverMessage,
+      ]}
+    >
+      <Text
+        style={[
+          styles.messageText,
+          item.sender !== "user" && { color: "#000" },
+        ]}
+      >
+        {item.text}
+      </Text>
     </View>
   );
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.container}>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={styles.container}
+    >
       <FlatList
+        ref={flatListRef}
         data={messages}
         renderItem={renderMessage}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.chatContainer}
+        onContentSizeChange={scrollToBottom}
+        onLayout={scrollToBottom}
       />
 
-      {/* Thanh nhập tin nhắn */}
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
@@ -148,7 +182,14 @@ const ChatDriver = () => {
           value={inputText}
           onChangeText={setInputText}
         />
-        <TouchableOpacity onPress={sendMessage} style={styles.sendButton}>
+        <TouchableOpacity
+          onPress={sendMessage}
+          style={[
+            styles.sendButton,
+            !inputText.trim() && { backgroundColor: "#ccc" },
+          ]}
+          disabled={!inputText.trim()}
+        >
           <Ionicons name="send" size={24} color="#fff" />
         </TouchableOpacity>
       </View>
@@ -164,7 +205,6 @@ const styles = StyleSheet.create({
   chatContainer: {
     flexGrow: 1,
     padding: 16,
-    justifyContent: "flex-end",
   },
   messageContainer: {
     maxWidth: "75%",
