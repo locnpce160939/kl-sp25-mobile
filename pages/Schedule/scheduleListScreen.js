@@ -39,17 +39,13 @@ const ScheduleListScreen = () => {
                 const response = await axios.get(`${BASE_URl}/api/schedule/getScheduleByToken`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
-    
-                console.log("Full response:", response); // Log toàn bộ response
                 console.log("Response data:", response.data); // Log dữ liệu từ response
     
                 // Kiểm tra cấu trúc dữ liệu trả về
                 const scheduleData = response.data.data || response.data;
-    
                 console.log("Received data:", scheduleData); // Log dữ liệu nhận được
                 console.log("Data type:", typeof scheduleData); // Kiểm tra kiểu dữ liệu
                 console.log("Data length:", scheduleData.length); // Kiểm tra độ dài dữ liệu
-    
                 // Cập nhật state với dữ liệu nhận được
                 setSchedules(scheduleData);
             } catch (error) {

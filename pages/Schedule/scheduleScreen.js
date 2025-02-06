@@ -34,13 +34,11 @@ const ScheduleScreen = () => {
   const [availableCapacity, setAvailableCapacity] = useState("");
   const [initialRegion, setInitialRegion] = useState(null);
 
-
   const [locationState, setLocationState] = useState(null);
   const [titlePickup, setTitlePickup] = useState("");
   const [titleDropoff, setTitleDropoff] = useState("");
   const [startLocationAddress, setStartLocationAddress] = useState("");
   const [endLocationAddress, setEndLocationAddress] = useState("");
-
 
   const [touched, setTouched] = useState({
     startLocation: false,
@@ -126,15 +124,13 @@ const ScheduleScreen = () => {
 
   const handleMapPress = async (event) => {
     const { coordinate } = event.nativeEvent;
-    if (selectingLocationType === "start") {
+    console.log('Hellloooooooooo',coordinate)
+    if (selectingPoint === "start") {
       setLocations((prev) => ({
         ...prev,
         startLocation: coordinate,
       }));
-
-
       await getNearLocation(coordinate);
-
     } else {
       setLocations((prev) => ({
         ...prev,
@@ -170,7 +166,6 @@ const ScheduleScreen = () => {
         error.response ? error.response.data : error.message
       );
     }
-
   };
 
   const handleCreateSchedule = async () => {
@@ -225,15 +220,6 @@ const ScheduleScreen = () => {
     }
   };
 
-  const openLocationSelector = (type) => {
-    setSelectingLocationType(type);
-    setIsMapVisible(true);
-  };
-
-  const formatLocation = (location) => {
-    if (!location) return "Chưa chọn địa điểm";
-    return `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`;
-  };
 
   const formatDate = (date) => {
     return date.toLocaleDateString("vi-VN");
@@ -325,7 +311,7 @@ const ScheduleScreen = () => {
   }, [locations.startLocation, locations.endLocation]);
 
   const handleNearLocationPress = (item) => {
-    console.log("🚀 ~ handleNearLocationPress ~ item:", item)
+    console.log("🚀 ~ handleNearLocationPress ~ item:", item);
     if (selectingPoint === "start") {
       setLocations((prev) => ({
         ...prev,
@@ -351,37 +337,17 @@ const ScheduleScreen = () => {
           <TouchableOpacity
             style={[
               styles.locationInput,
-              touched.location && errors.location && styles.errorInput,
-            ]}
-            onPress={() => openLocationSelector("start")}
-          >
-            <Text>
-              {locations.startLocation
-                ? formatLocation(locations.startLocation)
-                : "Chọn điểm bắt đầu"}
-            </Text>
-          </TouchableOpacity>
-
-          <Text style={styles.label}>Điểm kết thúc *</Text>
-          <TouchableOpacity
-            style={[
-              styles.locationInput,
               touched.startLocation &&
                 errors.startLocation &&
                 styles.errorInput,
             ]}
-
             onPress={() => showLocationPicker("start")}
           >
-            <Text>
-              {startLocationAddress || "Chọn điểm bắt đầu"}
-
-            </Text>
+            <Text>{startLocationAddress || "Chọn điểm bắt đầu"}</Text>
           </TouchableOpacity>
           {touched.startLocation && errors.startLocation && (
             <Text style={styles.errorText}>{errors.startLocation}</Text>
           )}
-
 
           {/* End Location Input */}
           <Text style={styles.label}>Điểm kết thúc *</Text>
@@ -392,9 +358,7 @@ const ScheduleScreen = () => {
             ]}
             onPress={() => showLocationPicker("end")}
           >
-            <Text>
-              {endLocationAddress || "Chọn điểm kết thúc"}
-            </Text>
+            <Text>{endLocationAddress || "Chọn điểm kết thúc"}</Text>
           </TouchableOpacity>
 
           <Text style={styles.label}>Ngày bắt đầu *</Text>
