@@ -393,20 +393,25 @@ const Order = () => {
             {/* Location Tracking */}
             <MapView
               style={styles.map}
-              initialRegion={{
+              region={{
                 latitude: location.latitude,
                 longitude: location.longitude,
                 latitudeDelta: 0.01,
                 longitudeDelta: 0.01,
               }}
+              showsUserLocation={true}
+              followsUserLocation={true}
             >
               <Marker
                 coordinate={{
                   latitude: location.latitude,
                   longitude: location.longitude,
                 }}
-                title="Vị trí tài xế"
-              />
+                title="Driver Location"
+                pinColor="#0066cc"
+              >
+                <Icon name="account-circle" size={40} color="#0066cc" />
+              </Marker>
             </MapView>
             {/* <MapView
               style={styles.map}
