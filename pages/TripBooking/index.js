@@ -47,7 +47,6 @@ const TripBooking = () => {
   const [isBottomSheetOpen, setIsBottomSheetOpen] = useState(false);
   const [titlePickup, setTitlePickup] = useState(false);
   const [titleDropoff, setTitleDropoff] = useState(false);
-  const [endLocationAddress, setEndLocationAddress] = useState(false);
 
 
   // Error states
