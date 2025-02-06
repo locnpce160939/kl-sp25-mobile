@@ -261,10 +261,10 @@ const TripBooking = () => {
   };
 
   const handleSubmit = async () => {
-    if (!validateForm()) {
-      Alert.alert("Validation Error", "Please check all fields");
-      return;
-    }
+    // if (!validateForm()) {
+    //   Alert.alert("Validation Error", "Please check all fields");
+    //   return;
+    // }
 
     let token = await AsyncStorage.getItem("token");
 
