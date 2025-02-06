@@ -14,8 +14,13 @@ import ScheduleScreen from "../pages/Schedule/scheduleScreen";
 import TripBooking from "../pages/TripBooking";
 import LicenseScreen from "../pages/Lincese/licenseScreen";
 import VehicleScreen from "../pages/Vehicle/vehicleScreen";
-import CreateDriverIdentificationScreen from "../pages/Auth/CreateDriverIdentificationScreen";
 import ViewTrip from "../pages/TripBooking/view";
+import DriverIdentificationScreen from "../pages/Indentification/DriverIdentificationScreen";
+import RightTrip from "../pages/RightTrip";
+import Order from "../pages/Order";
+import ChatCustomer from '../pages/Chat/ChatCustomer';
+import ChatDriver from '../pages/Chat/ChatDriver';
+
 
 const Stack = createNativeStackNavigator();
 
@@ -45,6 +50,7 @@ const Navigation = () => {
             />
             <Stack.Screen name="Schedule" component={ScheduleScreen} />
             <Stack.Screen name="Booking" component={TripBooking} />
+            
             <Stack.Screen
               name="VehicleScreen"
               component={VehicleScreen}
@@ -56,14 +62,33 @@ const Navigation = () => {
               options={{ headerShown: false }}
             />
             <Stack.Screen
-              name="CreateDriverIdentificationScreen"
-              component={CreateDriverIdentificationScreen}
+              name="DriverIdentificationScreen"
+              component={DriverIdentificationScreen}
               options={{ headerShown: false }}
             />
             <Stack.Screen
+              name="RightTrip"
+              component={RightTrip}
+            />
+              <Stack.Screen
               name="ViewTrip"
               component={ViewTrip}
             />
+            <Stack.Screen
+              name="Order"
+              component={Order}
+            />
+             <Stack.Screen 
+          name="ChatCustomer" 
+          component={ChatCustomer}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+  name="ChatDriver" 
+  component={ChatDriver} 
+  options={{ headerShown: false }} 
+/>
+
           </>
         ) : (
           <>

@@ -47,6 +47,9 @@ const TripBooking = () => {
   const [isBottomSheetOpen, setIsBottomSheetOpen] = useState(false);
   const [titlePickup, setTitlePickup] = useState(false);
   const [titleDropoff, setTitleDropoff] = useState(false);
+  const [startLocationAddress, setStartLocationAddress] = useState(false);
+  const [endLocationAddress, setEndLocationAddress] = useState(false);
+
 
   // Error states
   const [errors, setErrors] = useState({
@@ -262,10 +265,10 @@ const TripBooking = () => {
   };
 
   const handleSubmit = async () => {
-    if (!validateForm()) {
-      Alert.alert("Validation Error", "Please check all fields");
-      return;
-    }
+    // if (!validateForm()) {
+    //   Alert.alert("Validation Error", "Please check all fields");
+    //   return;
+    // }
 
     let token = await AsyncStorage.getItem("token");
 
@@ -281,8 +284,10 @@ const TripBooking = () => {
           pickupLocation: pickupLocationString,
           dropoffLocation: dropoffLocationString,
           capacity: parseInt(capacity),
-          startLocationAddress: startLocationAddress,
-          endLocationAddress: endLocationAddress,
+
+          startLocationAddress,
+          endLocationAddress,
+
         },
         {
           headers: {
@@ -325,14 +330,14 @@ const TripBooking = () => {
           },
         }
       );
-
       const locationData = res.data.data.map((item) => ({
         formatted_address: item.formatted_address,
         lat: item.geometry.location.lat,
         long: item.geometry.location.lng,
       }));
       setLocationState(locationData);
-      console.log(locationState);
+
+
     } catch (error) {
       console.error(
         "Error:",
@@ -348,14 +353,16 @@ const TripBooking = () => {
         longitude: item.long,
       });
       setTitlePickup(item.formatted_address);
-      setStartLocationAddress(item.formatted_address)
+
+      setStartLocationAddress(item.formatted_address);
+
     } else {
       setDropoffLocation({
         latitude: item.lat,
         longitude: item.long,
       });
       setTitleDropoff(item.formatted_address);
-      setEndLocationAddress(item.formatted_address)
+      setEndLocationAddress(item.formatted_address);
     }
   };
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   StyleSheet,
   View,
@@ -10,12 +10,16 @@ import {
   KeyboardAvoidingView,
   TouchableWithoutFeedback,
   Platform,
+  FlatList,
 } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import axios from "axios";
 import { BASE_URl } from "../../configUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { Ionicons } from "@expo/vector-icons";
 
 const ScheduleScreen = () => {
   const [locations, setLocations] = useState({
@@ -29,28 +33,44 @@ const ScheduleScreen = () => {
   const [dateType, setDateType] = useState(null); // 'start' or 'end'
   const [availableCapacity, setAvailableCapacity] = useState("");
   const [initialRegion, setInitialRegion] = useState(null);
-  const [selectingLocationType, setSelectingLocationType] = useState(null);
+
+
+  const [locationState, setLocationState] = useState(null);
+  const [titlePickup, setTitlePickup] = useState("");
+  const [titleDropoff, setTitleDropoff] = useState("");
+  const [startLocationAddress, setStartLocationAddress] = useState("");
+  const [endLocationAddress, setEndLocationAddress] = useState("");
+
+
   const [touched, setTouched] = useState({
-    location: false,
+    startLocation: false,
+    endLocation: false,
     startDay: false,
     endDay: false,
     capacity: false,
   });
 
   const [errors, setErrors] = useState({
-    location: "",
+    startLocation: "",
+    endLocation: "",
     startDay: "",
     endDay: "",
     capacity: "",
   });
 
   const [isMapVisible, setIsMapVisible] = useState(false);
-  const [selectingPoint, setSelectingPoint] = useState("end");
+  const [selectingPoint, setSelectingPoint] = useState(null);
+  const bottomSheetRef = useRef(null);
 
   // Platform specific date picker handling
   const showPicker = (type) => {
     setDateType(type);
     setShowDatePicker(true);
+  };
+
+  const showLocationPicker = (type) => {
+    setSelectingPoint(type);
+    setIsMapVisible(true);
   };
 
   const onDateChange = (event, selectedDate) => {
@@ -72,8 +92,11 @@ const ScheduleScreen = () => {
   const validateForm = () => {
     const newErrors = {};
 
-    if (!locations.startLocation || !locations.endLocation) {
-      newErrors.location = "Vui lòng chọn điểm bắt đầu và kết thúc";
+    if (!locations.startLocation) {
+      newErrors.startLocation = "Vui lòng chọn điểm bắt đầu";
+    }
+    if (!locations.endLocation) {
+      newErrors.endLocation = "Vui lòng chọn điểm kết thúc";
     }
 
     if (!startDay) {
@@ -101,21 +124,53 @@ const ScheduleScreen = () => {
     validateForm();
   };
 
-  const handleMapPress = (event) => {
+  const handleMapPress = async (event) => {
     const { coordinate } = event.nativeEvent;
     if (selectingLocationType === "start") {
       setLocations((prev) => ({
         ...prev,
         startLocation: coordinate,
       }));
+
+
+      await getNearLocation(coordinate);
+
     } else {
       setLocations((prev) => ({
         ...prev,
         endLocation: coordinate,
       }));
+      await getNearLocation(coordinate);
     }
-    setIsMapVisible(false);
-    handleBlur("location");
+    handleBlur(selectingPoint + "Location");
+  };
+
+  const getNearLocation = async (coordinate) => {
+    try {
+      let token = await AsyncStorage.getItem("token");
+      const res = await axios.get(
+        `${BASE_URl}/api/location/reverse-geocode?latitude=${coordinate.latitude}&longitude=${coordinate.longitude}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const locationData = res.data.data.map((item) => ({
+        formatted_address: item.formatted_address,
+        lat: item.geometry.location.lat,
+        long: item.geometry.location.lng,
+      }));
+      setLocationState(locationData);
+    } catch (error) {
+      console.error(
+        "Error:",
+        error.response ? error.response.data : error.message
+      );
+    }
+
   };
 
   const handleCreateSchedule = async () => {
@@ -143,6 +198,8 @@ const ScheduleScreen = () => {
           startDate: startDay,
           endDate: endDay,
           availableCapacity: availableCapacity,
+          startLocationAddress: startLocationAddress,
+          endLocationAddress: endLocationAddress,
         },
         {
           headers: {
@@ -198,6 +255,7 @@ const ScheduleScreen = () => {
             ...prevLocations,
             startLocation: { latitude, longitude },
           }));
+          await getNearLocation({ latitude, longitude });
         } else {
           setInitialRegion({
             latitude: 10.03,
@@ -266,6 +324,25 @@ const ScheduleScreen = () => {
     console.log("====================================");
   }, [locations.startLocation, locations.endLocation]);
 
+  const handleNearLocationPress = (item) => {
+    console.log("🚀 ~ handleNearLocationPress ~ item:", item)
+    if (selectingPoint === "start") {
+      setLocations((prev) => ({
+        ...prev,
+        startLocation: { latitude: item.lat, longitude: item.long },
+      }));
+      setTitlePickup(item.formatted_address);
+      setStartLocationAddress(item.formatted_address);
+    } else {
+      setLocations((prev) => ({
+        ...prev,
+        endLocation: { latitude: item.lat, longitude: item.long },
+      }));
+      setTitleDropoff(item.formatted_address);
+      setEndLocationAddress(item.formatted_address);
+    }
+  };
+
   return (
     <KeyboardAvoidingView style={{ flex: 1 }}>
       <TouchableWithoutFeedback>
@@ -289,21 +366,37 @@ const ScheduleScreen = () => {
           <TouchableOpacity
             style={[
               styles.locationInput,
-              touched.location && errors.location && styles.errorInput,
+              touched.startLocation &&
+                errors.startLocation &&
+                styles.errorInput,
             ]}
-            onPress={() => openLocationSelector("end")}
+
+            onPress={() => showLocationPicker("start")}
           >
             <Text>
-              {locations.endLocation
-                ? formatLocation(locations.endLocation)
-                : "Chọn điểm kết thúc"}
+              {startLocationAddress || "Chọn điểm bắt đầu"}
+
             </Text>
           </TouchableOpacity>
-          {touched.location && errors.location && (
-            <Text style={styles.errorText}>{errors.location}</Text>
+          {touched.startLocation && errors.startLocation && (
+            <Text style={styles.errorText}>{errors.startLocation}</Text>
           )}
 
-          {/* Keep existing date and capacity inputs */}
+
+          {/* End Location Input */}
+          <Text style={styles.label}>Điểm kết thúc *</Text>
+          <TouchableOpacity
+            style={[
+              styles.locationInput,
+              touched.endLocation && errors.endLocation && styles.errorInput,
+            ]}
+            onPress={() => showLocationPicker("end")}
+          >
+            <Text>
+              {endLocationAddress || "Chọn điểm kết thúc"}
+            </Text>
+          </TouchableOpacity>
+
           <Text style={styles.label}>Ngày bắt đầu *</Text>
           <TouchableOpacity
             style={[
@@ -317,7 +410,6 @@ const ScheduleScreen = () => {
           {touched.startDay && errors.startDay && (
             <Text style={styles.errorText}>{errors.startDay}</Text>
           )}
-
           <Text style={styles.label}>Ngày kết thúc *</Text>
           <TouchableOpacity
             style={[
@@ -360,56 +452,76 @@ const ScheduleScreen = () => {
 
           {/* Map Modal */}
           <Modal visible={isMapVisible} animationType="slide">
-            <View style={styles.modalContainer}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalHeaderText}>
-                  {selectingLocationType === "start"
-                    ? "Chọn điểm bắt đầu"
-                    : "Chọn điểm kết thúc"}
-                </Text>
+            <GestureHandlerRootView>
+              <View style={styles.modalContainer}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalHeaderText}>
+                    {selectingPoint === "start"
+                      ? "Chọn điểm bắt đầu"
+                      : "Chọn điểm kết thúc"}
+                  </Text>
+                </View>
+                <MapView
+                  style={styles.map}
+                  initialRegion={initialRegion}
+                  onPress={handleMapPress}
+                >
+                  {locations.startLocation && selectingPoint === "start" && (
+                    <Marker
+                      coordinate={locations.startLocation}
+                      title="Điểm bắt đầu"
+                      pinColor="green"
+                    />
+                  )}
+                  {locations.endLocation && selectingPoint === "end" && (
+                    <Marker
+                      coordinate={locations.endLocation}
+                      title="Điểm kết thúc"
+                      pinColor="red"
+                    />
+                  )}
+                </MapView>
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={() => setIsMapVisible(false)}
+                >
+                  <Ionicons name="arrow-back-outline" size={24}></Ionicons>
+                </TouchableOpacity>
+                <BottomSheet
+                  ref={bottomSheetRef}
+                  index={0}
+                  snapPoints={["50%"]}
+                >
+                  <BottomSheetView>
+                    <FlatList
+                      data={locationState}
+                      keyExtractor={(item, index) => index.toString()}
+                      renderItem={({ item }) => (
+                        <TouchableOpacity
+                          style={styles.locationItem}
+                          onPress={() => handleNearLocationPress(item)}
+                        >
+                          <Ionicons
+                            name="location-outline"
+                            size={24}
+                            color="black"
+                          />
+                          <Text>{item.formatted_address}</Text>
+                        </TouchableOpacity>
+                      )}
+                    />
+                    <TouchableOpacity
+                      style={styles.confirmLocation}
+                      onPress={() => {
+                        setIsMapVisible(false);
+                      }}
+                    >
+                      <Text style={styles.confirmText}>Xác nhận </Text>
+                    </TouchableOpacity>
+                  </BottomSheetView>
+                </BottomSheet>
               </View>
-
-              <MapView
-                style={styles.map}
-                initialRegion={initialRegion}
-                onPress={handleMapPress}
-              >
-                {locations.startLocation && (
-                  <Marker
-                    coordinate={locations.startLocation}
-                    title="Điểm bắt đầu"
-                    pinColor="green"
-                  />
-                )}
-                {locations.endLocation && (
-                  <Marker
-                    coordinate={locations.endLocation}
-                    title="Điểm kết thúc"
-                    pinColor="red"
-                  />
-                )}
-              </MapView>
-
-              <TouchableOpacity
-                style={styles.resetButton}
-                onPress={() => {
-                  if (selectingLocationType === "start") {
-                    setLocations((prev) => ({ ...prev, startLocation: null }));
-                  } else {
-                    setLocations((prev) => ({ ...prev, endLocation: null }));
-                  }
-                }}
-              >
-                <Text style={styles.resetButtonText}>Chọn lại</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => setIsMapVisible(false)}
-              >
-                <Text style={styles.closeButtonText}>Xác nhận</Text>
-              </TouchableOpacity>
-            </View>
+            </GestureHandlerRootView>
           </Modal>
           {renderDatePicker()}
         </View>
@@ -521,6 +633,29 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
   },
+
+  closeButton: {
+    position: "absolute",
+    top: 60,
+    left: 20,
+    backgroundColor: "#fff",
+    padding: 10,
+    borderRadius: 100,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 10,
+    width: 45,
+    height: 45,
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
   // Date Picker Modal Styles
   modalOverlay: {
     flex: 1,
@@ -573,6 +708,25 @@ const styles = StyleSheet.create({
   datePickerIOS: {
     height: 200,
     width: "100%",
+  },
+
+  confirmLocation: {
+    backgroundColor: "#00b5ec",
+    height: 50,
+    alignItems: "center",
+    justifyContent: "center",
+    margin: 20,
+    borderRadius: 10,
+  },
+  confirmText: {
+    fontWeight: 600,
+    fontSize: 18,
+    color: "#fff",
+  },
+  locationItem: {
+    flex: 1,
+    flexDirection: "row",
+    height: 50,
   },
 });
 
