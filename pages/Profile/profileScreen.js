@@ -114,6 +114,12 @@ const ProfileScreen = () => {
           label: "Đơn hàng của bạn",
           screen: "Order",
         },
+        {
+          id: 8,
+          icon: "list-outline",
+          label: "Danh sách lịch trình",
+          screen: "ScheduleListScreen",
+        },
       ],
     },
     {
