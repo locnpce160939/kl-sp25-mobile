@@ -23,12 +23,61 @@ const ScheduleListScreen = () => {
   const { logout } = useContext(AuthContext);
   const navigation = useNavigation();
 
-  useEffect(() => {
-    const fetchSchedules = async () => {
-      try {
-        // Lấy token từ AsyncStorage
-        const token = await AsyncStorage.getItem("token");
-        console.log("Token:", token); // Log token để kiểm tra
+    useEffect(() => {
+        const fetchSchedules = async () => {
+            try {
+                // Lấy token từ AsyncStorage
+                const token = await AsyncStorage.getItem("token");
+                console.log("Token:", token); // Log token để kiểm tra
+    
+                // Kiểm tra nếu token không tồn tại
+                if (!token) {
+                    throw new Error("Token không tồn tại. Vui lòng đăng nhập lại.");
+                }
+    
+                // Gọi API để lấy dữ liệu lịch trình
+                const response = await axios.get(`${BASE_URl}/api/schedule/getScheduleByToken`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                console.log("Response data:", response.data); // Log dữ liệu từ response
+    
+                // Kiểm tra cấu trúc dữ liệu trả về
+                const scheduleData = response.data.data || response.data;
+                console.log("Received data:", scheduleData); // Log dữ liệu nhận được
+                console.log("Data type:", typeof scheduleData); // Kiểm tra kiểu dữ liệu
+                console.log("Data length:", scheduleData.length); // Kiểm tra độ dài dữ liệu
+                // Cập nhật state với dữ liệu nhận được
+                setSchedules(scheduleData);
+            } catch (error) {
+                console.error("Error fetching schedules:", error); // Log lỗi
+    
+                // Xử lý lỗi từ phản hồi API
+                if (error.response) {
+                    console.error("Error response:", error.response.data);
+    
+                    // Xử lý lỗi 401 (Unauthorized)
+                    if (error.response.status === 401) {
+                        Alert.alert(
+                            "Phiên đăng nhập hết hạn",
+                            "Vui lòng đăng nhập lại",
+                            [{ text: "OK", onPress: () => logout() }],
+                            { cancelable: false }
+                        );
+                    } else {
+                        Alert.alert("Lỗi", "Không thể tải danh sách lịch trình");
+                    }
+                } else {
+                    Alert.alert("Lỗi", "Có lỗi xảy ra khi kết nối đến máy chủ");
+                }
+            } finally {
+                // Dừng trạng thái loading
+                setLoading(false);
+            }
+        };
+    
+        // Gọi hàm fetchSchedules
+        fetchSchedules();
+    }, []); // Dependency array rỗng để đảm bảo useEffect chỉ chạy một lần khi component mount
 
         // Kiểm tra nếu token không tồn tại
         if (!token) {
