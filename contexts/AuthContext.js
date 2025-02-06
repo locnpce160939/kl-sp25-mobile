@@ -268,13 +268,13 @@ export const AuthProvider = ({ children }) => {
   
     setIsLoading(true);
     try {
-      const checkFileSize = (file) => {
-        console.log("File size:", file.size);
-        const maxSize = 5 * 1024 * 1024; // 5MB
-        if (file.size > maxSize) {
-          throw new Error("Kích thước file quá lớn. Tối đa 5MB");
-        }
-      };
+      // const checkFileSize = (file) => {
+      //   console.log("File size:", file.size);
+      //   const maxSize = 5 * 1024 * 1024; // 5MB
+      //   if (file.size > maxSize) {
+      //     throw new Error("Kích thước file quá lớn. Tối đa 5MB");
+      //   }
+      // };
   
       const userInfoString = await AsyncStorage.getItem("userInfo");
       if (!userInfoString) {
@@ -295,7 +295,7 @@ export const AuthProvider = ({ children }) => {
       const formDataToSend = new FormData();
   
       if (formData.frontFile) {
-        checkFileSize(formData.frontFile);
+        //checkFileSize(formData.frontFile);
         formDataToSend.append("frontFile", {
           uri: formData.frontFile.uri,
           type: 'image/jpeg',
@@ -306,7 +306,7 @@ export const AuthProvider = ({ children }) => {
       }
   
       if (formData.backFile) {
-        checkFileSize(formData.backFile);
+      //  checkFileSize(formData.backFile);
         formDataToSend.append("backFile", {
           uri: formData.backFile.uri,
           type: 'image/jpeg',
