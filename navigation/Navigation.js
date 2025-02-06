@@ -18,9 +18,11 @@ import ViewTrip from "../pages/TripBooking/view";
 import DriverIdentificationScreen from "../pages/Indentification/DriverIdentificationScreen";
 import RightTrip from "../pages/RightTrip";
 import Order from "../pages/Order";
+import OrderDriver from "../pages/OrderDriver";
 import ScheduleListScreen from "../pages/Schedule/scheduleListScreen";
-import ChatCustomer from '../pages/Chat/ChatCustomer';
-import ChatDriver from '../pages/Chat/ChatDriver';
+import ChatCustomer from "../pages/Chat/ChatCustomer";
+import ChatDriver from "../pages/Chat/ChatDriver";
+import ChatDriverReal from "../pages/Chat/ChatDriverReal";
 
 const Stack = createNativeStackNavigator();
 
@@ -50,7 +52,7 @@ const Navigation = () => {
             />
             <Stack.Screen name="Schedule" component={ScheduleScreen} />
             <Stack.Screen name="Booking" component={TripBooking} />
-            
+
             <Stack.Screen
               name="VehicleScreen"
               component={VehicleScreen}
@@ -66,33 +68,30 @@ const Navigation = () => {
               component={DriverIdentificationScreen}
               options={{ headerShown: false }}
             />
-            <Stack.Screen
-              name="RightTrip"
-              component={RightTrip}
-            />
-              <Stack.Screen
-              name="ViewTrip"
-              component={ViewTrip}
-            />
-            <Stack.Screen
-              name="Order"
-              component={Order}
-            />
+            <Stack.Screen name="RightTrip" component={RightTrip} />
+            <Stack.Screen name="ViewTrip" component={ViewTrip} />
+            <Stack.Screen name="Order" component={Order} />
+            <Stack.Screen name="OrderDriver" component={OrderDriver} />
             <Stack.Screen
               name="ScheduleListScreen"
               component={ScheduleListScreen}
               options={{ headerShown: false }}
             />
-             <Stack.Screen 
-          name="ChatCustomer" 
-          component={ChatCustomer}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen 
-  name="ChatDriver" 
-  component={ChatDriver} 
-  options={{ headerShown: false }} 
-/>
+            <Stack.Screen
+              name="ChatCustomer"
+              component={ChatCustomer}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="ChatDriverReal"
+              component={ChatDriverReal}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="ChatDriver"
+              component={ChatDriver}
+              options={{ headerShown: false }}
+            />
           </>
         ) : (
           <>
