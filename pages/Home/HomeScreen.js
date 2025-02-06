@@ -128,7 +128,7 @@ const HomeScreen = () => {
   const renderServices = () => (
     <View style={styles.servicesGrid}>
       {services.map((service) => (
-        <TouchableOpacity key={service.id} style={styles.serviceItem} onPress={() => navigation.navigate("Chat")}>
+        <TouchableOpacity key={service.id} style={styles.serviceItem} >
           <View style={styles.serviceIconContainer}>
             {service.hot && (
               <View style={styles.hotBadge}>
