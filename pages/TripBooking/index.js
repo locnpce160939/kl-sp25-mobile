@@ -40,6 +40,8 @@ const TripBooking = () => {
   const [pickupLocation, setPickupLocation] = useState("");
   const [dropoffLocation, setDropoffLocation] = useState("");
   const [capacity, setCapacity] = useState("");
+  const [startLocationAddress, setStartLocationAddress] = useState("");
+  const [endLocationAddress, setEndLocationAddress] = useState("");
   const [locationState, setLocationState] = useState([]);
   const [initialRegion, setInitialRegion] = useState(null);
   const [isBottomSheetOpen, setIsBottomSheetOpen] = useState(false);
@@ -47,6 +49,7 @@ const TripBooking = () => {
   const [titleDropoff, setTitleDropoff] = useState(false);
   const [startLocationAddress, setStartLocationAddress] = useState(false);
   const [endLocationAddress, setEndLocationAddress] = useState(false);
+
 
   // Error states
   const [errors, setErrors] = useState({
@@ -281,8 +284,10 @@ const TripBooking = () => {
           pickupLocation: pickupLocationString,
           dropoffLocation: dropoffLocationString,
           capacity: parseInt(capacity),
+
           startLocationAddress,
           endLocationAddress,
+
         },
         {
           headers: {
@@ -331,6 +336,8 @@ const TripBooking = () => {
         long: item.geometry.location.lng,
       }));
       setLocationState(locationData);
+
+
     } catch (error) {
       console.error(
         "Error:",
@@ -346,7 +353,9 @@ const TripBooking = () => {
         longitude: item.long,
       });
       setTitlePickup(item.formatted_address);
+
       setStartLocationAddress(item.formatted_address);
+
     } else {
       setDropoffLocation({
         latitude: item.lat,
@@ -525,12 +534,12 @@ const TripBooking = () => {
                 onPress={(e) => handleLocationSelect(e.nativeEvent.coordinate)}
               >
                 {activeLocationField === "pickup" && pickupLocation && (
-                  <Marker coordinate={pickupLocation} title="Pickup Location" />
+                  <Marker coordinate={pickupLocation} title="Điểm đi" />
                 )}
                 {activeLocationField === "dropoff" && dropoffLocation && (
                   <Marker
                     coordinate={dropoffLocation}
-                    title="Dropoff Location"
+                    title="Điểm đến"
                   />
                 )}
               </MapView>

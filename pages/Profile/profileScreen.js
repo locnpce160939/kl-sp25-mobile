@@ -103,6 +103,12 @@ const ProfileScreen = () => {
         },
         { id: 3, icon: "person-add-outline", label: "Giới thiệu bạn bè" },
         {
+          id: 4,
+          icon: "car-sport-outline",
+          label: "Xem đơn hàng",
+          screen: "ViewTrip",
+        },
+        {
           id: 5,
           icon: "car-outline",
           label: "Đơn hàng mới",

@@ -14,11 +14,13 @@ import ScheduleScreen from "../pages/Schedule/scheduleScreen";
 import TripBooking from "../pages/TripBooking";
 import LicenseScreen from "../pages/Lincese/licenseScreen";
 import VehicleScreen from "../pages/Vehicle/vehicleScreen";
+import ViewTrip from "../pages/TripBooking/view";
 import DriverIdentificationScreen from "../pages/Indentification/DriverIdentificationScreen";
 import RightTrip from "../pages/RightTrip";
 import Order from "../pages/Order";
 import ChatCustomer from '../pages/Chat/ChatCustomer';
 import ChatDriver from '../pages/Chat/ChatDriver';
+
 
 const Stack = createNativeStackNavigator();
 
@@ -67,6 +69,10 @@ const Navigation = () => {
             <Stack.Screen
               name="RightTrip"
               component={RightTrip}
+            />
+              <Stack.Screen
+              name="ViewTrip"
+              component={ViewTrip}
             />
             <Stack.Screen
               name="Order"
