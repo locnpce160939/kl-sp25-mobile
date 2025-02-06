@@ -74,8 +74,9 @@ const OrderDriver = ({ route }) => {
       );
       if (response.data.code === 200) {
         setSelectedBooking(response.data.data);
+
         const [latitude2, longitude2] =
-          selectedBooking.pickupLocation.split(",");
+          response.data.data.pickupLocation.split(",");
         setLocation2({
           latitude: parseFloat(latitude2),
           longitude: parseFloat(longitude2),

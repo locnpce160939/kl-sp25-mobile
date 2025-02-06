@@ -1,1 +1,1 @@
-export const BASE_URl = "https://api.ftcs.online"; 
+export const BASE_URl = "https://api.ftcs.online";

@@ -1,20 +1,32 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, Modal, TouchableOpacity, StyleSheet, Dimensions, SafeAreaView, Animated } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Navigation, MapPin, Clock, Star, AlertCircle, CheckCircle2, X } from 'lucide-react-native';
-import io from 'socket.io-client';
-import { Audio } from 'expo-av';
-import MapView, { Marker } from 'react-native-maps'; // Add this import
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { useEffect, useState } from "react";
+import {
+  View,
+  Text,
+  Modal,
+  TouchableOpacity,
+  StyleSheet,
+  Dimensions,
+  SafeAreaView,
+  Animated,
+} from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import {
+  Navigation,
+  MapPin,
+  Clock,
+  Star,
+  AlertCircle,
+  CheckCircle2,
+  X,
+} from "lucide-react-native";
+import io from "socket.io-client";
+import { Audio } from "expo-av";
+import MapView, { Marker } from "react-native-maps"; // Add this import
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-
-
-const { width } = Dimensions.get('window');
-const BRAND_COLOR = '#00b5ec';
-const GOOGLE_MAPS_APIKEY = 't0vRyftUba3uIEnx5JlMJta2ff3B03BEUVg0xHWw'; // Replace with your actual API key
-
-
-
+const { width } = Dimensions.get("window");
+const BRAND_COLOR = "#00b5ec";
+const GOOGLE_MAPS_APIKEY = "t0vRyftUba3uIEnx5JlMJta2ff3B03BEUVg0xHWw"; // Replace with your actual API key
 
 // Hàm trích xuất accountId từ token
 function getUserIdFromToken(token) {
@@ -25,13 +37,15 @@ function getUserIdFromToken(token) {
     console.error("Error decoding token:", error);
     return null;
   }
-} 
+}
 const LocationRow = ({ icon, text }) => (
   <View style={styles.locationRow}>
     <View style={styles.locationIcon}>
       {React.cloneElement(icon, { color: BRAND_COLOR })}
     </View>
-    <Text style={styles.locationText} numberOfLines={2}>{text}</Text>
+    <Text style={styles.locationText} numberOfLines={2}>
+      {text}
+    </Text>
   </View>
 );
 
@@ -52,7 +66,6 @@ const SocketNotification = () => {
   const [currentUserId, setCurrentUserId] = useState(null);
   const [socket, setSocket] = useState(null);
 
-
   useEffect(() => {
     const fetchTokenAndConnectSocket = async () => {
       try {
@@ -64,16 +77,15 @@ const SocketNotification = () => {
           setCurrentUserId(accountId);
 
           if (accountId) {
-
             console.log("room", accountId.toString());
             // Kết nối WebSocket với accountId làm room
             const newSocket = io("wss://api.ftcs.online", {
               transports: ["websocket"],
-              query: { username: "admin", room: accountId.toString()  }, // Sử dụng accountId thay vì "1"
+              query: { username: "admin", room: accountId.toString() }, // Sử dụng accountId thay vì "1"
               upgrade: false,
             });
 
-            newSocket.on('NOTIFICATION', async (data) => {
+            newSocket.on("NOTIFICATION", async (data) => {
               try {
                 const parsedContent = JSON.parse(data.content);
                 setNotification(parsedContent);
@@ -110,7 +122,7 @@ const SocketNotification = () => {
   async function playNotificationSound() {
     try {
       const { sound } = await Audio.Sound.createAsync(
-        require('../assets/sounds/NoDon.mp3'),
+        require("../assets/sounds/NoDon.mp3"),
         { shouldPlay: true }
       );
       setSound(sound);
@@ -147,16 +159,23 @@ const SocketNotification = () => {
 
   const toggleMapView = () => {
     // Chỉ cho phép toggle nếu có location
-    if (notification?.customerStartLocation && notification?.customerEndLocation) {
+    if (
+      notification?.customerStartLocation &&
+      notification?.customerEndLocation
+    ) {
       setShowMap(!showMap);
     }
   };
 
   const renderMapView = () => {
     // Split the string into latitude and longitude
-    const [startLat, startLng] = notification.customerStartLocation.split(',').map(parseFloat);
-    const [endLat, endLng] = notification.customerEndLocation.split(',').map(parseFloat);
-  
+    const [startLat, startLng] = notification.customerStartLocation
+      .split(",")
+      .map(parseFloat);
+    const [endLat, endLng] = notification.customerEndLocation
+      .split(",")
+      .map(parseFloat);
+
     return (
       <MapView
         style={styles.map}
@@ -167,16 +186,16 @@ const SocketNotification = () => {
           longitudeDelta: 0.1,
         }}
       >
-      <Marker
- coordinate={{ latitude: startLat, longitude: startLng }}
- title="Start Point"
- pinColor="green"  // Green color for start point
-/>
-<Marker
- coordinate={{ latitude: endLat, longitude: endLng }}
- title="End Point"
- pinColor="red"    // Red color for end point
-/>
+        <Marker
+          coordinate={{ latitude: startLat, longitude: startLng }}
+          title="Start Point"
+          pinColor="green" // Green color for start point
+        />
+        <Marker
+          coordinate={{ latitude: endLat, longitude: endLng }}
+          title="End Point"
+          pinColor="red" // Red color for end point
+        />
       </MapView>
     );
   };
@@ -188,18 +207,20 @@ const SocketNotification = () => {
       animationType="none"
     >
       <SafeAreaView style={styles.safeArea}>
-        <Animated.View 
+        <Animated.View
           style={[
             styles.modalView,
             {
               opacity: slideAnim,
-              transform: [{
-                translateY: slideAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [50, 0],
-                })
-              }]
-            }
+              transform: [
+                {
+                  translateY: slideAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [50, 0],
+                  }),
+                },
+              ],
+            },
           ]}
         >
           <View style={styles.container}>
@@ -213,7 +234,10 @@ const SocketNotification = () => {
                   <Navigation size={18} color="#fff" />
                   <Text style={styles.title}>New Trip Request</Text>
                 </View>
-                <TouchableOpacity onPress={closeModal} style={styles.closeButton}>
+                <TouchableOpacity
+                  onPress={closeModal}
+                  style={styles.closeButton}
+                >
                   <X size={18} color="#fff" />
                 </TouchableOpacity>
               </View>
@@ -226,28 +250,32 @@ const SocketNotification = () => {
               <>
                 <View style={styles.content}>
                   {/* Previous location and info content */}
-                  <LocationRow 
+                  <LocationRow
                     icon={<MapPin size={16} />}
-                    text={notification?.customerStartLocationAddress || "Loading..."}
+                    text={
+                      notification?.customerStartLocationAddress || "Loading..."
+                    }
                   />
                   <View style={styles.divider} />
-                  <LocationRow 
+                  <LocationRow
                     icon={<Navigation size={16} />}
-                    text={notification?.customerEndLocationAddress || "Loading..."}
+                    text={
+                      notification?.customerEndLocationAddress || "Loading..."
+                    }
                   />
 
                   <View style={styles.infoContainer}>
-                    <InfoBox 
+                    <InfoBox
                       icon={<Star size={16} />}
                       value={notification?.totalCustomerPoints || "0"}
                       label="Rating"
                     />
-                    <InfoBox 
+                    <InfoBox
                       icon={<Clock size={16} />}
                       value="~15"
                       label="min"
                     />
-                    <InfoBox 
+                    <InfoBox
                       icon={<Navigation size={16} />}
                       value="2.5"
                       label="km"
@@ -259,15 +287,15 @@ const SocketNotification = () => {
 
             {/* Button row with View Map toggle */}
             <View style={styles.buttonRow}>
-              <TouchableOpacity 
-                style={styles.declineButton} 
+              <TouchableOpacity
+                style={styles.declineButton}
                 onPress={declineOrder}
               >
                 <AlertCircle size={16} color="#ff4d4f" />
                 <Text style={styles.declineText}>Decline</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 style={styles.viewMapButton}
                 onPress={toggleMapView}
               >
@@ -282,7 +310,7 @@ const SocketNotification = () => {
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
               >
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.acceptButtonContent}
                   onPress={acceptOrder}
                 >
@@ -301,18 +329,18 @@ const SocketNotification = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
   },
   modalView: {
     margin: 20,
   },
   container: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 16,
     width: width * 0.85,
-    alignSelf: 'center',
-    overflow: 'hidden',
+    alignSelf: "center",
+    overflow: "hidden",
     shadowColor: BRAND_COLOR,
     shadowOffset: {
       width: 0,
@@ -327,19 +355,19 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   headerContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   title: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
+    fontWeight: "600",
+    color: "#fff",
   },
   closeButton: {
     padding: 4,
@@ -349,31 +377,31 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   locationRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     minHeight: 44,
     paddingVertical: 8,
   },
   locationIcon: {
     width: 24,
-    alignItems: 'center',
+    alignItems: "center",
     paddingTop: 4,
   },
   locationText: {
     flex: 1,
     fontSize: 14,
-    color: '#333',
+    color: "#333",
     marginLeft: 12,
     lineHeight: 20,
   },
   divider: {
     height: 1,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: "#f0f0f0",
     marginVertical: 8,
   },
   infoContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    backgroundColor: '#f8f9fa',
+    flexDirection: "row",
+    justifyContent: "space-around",
+    backgroundColor: "#f8f9fa",
     borderRadius: 12,
     marginTop: 12,
     padding: 12,
@@ -381,80 +409,80 @@ const styles = StyleSheet.create({
     borderColor: `${BRAND_COLOR}22`,
   },
   infoBox: {
-    alignItems: 'center',
+    alignItems: "center",
     gap: 4,
   },
   infoValue: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: "600",
+    color: "#333",
   },
   infoLabel: {
     fontSize: 12,
-    color: '#666',
+    color: "#666",
   },
   buttonRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     padding: 16,
     paddingTop: 8,
     gap: 12,
   },
   declineButton: {
     flex: 1,
-    flexDirection: 'row',
+    flexDirection: "row",
     height: 40,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     borderWidth: 1,
-    borderColor: '#ff4d4f',
+    borderColor: "#ff4d4f",
     gap: 8,
   },
   acceptButton: {
     flex: 1,
     height: 40,
     borderRadius: 20,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   acceptButtonContent: {
     flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
     gap: 8,
   },
   declineText: {
-    color: '#ff4d4f',
+    color: "#ff4d4f",
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   acceptText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
   },
 
   map: {
-    width: '100%',
+    width: "100%",
     height: 300,
   },
   viewMapButton: {
     flex: 1,
     height: 40,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: "#f0f0f0",
     borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   viewMapText: {
     color: BRAND_COLOR,
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   mapContainer: {
-    width: '100%', 
-    height: 300
+    width: "100%",
+    height: 300,
   },
 });
 
