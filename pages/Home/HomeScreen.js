@@ -63,7 +63,7 @@ const HomeScreen = () => {
       icon: "car-outline",
       label: "Đặt xe",
       color: "#2563eb",
-      navigate: "Booking"
+      navigate: "Booking",
     },
     {
       id: 2,
@@ -71,21 +71,21 @@ const HomeScreen = () => {
       label: "Khuyến mãi",
       color: "#dc2626",
       navigate: "Chat",
-      hot: true
+      hot: true,
     },
     {
       id: 3,
       icon: "home-outline",
       label: "Thêm nhà",
       color: "#16a34a",
-      navigate: "Chat"
+      navigate: "Chat",
     },
     {
       id: 4,
       icon: "business-outline",
       label: "Chat",
       color: "#eab308",
-      navigate: "ChatDriver"
+      navigate: "ChatDriver",
     },
   ];
   const renderBanner = () => (
@@ -94,17 +94,22 @@ const HomeScreen = () => {
       pagingEnabled
       showsHorizontalScrollIndicator={false}
       onMomentumScrollEnd={(event) => {
-        const slideIndex = Math.floor(event.nativeEvent.contentOffset.x / width);
+        const slideIndex = Math.floor(
+          event.nativeEvent.contentOffset.x / width
+        );
         setCurrentBannerIndex(slideIndex);
       }}
       style={styles.bannerContainer}
     >
       {banners.map((banner) => (
-        <Image key={banner.id} source={banner.image} style={styles.bannerImage} />
+        <Image
+          key={banner.id}
+          source={banner.image}
+          style={styles.bannerImage}
+        />
       ))}
     </ScrollView>
   );
-  
 
   const renderHeader = () => (
     <View style={styles.header}>
@@ -117,7 +122,7 @@ const HomeScreen = () => {
           <Text style={styles.pointsText}>12 ✓</Text>
         </TouchableOpacity>
       </View>
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.searchBar}
         onPress={() => navigation.navigate("Booking")}
       >
@@ -126,25 +131,30 @@ const HomeScreen = () => {
       </TouchableOpacity>
 
       {/* Nút Chat */}
-      <TouchableOpacity 
+      {/* <TouchableOpacity 
         style={styles.chatButton}
         onPress={() => navigation.navigate("ChatDriver")}
       >
         <Ionicons name="chatbubble-ellipses-outline" size={24} color="#ffffff" />
         <Text style={styles.chatText}>Chat</Text>
-      </TouchableOpacity>
+      </TouchableOpacity> */}
     </View>
   );
 
   const renderQuickActions = () => (
     <View style={styles.quickActionsContainer}>
       {quickActions.map((action) => (
-        <TouchableOpacity 
-          key={action.id} 
+        <TouchableOpacity
+          key={action.id}
           style={styles.quickAction}
           onPress={() => navigation.navigate(action.navigate)}
         >
-          <View style={[styles.actionIcon, { backgroundColor: `${action.color}15` }]}>
+          <View
+            style={[
+              styles.actionIcon,
+              { backgroundColor: `${action.color}15` },
+            ]}
+          >
             <Ionicons name={action.icon} size={24} color={action.color} />
             {action.hot && (
               <View style={styles.hotBadge}>
@@ -166,12 +176,14 @@ const HomeScreen = () => {
           <Text style={styles.seeAllButton}>Xem tất cả</Text>
         </TouchableOpacity>
       </View>
-      <ScrollView 
-        horizontal 
+      <ScrollView
+        horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         onMomentumScrollEnd={(event) => {
-          const slideIndex = Math.floor(event.nativeEvent.contentOffset.x / width);
+          const slideIndex = Math.floor(
+            event.nativeEvent.contentOffset.x / width
+          );
           setCurrentBannerIndex(slideIndex);
         }}
         contentContainerStyle={styles.promotionScroll}
@@ -199,7 +211,10 @@ const HomeScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+      >
         {renderBanner()}
         {renderHeader()}
         {renderQuickActions()}
@@ -212,110 +227,110 @@ const HomeScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
   },
   scrollView: {
     flex: 1,
   },
   header: {
     padding: 20,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
   },
   userSection: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 16,
   },
   greeting: {
     fontSize: 14,
-    color: '#6b7280',
+    color: "#6b7280",
     marginBottom: 4,
   },
   userName: {
     fontSize: 20,
-    fontWeight: '700',
-    color: '#black', // Updated to primary color
+    fontWeight: "700",
+    color: "#black", // Updated to primary color
   },
   pointsBadge: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: '#00b5ec', // Updated to primary color
+    backgroundColor: "#00b5ec", // Updated to primary color
     borderRadius: 20,
   },
   pointsText: {
-    color: '#ffffff',
-    fontWeight: '600',
+    color: "#ffffff",
+    fontWeight: "600",
     fontSize: 14,
   },
   searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 16,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: "#f3f4f6",
     borderRadius: 12,
     marginTop: 8,
   },
   searchText: {
     marginLeft: 12,
     fontSize: 15,
-    color: '#6b7280',
+    color: "#6b7280",
   },
   quickActionsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     paddingHorizontal: 20,
     paddingVertical: 16,
   },
   quickAction: {
-    alignItems: 'center',
+    alignItems: "center",
     width: (width - 40) / 4,
   },
   actionIcon: {
     width: 56,
     height: 56,
     borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: 8,
   },
   actionLabel: {
     fontSize: 12,
-    color: '#4b5563',
-    textAlign: 'center',
+    color: "#4b5563",
+    textAlign: "center",
   },
   hotBadge: {
-    position: 'absolute',
+    position: "absolute",
     top: -6,
     right: -6,
-    backgroundColor: '#00b5ec', // Updated to primary color
+    backgroundColor: "#00b5ec", // Updated to primary color
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 8,
   },
   hotText: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 10,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   promotionsContainer: {
     padding: 20,
   },
   sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 16,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#6b7280', // Updated to primary color
+    fontWeight: "700",
+    color: "#6b7280", // Updated to primary color
   },
   seeAllButton: {
     fontSize: 14,
-    color: '#00b5ec', // Updated to primary color
-    fontWeight: '500',
+    color: "#00b5ec", // Updated to primary color
+    fontWeight: "500",
   },
   promotionScroll: {
     paddingRight: 20,
@@ -323,11 +338,11 @@ const styles = StyleSheet.create({
   promotionCard: {
     marginRight: 16,
     borderRadius: 16,
-    overflow: 'hidden',
-    backgroundColor: '#ffffff',
+    overflow: "hidden",
+    backgroundColor: "#ffffff",
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
+        shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 8,
@@ -343,19 +358,19 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   paginationContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
     marginTop: 16,
   },
   paginationDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#e5e7eb',
+    backgroundColor: "#e5e7eb",
     marginHorizontal: 4,
   },
   paginationDotActive: {
-    backgroundColor: '#00b5ec', // Updated to primary color
+    backgroundColor: "#00b5ec", // Updated to primary color
   },
   bannerContainer: {
     width: width,
@@ -368,29 +383,27 @@ const styles = StyleSheet.create({
   },
   //----------chat
   headerActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginTop: 10,
   },
-  
+
   chatButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#00b5ec', 
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#00b5ec",
     padding: 12,
     borderRadius: 12,
     marginLeft: 10,
   },
-  
+
   chatText: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     marginLeft: 6,
   },
-  
-  
 });
 
 export default HomeScreen;
