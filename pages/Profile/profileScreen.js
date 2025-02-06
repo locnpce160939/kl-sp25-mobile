@@ -107,6 +107,12 @@ const [showNoIdentificationBanner, setShowNoIdentificationBanner] = useState(fal
         },
         { id: 3, icon: "person-add-outline", label: "Giới thiệu bạn bè" },
         {
+          id: 4,
+          icon: "car-sport-outline",
+          label: "Xem đơn hàng",
+          screen: "ViewTrip",
+        },
+        {
           id: 5,
           icon: "car-outline",
           label: "Đơn hàng mới",
@@ -117,6 +123,12 @@ const [showNoIdentificationBanner, setShowNoIdentificationBanner] = useState(fal
           icon: "cart-outline",
           label: "Đơn hàng của bạn",
           screen: "Order",
+        },
+        {
+          id: 8,
+          icon: "list-outline",
+          label: "Danh sách lịch trình",
+          screen: "ScheduleListScreen",
         },
       ],
     },

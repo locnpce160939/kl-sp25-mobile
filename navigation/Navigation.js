@@ -14,9 +14,11 @@ import ScheduleScreen from "../pages/Schedule/scheduleScreen";
 import TripBooking from "../pages/TripBooking";
 import LicenseScreen from "../pages/Lincese/licenseScreen";
 import VehicleScreen from "../pages/Vehicle/vehicleScreen";
+import ViewTrip from "../pages/TripBooking/view";
 import DriverIdentificationScreen from "../pages/Indentification/DriverIdentificationScreen";
 import RightTrip from "../pages/RightTrip";
 import Order from "../pages/Order";
+import ScheduleListScreen from "../pages/Schedule/scheduleListScreen";
 import ChatCustomer from '../pages/Chat/ChatCustomer';
 import ChatDriver from '../pages/Chat/ChatDriver';
 
@@ -68,9 +70,18 @@ const Navigation = () => {
               name="RightTrip"
               component={RightTrip}
             />
+              <Stack.Screen
+              name="ViewTrip"
+              component={ViewTrip}
+            />
             <Stack.Screen
               name="Order"
               component={Order}
+            />
+            <Stack.Screen
+              name="ScheduleListScreen"
+              component={ScheduleListScreen}
+              options={{ headerShown: false }}
             />
              <Stack.Screen 
           name="ChatCustomer" 
@@ -82,7 +93,6 @@ const Navigation = () => {
   component={ChatDriver} 
   options={{ headerShown: false }} 
 />
-
           </>
         ) : (
           <>
