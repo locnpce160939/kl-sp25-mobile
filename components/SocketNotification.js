@@ -5,6 +5,7 @@ import { Navigation, MapPin, Clock, Star, AlertCircle, CheckCircle2, X } from 'l
 import io from 'socket.io-client';
 import { Audio } from 'expo-av';
 import MapView, { Marker } from 'react-native-maps'; // Add this import
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 
 
@@ -13,6 +14,18 @@ const BRAND_COLOR = '#00b5ec';
 const GOOGLE_MAPS_APIKEY = 't0vRyftUba3uIEnx5JlMJta2ff3B03BEUVg0xHWw'; // Replace with your actual API key
 
 
+
+
+// Hàm trích xuất accountId từ token
+function getUserIdFromToken(token) {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return payload.account.id; // Trả về accountId
+  } catch (error) {
+    console.error("Error decoding token:", error);
+    return null;
+  }
+} 
 const LocationRow = ({ icon, text }) => (
   <View style={styles.locationRow}>
     <View style={styles.locationIcon}>
@@ -36,36 +49,62 @@ const SocketNotification = () => {
   const [showMap, setShowMap] = useState(false);
   const slideAnim = useState(new Animated.Value(0))[0];
   const [sound, setSound] = useState(null);
+  const [currentUserId, setCurrentUserId] = useState(null);
+  const [socket, setSocket] = useState(null);
+
 
   useEffect(() => {
-    const socket = io("wss://api.ftcs.online", {
-      transports: ["websocket"],
-      query: { username: "admin", room: "1" },
-      upgrade: false,
-    });
-
-    socket.on('NOTIFICATION', async (data) => {
+    const fetchTokenAndConnectSocket = async () => {
       try {
-        const parsedContent = JSON.parse(data.content);
-        setNotification(parsedContent);
+        const userInfoString = await AsyncStorage.getItem("userInfo");
+        const accessToken = JSON.parse(userInfoString)?.data?.access_token;
 
-        console.log("Start Location Details:", parsedContent.customerStartLocation);
-    console.log("End Location Details:", parsedContent.customerEndLocation);
-        setModalVisible(true);
-        Animated.spring(slideAnim, {
-          toValue: 1,
-          useNativeDriver: true,
-          friction: 8,
-          tension: 40,
-        }).start();
+        if (accessToken) {
+          const accountId = getUserIdFromToken(accessToken);
+          setCurrentUserId(accountId);
 
-        await playNotificationSound();
+          if (accountId) {
+
+            console.log("room", accountId.toString());
+            // Kết nối WebSocket với accountId làm room
+            const newSocket = io("wss://api.ftcs.online", {
+              transports: ["websocket"],
+              query: { username: "admin", room: accountId.toString()  }, // Sử dụng accountId thay vì "1"
+              upgrade: false,
+            });
+
+            newSocket.on('NOTIFICATION', async (data) => {
+              try {
+                const parsedContent = JSON.parse(data.content);
+                setNotification(parsedContent);
+                setModalVisible(true);
+                Animated.spring(slideAnim, {
+                  toValue: 1,
+                  useNativeDriver: true,
+                  friction: 8,
+                  tension: 40,
+                }).start();
+                await playNotificationSound();
+              } catch (error) {
+                console.error("Error parsing notification:", error);
+              }
+            });
+
+            setSocket(newSocket);
+          }
+        }
       } catch (error) {
-        console.error("Error parsing notification:", error);
+        console.error("Error fetching token:", error);
       }
-    });
+    };
 
-    return () => socket.disconnect();
+    fetchTokenAndConnectSocket();
+
+    return () => {
+      if (socket) {
+        socket.disconnect();
+      }
+    };
   }, []);
 
   async function playNotificationSound() {

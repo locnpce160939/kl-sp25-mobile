@@ -20,6 +20,8 @@ const ProfileScreen = () => {
   const [expandedItem, setExpandedItem] = useState(null);
   const [showMissingInfoBanner, setShowMissingInfoBanner] = useState(false);
   const [showNoLicenseBanner, setShowNoLicenseBanner] = useState(false);
+  const [showNoVehicleBanner, setShowNoVehicleBanner] = useState(false);
+const [showNoIdentificationBanner, setShowNoIdentificationBanner] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -40,6 +42,8 @@ const ProfileScreen = () => {
           if (data) {
             setDriverDocuments(data);
             setShowNoLicenseBanner(!data.license);
+            setShowNoVehicleBanner(!data.vehicle);
+            setShowNoIdentificationBanner(!data.identification);
             setShowMissingInfoBanner(
               !data.license && !data.vehicle && !data.identification
             );
@@ -57,7 +61,7 @@ const ProfileScreen = () => {
           setIsLoading(false);
         }
       };
-
+  
       fetchData();
       return () => {};
     }, [])
@@ -130,44 +134,72 @@ const ProfileScreen = () => {
   const renderSections = () => {
     return sections.map((section) => (
       <View key={section.title} style={styles.section}>
-        {section.title === "Phần 1" && showNoLicenseBanner && (
-          <View style={[styles.bannerCard, { backgroundColor: "#ffcc00" }]}>
-            <View style={styles.bannerContent}>
-              <Text style={styles.bannerText}>
-                Bạn chưa có thông tin Giấy Phép Lái Xe, vui lòng bổ sung!
-              </Text>
-              <TouchableOpacity
-                onPress={() => navigation.navigate("LicenseScreen")}
-              >
-                <Ionicons
-                  name="chevron-forward-outline"
-                  size={30}
-                  color="#333"
-                  style={styles.bannerArrow}
-                />
-              </TouchableOpacity>
+        {section.title === "Phần 1" && (
+        <>
+          {showNoLicenseBanner && (
+            <View style={[styles.bannerCard, { backgroundColor: "#ffcc00" }]}>
+              <View style={styles.bannerContent}>
+                <Text style={styles.bannerText}>
+                  Bạn chưa có thông tin Giấy Phép Lái Xe, vui lòng bổ sung!
+                </Text>
+                <TouchableOpacity
+                  onPress={() => navigation.navigate("LicenseScreen")}
+                >
+                  <Ionicons
+                    name="chevron-forward-outline"
+                    size={30}
+                    color="#333"
+                    style={styles.bannerArrow}
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
-        )}
-        {section.title === "Phần 1" && showMissingInfoBanner && (
-          <View style={[styles.bannerCard, { backgroundColor: "#ffcc00" }]}>
-            <View style={styles.bannerContent}>
-              <Text style={styles.bannerText}>
-                Thông tin tài xế còn thiếu, vui lòng bổ sung
-              </Text>
-              <TouchableOpacity
-                onPress={() => navigation.navigate("LicenseScreen")}
-              >
-                <Ionicons
-                  name="chevron-forward-outline"
-                  size={30}
-                  color="#333"
-                  style={styles.bannerArrow}
-                />
-              </TouchableOpacity>
+          )}
+
+          {!showNoLicenseBanner && showNoIdentificationBanner && (
+            <View style={[styles.bannerCard, { backgroundColor: "#ffcc00" }]}>
+              <View style={styles.bannerContent}>
+                <Text style={styles.bannerText}>
+                  Bạn chưa có thông tin Căn Cước Công Dân, vui lòng bổ sung!
+                </Text>
+                <TouchableOpacity
+                  onPress={() => navigation.navigate("DriverIdentificationScreen")}
+                >
+                  <Ionicons
+                    name="chevron-forward-outline"
+                    size={30}
+                    color="#333"
+                    style={styles.bannerArrow}
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
-        )}
+          )}
+
+          {!showNoLicenseBanner && !showNoIdentificationBanner && showNoVehicleBanner && (
+            <View style={[styles.bannerCard, { backgroundColor: "#ffcc00" }]}>
+              <View style={styles.bannerContent}>
+                <Text style={styles.bannerText}>
+                  Bạn chưa có thông tin Hồ Sơ Phương Tiện, vui lòng bổ sung!
+                </Text>
+                <TouchableOpacity
+                  onPress={() => navigation.navigate("VehicleScreen")}
+                >
+                  <Ionicons
+                    name="chevron-forward-outline"
+                    size={30}
+                    color="#333"
+                    style={styles.bannerArrow}
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+        </>
+        )}  
+
+       
+
         {section.items.map((item) => (
           <View key={item.id}>
             <TouchableOpacity
@@ -221,7 +253,6 @@ const ProfileScreen = () => {
       </View>
     ));
   };
-
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView}>
@@ -231,13 +262,7 @@ const ProfileScreen = () => {
             style={styles.headerImage}
           />
         </View>
-        {showMissingInfoBanner && (
-          <View style={{ backgroundColor: "#c4f0ff", padding: 10, margin: 20 }}>
-            <Text style={{ color: "#333" }}>
-              Bạn chưa điền thông tin trên app
-            </Text>
-          </View>
-        )}
+       
         {renderSections()}
         <View style={styles.logoutContainer}>
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
