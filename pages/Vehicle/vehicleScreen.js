@@ -103,25 +103,52 @@ const VehicleScreen = () => {
 
     // Hàm chọn ảnh
     const selectImage = async (field) => {
-        try {
-            const result = await ImagePicker.launchCameraAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                allowsEditing: true,
-                aspect: [4, 3],
-                quality: 0.5,
-            });
-
-            if (!result.canceled) {
-                setFormData((prev) => ({
-                    ...prev,
-                    [field]: result.assets[0].uri,
-                }));
-                setErrors((prev) => ({ ...prev, [field]: "" }));
-            }
-        } catch (error) {
-            Alert.alert("Lỗi", "Không thể chọn ảnh");
-            console.error("Image picker error:", error);
-        }
+        Alert.alert(
+            "Chọn nguồn ảnh",
+            "Chọn phương thức lấy ảnh",
+            [
+                {
+                    text: "Chụp ảnh",
+                    onPress: async () => {
+                        const result = await ImagePicker.launchCameraAsync({
+                            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                            allowsEditing: true,
+                            aspect: [4, 3],
+                            quality: 0.5,
+                        });
+                        if (!result.canceled) {
+                            setFormData((prev) => ({
+                                ...prev,
+                                [field]: result.assets[0].uri,
+                            }));
+                            setErrors((prev) => ({ ...prev, [field]: "" }));
+                        }
+                    },
+                },
+                {
+                    text: "Thư viện",
+                    onPress: async () => {
+                        const result = await ImagePicker.launchImageLibraryAsync({
+                            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                            allowsEditing: true,
+                            aspect: [4, 3],
+                            quality: 0.5,
+                        });
+                        if (!result.canceled) {
+                            setFormData((prev) => ({
+                                ...prev,
+                                [field]: result.assets[0].uri,
+                            }));
+                            setErrors((prev) => ({ ...prev, [field]: "" }));
+                        }
+                    },
+                },
+                {
+                    text: "Hủy",
+                    style: "cancel"
+                }
+            ]
+        );
     };
 
     // Hàm xử lý thay đổi input
@@ -396,6 +423,66 @@ const VehicleScreen = () => {
         </View>
     );
 
+    const handleDateChange = (event, selectedDate) => {
+        if (event.type === "set") {
+          const currentDate = selectedDate || new Date();
+          const formattedDate = currentDate.toISOString().split("T")[0];
+          setFormData((prev) => ({ ...prev, [currentDateField]: formattedDate }));
+        }
+        setShowPicker(false);
+      };
+      
+      const renderDatePicker = () => {
+        if (!showPicker) return null;
+      
+        if (Platform.OS === 'ios') {
+          return (
+            <View style={styles.datePickerContainer}>
+              <View style={styles.datePickerWrapper}>
+                <View style={styles.datePickerHeader}>
+                  <TouchableOpacity onPress={() => setShowPicker(false)}>
+                    <Text style={styles.datePickerButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    onPress={() => {
+                      const selectedDate = new Date(formData[currentDateField] || Date.now());
+                      const formattedDate = selectedDate.toISOString().split("T")[0];
+                      setFormData((prev) => ({ ...prev, [currentDateField]: formattedDate }));
+                      setShowPicker(false);
+                    }}
+                  >
+                    <Text style={styles.datePickerButtonText}>Done</Text>
+                  </TouchableOpacity>
+                </View>
+                <DateTimePicker
+                  value={new Date(formData[currentDateField] || Date.now())}
+                  mode="date"
+                  display="spinner"
+                  onChange={(event, selectedDate) => {
+                    if (selectedDate) {
+                      setFormData((prev) => ({
+                        ...prev,
+                        [currentDateField]: selectedDate.toISOString().split("T")[0],
+                      }));
+                    }
+                  }}
+                  style={styles.datePickerIOS}
+                />
+              </View>
+            </View>
+          );
+        }
+      
+        return (
+          <DateTimePicker
+            value={new Date(formData[currentDateField] || Date.now())}
+            mode="date"
+            display="default"
+            onChange={handleDateChange}
+          />
+        );
+      };
+
     // Render form nhập thông tin xe
     const renderForm = () => (
         <ScrollView contentContainerStyle={styles.container}>
@@ -442,24 +529,27 @@ const VehicleScreen = () => {
                 <Text style={styles.buttonText}>{vehicleId ? "Cập nhật" : "Tạo mới"}</Text>
             </TouchableOpacity>
 
-            {showPicker && (
-                <DateTimePicker
-                    value={new Date(formData[currentDateField] || Date.now())}
-                    mode="date"
-                    display="spinner"
-                    onChange={(event, selectedDate) => {
-                        setShowPicker(false);
-                        if (selectedDate) {
-                            const formattedDate = selectedDate.toISOString().split("T")[0];
-                            setFormData((prev) => ({ ...prev, [currentDateField]: formattedDate }));
-                        }
-                    }}
-                />
-            )}
+            {renderDatePicker()}
         </ScrollView>
     );
     // Render giao diện chính
-    return viewMode === "list" ? renderList() : renderForm();
+    return viewMode === "list" ? (
+        <View style={styles.listContainer}>
+            {loading ? (
+                <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />
+            ) : (
+                renderList()
+            )}
+        </View>
+    ) : (
+        <ScrollView contentContainerStyle={styles.container}>
+            {loading ? (
+                <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />
+            ) : (
+                renderForm()
+            )}
+        </ScrollView>
+    );
 };
 
 const styles = StyleSheet.create({
@@ -473,7 +563,7 @@ const styles = StyleSheet.create({
         backgroundColor: "#f9f9f9",
     },
     header: {
-        marginTop: Platform.OS === "ios" ? 50 : 30,
+        marginTop: Platform.OS === "ios" ? 20 : 10,
         flexDirection: "row",
         alignItems: "center",
         marginBottom: 20,
@@ -636,6 +726,7 @@ const styles = StyleSheet.create({
         height: 200,
         borderRadius: 8,
         marginBottom: 10,
+        borderWidth: 1,
     },
     imageContainer: {
         marginBottom: 20,
@@ -643,6 +734,37 @@ const styles = StyleSheet.create({
     imageWrapper: {
         alignItems: "center",
     },
+    datePickerContainer: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        zIndex: 1000,
+        height: '100%',
+        justifyContent: 'flex-end',
+      },
+      datePickerWrapper: {
+        backgroundColor: '#fff',
+        borderTopLeftRadius: 10,
+        borderTopRightRadius: 10,
+      },
+      datePickerHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#e0e0e0',
+      },
+      datePickerButtonText: {
+        color: '#007AFF',
+        fontSize: 16,
+      },
+      datePickerIOS: {
+        height: 200,
+        width: '100%',
+      },
 });
 
 export default VehicleScreen;
