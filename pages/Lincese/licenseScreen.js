@@ -69,8 +69,8 @@ const LicenseScreen = () => {
         setLicenseId(licenseData.licenseId);
         setLicenseDetails({
           ...licenseData,
-          issuedDate: new Date(licenseData.issuedDate).toISOString(),
-          expiryDate: new Date(licenseData.expiryDate).toISOString(),
+          issuedDate: licenseData.issuedDate ? new Date(licenseData.issuedDate).toISOString() : "",
+          expiryDate: licenseData.expiryDate ? new Date(licenseData.expiryDate).toISOString() : "",
           frontView: licenseData.frontView,
           backView: licenseData.backView,
         });
@@ -499,6 +499,64 @@ const LicenseScreen = () => {
     );
   };
 
+  const DatePickerField = ({ label, value, onChange, field }) => {
+    const [show, setShow] = useState(false);
+    const [tempDate, setTempDate] = useState(new Date());
+  
+    const handleDateChange = (event, selectedDate) => {
+      if (Platform.OS === 'android') {
+        setShow(false);
+        if (selectedDate) {
+          const formattedDate = selectedDate.toISOString().split(".")[0];
+          onChange(formattedDate);
+        }
+      } else {
+        setTempDate(selectedDate || tempDate);
+      }
+    };
+  
+    const handleIOSConfirm = () => {
+      setShow(false);
+      const formattedDate = tempDate.toISOString().split(".")[0];
+      onChange(formattedDate);
+    };
+  
+    return (
+      <View style={styles.inputContainer}>
+        <Text style={styles.label}>{label}</Text>
+        <TouchableOpacity onPress={() => setShow(true)}>
+          <TextInput
+            style={[styles.input, errors[field] && styles.inputError]}
+            value={value ? new Date(value).toLocaleDateString("vi-VN") : ""}
+            editable={false}
+            placeholder={"Chọn ngày"}
+            placeholderTextColor={"#999"}
+            pointerEvents="none"
+          />
+        </TouchableOpacity>
+        {show && (
+          <DateTimePicker
+            value={new Date(value || Date.now())}
+            mode="date"
+            display={Platform.OS === 'ios' ? "spinner" : "default"}
+            onChange={handleDateChange}
+            style={Platform.OS === 'ios' && styles.datePickerIOS}
+          />
+        )}
+        {Platform.OS === 'ios' && show && (
+          <View style={styles.datePickerHeader}>
+            <TouchableOpacity onPress={() => setShow(false)}>
+              <Text style={styles.datePickerButtonText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleIOSConfirm}>
+              <Text style={styles.datePickerButtonText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    );
+  };
+
   return (
     <SafeAreaView style={styles.safeContainer}>
       <ScrollView contentContainerStyle={styles.container}>
@@ -532,8 +590,18 @@ const LicenseScreen = () => {
               "licenseType",
               "Nhập loại giấy phép"
             )}
-            {renderDateField("Ngày cấp", "issuedDate")}
-            {renderDateField("Ngày hết hạn", "expiryDate")}
+            <DatePickerField
+              label="Ngày cấp"
+              value={licenseDetails.issuedDate}
+              onChange={(value) => handleInputChange("issuedDate", value)}
+              field="issuedDate"
+            />
+            <DatePickerField
+              label="Ngày hết hạn"
+              value={licenseDetails.expiryDate}
+              onChange={(value) => handleInputChange("expiryDate", value)}
+              field="expiryDate"
+            />
             {renderInputField(
               "Cơ quan cấp",
               "issuingAuthority",

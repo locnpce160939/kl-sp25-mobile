@@ -397,89 +397,69 @@ const VehicleScreen = () => {
         </View>
     );
 
-    const renderDateField = (label, field) => (
-        <View style={styles.inputContainer}>
+    const DatePickerField = ({ label, value, onChange, field }) => {
+        const [show, setShow] = useState(false);
+        const [tempDate, setTempDate] = useState(new Date());
+      
+        const handleDateChange = (event, selectedDate) => {
+          if (Platform.OS === 'android') {
+            setShow(false);
+            if (selectedDate) {
+              const formattedDate = selectedDate.toISOString().split("T")[0];
+              onChange(formattedDate);
+            }
+          } else {
+            setTempDate(selectedDate || tempDate);
+          }
+        };
+      
+        const handleIOSConfirm = () => {
+          setShow(false);
+          const formattedDate = tempDate.toISOString().split(".")[0];
+          onChange(formattedDate);
+        };
+      
+        return (
+          <View style={styles.inputContainer}>
             <Text style={styles.label}>{label}</Text>
             <TouchableOpacity
-                onPress={() => {
-                    setCurrentDateField(field);
-                    setShowPicker(true);
-                }}
+              style={styles.dateButton}
+              onPress={() => setShow(true)}
             >
-                <TextInput
-                    style={[styles.input, errors[field] && styles.inputError]}
-                    value={
-                        formData[field]
-                            ? new Date(formData[field]).toLocaleDateString("vi-VN")
-                            : ""
-                    }
-                    editable={false}
-                    placeholder="Chọn ngày"
-                    placeholderTextColor="#999"
-                    pointerEvents="none"
-                />
+              <Text style={styles.dateButtonText}>
+                {value ? value.split("T")[0] : "Select a date"}
+              </Text>
             </TouchableOpacity>
             {errors[field] && <Text style={styles.errorText}>{errors[field]}</Text>}
-        </View>
-    );
-
-    const handleDateChange = (event, selectedDate) => {
-        if (event.type === "set") {
-          const currentDate = selectedDate || new Date();
-          const formattedDate = currentDate.toISOString().split("T")[0];
-          setFormData((prev) => ({ ...prev, [currentDateField]: formattedDate }));
-        }
-        setShowPicker(false);
-      };
-      
-      const renderDatePicker = () => {
-        if (!showPicker) return null;
-      
-        if (Platform.OS === 'ios') {
-          return (
-            <View style={styles.datePickerContainer}>
-              <View style={styles.datePickerWrapper}>
-                <View style={styles.datePickerHeader}>
-                  <TouchableOpacity onPress={() => setShowPicker(false)}>
-                    <Text style={styles.datePickerButtonText}>Cancel</Text>
+            {Platform.OS === 'ios' && show && (
+              <View style={styles.iosDatePickerContainer}>
+                <View style={styles.iosDatePickerHeader}>
+                  <TouchableOpacity onPress={() => setShow(false)}>
+                    <Text style={styles.iosDatePickerCancel}>Cancel</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity 
-                    onPress={() => {
-                      const selectedDate = new Date(formData[currentDateField] || Date.now());
-                      const formattedDate = selectedDate.toISOString().split("T")[0];
-                      setFormData((prev) => ({ ...prev, [currentDateField]: formattedDate }));
-                      setShowPicker(false);
-                    }}
-                  >
-                    <Text style={styles.datePickerButtonText}>Done</Text>
+                  <TouchableOpacity onPress={handleIOSConfirm}>
+                    <Text style={styles.iosDatePickerDone}>Done</Text>
                   </TouchableOpacity>
                 </View>
                 <DateTimePicker
-                  value={new Date(formData[currentDateField] || Date.now())}
+                  value={value ? new Date(value) : new Date()}
                   mode="date"
                   display="spinner"
-                  onChange={(event, selectedDate) => {
-                    if (selectedDate) {
-                      setFormData((prev) => ({
-                        ...prev,
-                        [currentDateField]: selectedDate.toISOString().split("T")[0],
-                      }));
-                    }
-                  }}
-                  style={styles.datePickerIOS}
+                  onChange={handleDateChange}
+                  style={styles.iosDatePicker}
                 />
               </View>
-            </View>
-          );
-        }
+            )}
       
-        return (
-          <DateTimePicker
-            value={new Date(formData[currentDateField] || Date.now())}
-            mode="date"
-            display="default"
-            onChange={handleDateChange}
-          />
+            {Platform.OS === 'android' && show && (
+              <DateTimePicker
+                value={value ? new Date(value) : new Date()}
+                mode="date"
+                display="default"
+                onChange={handleDateChange}
+              />
+            )}
+          </View>
         );
       };
 
@@ -499,9 +479,13 @@ const VehicleScreen = () => {
             {inputFields.map(({ field, label }) => {
                 if (field === "registrationExpiryDate") {
                     return (
-                        <View key={field}>
-                            {renderDateField(label, field)}
-                        </View>
+                        <DatePickerField
+                            key={field}
+                            label={label}
+                            value={formData[field]}
+                            onChange={(value) => handleInputChange(field, value)}
+                            field={field}
+                        />
                     );
                 }
                 return (
@@ -528,8 +512,6 @@ const VehicleScreen = () => {
             <TouchableOpacity style={styles.button} onPress={createOrUpdateVehicle}>
                 <Text style={styles.buttonText}>{vehicleId ? "Cập nhật" : "Tạo mới"}</Text>
             </TouchableOpacity>
-
-            {renderDatePicker()}
         </ScrollView>
     );
     // Render giao diện chính
@@ -734,37 +716,45 @@ const styles = StyleSheet.create({
     imageWrapper: {
         alignItems: "center",
     },
-    datePickerContainer: {
+    dateButton: {
+        borderWidth: 1,
+        borderColor: '#ddd',
+        borderRadius: 8,
+        padding: 10,
+        backgroundColor: '#fff',
+    },
+    dateButtonText: {
+        color: '#333',
+        fontSize: 14,
+    },
+    iosDatePickerContainer: {
         position: 'absolute',
         bottom: 0,
         left: 0,
         right: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        backgroundColor: 'white',
         zIndex: 1000,
-        height: '100%',
-        justifyContent: 'flex-end',
-      },
-      datePickerWrapper: {
-        backgroundColor: '#fff',
-        borderTopLeftRadius: 10,
-        borderTopRightRadius: 10,
-      },
-      datePickerHeader: {
+    },
+    iosDatePickerHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#e0e0e0',
-      },
-      datePickerButtonText: {
+        padding: 10,
+        backgroundColor: '#f8f8f8',
+        borderTopWidth: 1,
+        borderColor: '#ddd',
+    },
+    iosDatePicker: {
+        height: 200,
+    },
+    iosDatePickerCancel: {
         color: '#007AFF',
         fontSize: 16,
-      },
-      datePickerIOS: {
-        height: 200,
-        width: '100%',
-      },
+    },
+    iosDatePickerDone: {
+        color: '#007AFF',
+        fontSize: 16,
+        fontWeight: '600',
+    },
 });
 
 export default VehicleScreen;
