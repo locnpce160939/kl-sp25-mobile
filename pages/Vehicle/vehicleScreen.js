@@ -14,11 +14,11 @@ import {
 import axios from "axios";
 import { BASE_URl } from "../../configUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import DateTimePicker from "@react-native-community/datetimepicker";
 import { AuthContext } from "../../contexts/AuthContext";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { useNavigation } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
+import DatePickerField from '../../components/DatePickerField';
 
 const VehicleScreen = () => {
     // State và biến
@@ -397,72 +397,6 @@ const VehicleScreen = () => {
         </View>
     );
 
-    const DatePickerField = ({ label, value, onChange, field }) => {
-        const [show, setShow] = useState(false);
-        const [tempDate, setTempDate] = useState(new Date());
-      
-        const handleDateChange = (event, selectedDate) => {
-          if (Platform.OS === 'android') {
-            setShow(false);
-            if (selectedDate) {
-              const formattedDate = selectedDate.toISOString().split("T")[0];
-              onChange(formattedDate);
-            }
-          } else {
-            setTempDate(selectedDate || tempDate);
-          }
-        };
-      
-        const handleIOSConfirm = () => {
-          setShow(false);
-          const formattedDate = tempDate.toISOString().split(".")[0];
-          onChange(formattedDate);
-        };
-      
-        return (
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>{label}</Text>
-            <TouchableOpacity
-              style={styles.dateButton}
-              onPress={() => setShow(true)}
-            >
-              <Text style={styles.dateButtonText}>
-                {value ? value.split("T")[0] : "Select a date"}
-              </Text>
-            </TouchableOpacity>
-            {errors[field] && <Text style={styles.errorText}>{errors[field]}</Text>}
-            {Platform.OS === 'ios' && show && (
-              <View style={styles.iosDatePickerContainer}>
-                <View style={styles.iosDatePickerHeader}>
-                  <TouchableOpacity onPress={() => setShow(false)}>
-                    <Text style={styles.iosDatePickerCancel}>Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={handleIOSConfirm}>
-                    <Text style={styles.iosDatePickerDone}>Done</Text>
-                  </TouchableOpacity>
-                </View>
-                <DateTimePicker
-                  value={value ? new Date(value) : new Date()}
-                  mode="date"
-                  display="spinner"
-                  onChange={handleDateChange}
-                  style={styles.iosDatePicker}
-                />
-              </View>
-            )}
-      
-            {Platform.OS === 'android' && show && (
-              <DateTimePicker
-                value={value ? new Date(value) : new Date()}
-                mode="date"
-                display="default"
-                onChange={handleDateChange}
-              />
-            )}
-          </View>
-        );
-      };
-
     // Render form nhập thông tin xe
     const renderForm = () => (
         <ScrollView contentContainerStyle={styles.container}>
@@ -485,6 +419,7 @@ const VehicleScreen = () => {
                             value={formData[field]}
                             onChange={(value) => handleInputChange(field, value)}
                             field={field}
+                            error={errors[field]}
                         />
                     );
                 }

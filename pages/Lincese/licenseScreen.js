@@ -20,6 +20,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { AuthContext } from "../../contexts/AuthContext";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import * as ImagePicker from "expo-image-picker";
+import DatePickerField from '../../components/DatePickerField';
 
 const LicenseScreen = () => {
   const navigation = useNavigation();
@@ -69,8 +70,8 @@ const LicenseScreen = () => {
         setLicenseId(licenseData.licenseId);
         setLicenseDetails({
           ...licenseData,
-          issuedDate: licenseData.issuedDate ? new Date(licenseData.issuedDate).toISOString() : "",
-          expiryDate: licenseData.expiryDate ? new Date(licenseData.expiryDate).toISOString() : "",
+          issuedDate: licenseData.issuedDate ? new Date(licenseData.issuedDate).toISOString().split('T')[0] : "",
+          expiryDate: licenseData.expiryDate ? new Date(licenseData.expiryDate).toISOString().split('T')[0] : "",
           frontView: licenseData.frontView,
           backView: licenseData.backView,
         });
@@ -451,112 +452,6 @@ const LicenseScreen = () => {
     </View>
   );
 
-  const renderDatePicker = () => {
-    if (!showDatePicker) return null;
-
-    if (Platform.OS === 'ios') {
-      return (
-        <View style={styles.datePickerContainer}>
-          <View style={styles.datePickerWrapper}>
-            <View style={styles.datePickerHeader}>
-              <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                <Text style={styles.datePickerButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                onPress={() => {
-                  handleDateChange({ type: 'set' }, new Date(licenseDetails[currentField] || Date.now()));
-                }}
-              >
-                <Text style={styles.datePickerButtonText}>Done</Text>
-              </TouchableOpacity>
-            </View>
-            <DateTimePicker
-              value={new Date(licenseDetails[currentField] || Date.now())}
-              mode="date"
-              display="spinner"
-              onChange={(event, selectedDate) => {
-                if (selectedDate) {
-                  setLicenseDetails(prev => ({
-                    ...prev,
-                    [currentField]: selectedDate.toISOString()
-                  }));
-                }
-              }}
-              style={styles.datePickerIOS}
-            />
-          </View>
-        </View>
-      );
-    }
-
-    return (
-      <DateTimePicker
-        value={new Date(licenseDetails[currentField] || Date.now())}
-        mode="date"
-        display="default"
-        onChange={handleDateChange}
-      />
-    );
-  };
-
-  const DatePickerField = ({ label, value, onChange, field }) => {
-    const [show, setShow] = useState(false);
-    const [tempDate, setTempDate] = useState(new Date());
-  
-    const handleDateChange = (event, selectedDate) => {
-      if (Platform.OS === 'android') {
-        setShow(false);
-        if (selectedDate) {
-          const formattedDate = selectedDate.toISOString().split(".")[0];
-          onChange(formattedDate);
-        }
-      } else {
-        setTempDate(selectedDate || tempDate);
-      }
-    };
-  
-    const handleIOSConfirm = () => {
-      setShow(false);
-      const formattedDate = tempDate.toISOString().split(".")[0];
-      onChange(formattedDate);
-    };
-  
-    return (
-      <View style={styles.inputContainer}>
-        <Text style={styles.label}>{label}</Text>
-        <TouchableOpacity onPress={() => setShow(true)}>
-          <TextInput
-            style={[styles.input, errors[field] && styles.inputError]}
-            value={value ? new Date(value).toLocaleDateString("vi-VN") : ""}
-            editable={false}
-            placeholder={"Chọn ngày"}
-            placeholderTextColor={"#999"}
-            pointerEvents="none"
-          />
-        </TouchableOpacity>
-        {show && (
-          <DateTimePicker
-            value={new Date(value || Date.now())}
-            mode="date"
-            display={Platform.OS === 'ios' ? "spinner" : "default"}
-            onChange={handleDateChange}
-            style={Platform.OS === 'ios' && styles.datePickerIOS}
-          />
-        )}
-        {Platform.OS === 'ios' && show && (
-          <View style={styles.datePickerHeader}>
-            <TouchableOpacity onPress={() => setShow(false)}>
-              <Text style={styles.datePickerButtonText}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={handleIOSConfirm}>
-              <Text style={styles.datePickerButtonText}>Done</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
-    );
-  };
-
   return (
     <SafeAreaView style={styles.safeContainer}>
       <ScrollView contentContainerStyle={styles.container}>
@@ -595,12 +490,14 @@ const LicenseScreen = () => {
               value={licenseDetails.issuedDate}
               onChange={(value) => handleInputChange("issuedDate", value)}
               field="issuedDate"
+              error={errors.issuedDate}
             />
             <DatePickerField
               label="Ngày hết hạn"
               value={licenseDetails.expiryDate}
               onChange={(value) => handleInputChange("expiryDate", value)}
               field="expiryDate"
+              error={errors.expiryDate}
             />
             {renderInputField(
               "Cơ quan cấp",
@@ -619,7 +516,6 @@ const LicenseScreen = () => {
             </TouchableOpacity>
           </>
         )}
-        {renderDatePicker()}
       </ScrollView>
     </SafeAreaView>
   );
