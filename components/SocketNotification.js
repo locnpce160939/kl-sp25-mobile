@@ -8,6 +8,7 @@ import {
   Dimensions,
   SafeAreaView,
   Animated,
+  Alert,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import {
@@ -21,23 +22,24 @@ import {
 } from "lucide-react-native";
 import io from "socket.io-client";
 import { Audio } from "expo-av";
-import MapView, { Marker } from "react-native-maps"; // Add this import
+import MapView, { Marker } from "react-native-maps";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import axios from "axios";
 
 const { width } = Dimensions.get("window");
 const BRAND_COLOR = "#00b5ec";
-const GOOGLE_MAPS_APIKEY = "t0vRyftUba3uIEnx5JlMJta2ff3B03BEUVg0xHWw"; // Replace with your actual API key
+const BASE_URL = "https://api.ftcs.online";
 
-// Hàm trích xuất accountId từ token
 function getUserIdFromToken(token) {
   try {
     const payload = JSON.parse(atob(token.split(".")[1]));
-    return payload.account.id; // Trả về accountId
+    return payload.account.id;
   } catch (error) {
     console.error("Error decoding token:", error);
     return null;
   }
 }
+
 const LocationRow = ({ icon, text }) => (
   <View style={styles.locationRow}>
     <View style={styles.locationIcon}>
@@ -65,23 +67,24 @@ const SocketNotification = () => {
   const [sound, setSound] = useState(null);
   const [currentUserId, setCurrentUserId] = useState(null);
   const [socket, setSocket] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const fetchTokenAndConnectSocket = async () => {
       try {
         const userInfoString = await AsyncStorage.getItem("userInfo");
-        const accessToken = JSON.parse(userInfoString)?.data?.access_token;
+        const userInfo = JSON.parse(userInfoString);
+        const accessToken = userInfo?.data?.access_token;
 
         if (accessToken) {
           const accountId = getUserIdFromToken(accessToken);
           setCurrentUserId(accountId);
 
           if (accountId) {
-            console.log("room", accountId.toString());
-            // Kết nối WebSocket với accountId làm room
+            console.log("Connecting to room:", accountId.toString());
             const newSocket = io("wss://api.ftcs.online", {
               transports: ["websocket"],
-              query: { username: "admin", room: accountId.toString() }, // Sử dụng accountId thay vì "1"
+              query: { username: "admin", room: accountId.toString() },
               upgrade: false,
             });
 
@@ -100,6 +103,14 @@ const SocketNotification = () => {
               } catch (error) {
                 console.error("Error parsing notification:", error);
               }
+            });
+
+            newSocket.on("connect", () => {
+              console.log("Socket connected successfully");
+            });
+
+            newSocket.on("connect_error", (error) => {
+              console.error("Socket connection error:", error);
             });
 
             setSocket(newSocket);
@@ -144,31 +155,67 @@ const SocketNotification = () => {
     }).start(() => {
       setModalVisible(false);
       setShowMap(false);
+      setNotification(null);
     });
   };
 
-  const acceptOrder = () => {
-    console.log("Order accepted:", notification);
-    closeModal();
+  const acceptOrder = async () => {
+    if (loading) return;
+    
+    try {
+      setLoading(true);
+      
+      if (!notification?.id) {
+        Alert.alert("Error", "No trip ID found in notification");
+        return;
+      }
+
+      const userInfoString = await AsyncStorage.getItem("userInfo");
+      const userInfo = JSON.parse(userInfoString);
+      const token = userInfo?.data?.access_token;
+
+      if (!token) {
+        Alert.alert("Error", "Authentication required");
+        return;
+      }
+
+      const response = await axios.get(
+        `${BASE_URL}/api/trip-matching/accept/${notification.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.status === 200) {
+        console.log("Trip accepted successfully:", response.data);
+        Alert.alert("Success", "Trip accepted successfully");
+        closeModal();
+      }
+    } catch (error) {
+      console.error("Error accepting trip:", error);
+      Alert.alert(
+        "Error",
+        error.response?.data?.message || "Failed to accept trip"
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   const declineOrder = () => {
-    console.log("Order declined");
     closeModal();
   };
 
   const toggleMapView = () => {
-    // Chỉ cho phép toggle nếu có location
-    if (
-      notification?.customerStartLocation &&
-      notification?.customerEndLocation
-    ) {
+    if (notification?.customerStartLocation && notification?.customerEndLocation) {
       setShowMap(!showMap);
     }
   };
 
   const renderMapView = () => {
-    // Split the string into latitude and longitude
     const [startLat, startLng] = notification.customerStartLocation
       .split(",")
       .map(parseFloat);
@@ -189,16 +236,17 @@ const SocketNotification = () => {
         <Marker
           coordinate={{ latitude: startLat, longitude: startLng }}
           title="Start Point"
-          pinColor="green" // Green color for start point
+          pinColor="green"
         />
         <Marker
           coordinate={{ latitude: endLat, longitude: endLng }}
           title="End Point"
-          pinColor="red" // Red color for end point
+          pinColor="red"
         />
       </MapView>
     );
   };
+
   return (
     <Modal
       transparent={true}
@@ -224,7 +272,6 @@ const SocketNotification = () => {
           ]}
         >
           <View style={styles.container}>
-            {/* Header remains the same as previous version */}
             <LinearGradient
               colors={[BRAND_COLOR, `${BRAND_COLOR}dd`]}
               style={styles.header}
@@ -243,13 +290,11 @@ const SocketNotification = () => {
               </View>
             </LinearGradient>
 
-            {/* Conditionally render map or content */}
             {showMap ? (
               renderMapView()
             ) : (
               <>
                 <View style={styles.content}>
-                  {/* Previous location and info content */}
                   <LocationRow
                     icon={<MapPin size={16} />}
                     text={
@@ -285,11 +330,11 @@ const SocketNotification = () => {
               </>
             )}
 
-            {/* Button row with View Map toggle */}
             <View style={styles.buttonRow}>
               <TouchableOpacity
                 style={styles.declineButton}
                 onPress={declineOrder}
+                disabled={loading}
               >
                 <AlertCircle size={16} color="#ff4d4f" />
                 <Text style={styles.declineText}>Decline</Text>
@@ -298,6 +343,7 @@ const SocketNotification = () => {
               <TouchableOpacity
                 style={styles.viewMapButton}
                 onPress={toggleMapView}
+                disabled={loading}
               >
                 <Text style={styles.viewMapText}>
                   {showMap ? "Hide Map" : "View Map"}
@@ -306,16 +352,17 @@ const SocketNotification = () => {
 
               <LinearGradient
                 colors={[BRAND_COLOR, `${BRAND_COLOR}dd`]}
-                style={styles.acceptButton}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
+                style={[styles.acceptButton, loading && styles.disabledButton]}
               >
                 <TouchableOpacity
                   style={styles.acceptButtonContent}
                   onPress={acceptOrder}
+                  disabled={loading}
                 >
                   <CheckCircle2 size={16} color="#fff" />
-                  <Text style={styles.acceptText}>Accept</Text>
+                  <Text style={styles.acceptText}>
+                    {loading ? "Accepting..." : "Accept"}
+                  </Text>
                 </TouchableOpacity>
               </LinearGradient>
             </View>
@@ -462,7 +509,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "500",
   },
-
   map: {
     width: "100%",
     height: 300,
@@ -480,9 +526,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "500",
   },
-  mapContainer: {
-    width: "100%",
-    height: 300,
+  disabledButton: {
+    opacity: 0.6,
   },
 });
 
