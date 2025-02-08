@@ -22,167 +22,88 @@ import axios from "axios";
 import { BASE_URl } from "../../configUrl";
 //import { launchCamera } from 'react-native-image-picker';
 
+import Ionicons from "react-native-vector-icons/Ionicons";
+
 import * as ImagePicker from 'expo-image-picker';
 
 
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-const ImageCameraField = ({ label, image, onImageSelect }) => {
-  const [isVisible, setIsVisible] = useState(false);
-
-  useEffect(() => {
-    (async () => {
-      const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
-      const { status: mediaStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
-      if (cameraStatus !== 'granted' || mediaStatus !== 'granted') {
-        Alert.alert('Permission denied', 'We need camera and media library permissions to make this work!');
-      }
-    })();
-  }, []);
-
-  const prepareImageForUpload = async (result) => {
-    if (!result.canceled && result.assets[0]) {
-      const imageAsset = result.assets[0];
-      // Get file extension from URI
-      const uriParts = imageAsset.uri.split('.');
-      const fileExtension = uriParts[uriParts.length - 1];
-
-      // Create file name with proper extension
-      const fileName = `photo.${fileExtension}`;
-
-      // Prepare the image object
-      const imageFile = {
-        uri: Platform.OS === 'ios' ? imageAsset.uri.replace('file://', '') : imageAsset.uri,
-        type: `image/${fileExtension}`,
-        name: fileName,
-        size: imageAsset.fileSize // Add file size if available
-      };
-
-      onImageSelect({
-        assets: [imageFile]
-      });
-    }
-  };
-
-  const openCamera = async () => {
-    setIsVisible(false);
-    try {
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.7,
-        maxWidth: 1000,
-        maxHeight: 1000,
-      });
-
-      await prepareImageForUpload(result);
-    } catch (error) {
-      console.log('Error capturing image:', error);
-      Alert.alert('Error', 'Failed to capture image. Please try again.');
-    }
-  };
-
-  const openImagePicker = async () => {
-    setIsVisible(false);
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.7,
-        maxWidth: 1000,
-        maxHeight: 1000,
-      });
-
-      await prepareImageForUpload(result);
-    } catch (error) {
-      console.log('Error selecting image:', error);
-      Alert.alert('Error', 'Failed to select image. Please try again.');
-    }
+const ImageCameraField = ({ label, image, onImageSelect, error }) => {
+  const selectImage = async () => {
+    Alert.alert(
+      "Chọn nguồn ảnh",
+      "Chọn chụp ảnh hoặc lấy từ thư viện",
+      [
+        {
+          text: "Camera",
+          onPress: async () => {
+            const result = await ImagePicker.launchCameraAsync({
+              mediaTypes: ImagePicker.MediaTypeOptions.Images,
+              allowsEditing: true,
+              aspect: [4, 3],
+              quality: 0.5,
+            });
+            if (!result.canceled) {
+              onImageSelect({
+                uri: result.assets[0].uri,
+                type: 'image/jpeg',
+                name: 'photo.jpg'
+              });
+            }
+          },
+        },
+        {
+          text: "Thư viện",
+          onPress: async () => {
+            const result = await ImagePicker.launchImageLibraryAsync({
+              mediaTypes: ImagePicker.MediaTypeOptions.Images,
+              allowsEditing: true,
+              aspect: [4, 3],
+              quality: 0.5,
+            });
+            if (!result.canceled) {
+              onImageSelect({
+                uri: result.assets[0].uri,
+                type: 'image/jpeg',
+                name: 'photo.jpg'
+              });
+            }
+          },
+        },
+        { text: "Hủy", style: "cancel" },
+      ],
+      { cancelable: true }
+    );
   };
 
   return (
-    <View style={styles.inputContainer}>
-      <Text style={styles.label}>
-        {label} <Text style={styles.required}>*</Text>
-      </Text>
-      
-      <View style={styles.guideContainer}>
-        <Text style={styles.guideText}>Hướng dẫn chụp ảnh:</Text>
-        <Text style={styles.guideItem}>- Đặt CCCD trong khung hình</Text>
-        <Text style={styles.guideItem}>- Đảm bảo ánh sáng đầy đủ</Text>
-        <Text style={styles.guideItem}>- Giữ máy thật vững</Text>
-        <Text style={styles.guideItem}>- Chụp trong môi trường sáng</Text>
-      </View>
-
-      <View>
-        {image ? (
-          <View style={styles.imageContainer}>
-            <Image 
-              source={{ uri: image.uri }} 
-              style={styles.imagePreview} 
-            />
-            <TouchableOpacity 
-              style={styles.retakeButton}
-              onPress={() => setIsVisible(true)}
-            >
-              <Text style={styles.retakeText}>Chọn lại</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <TouchableOpacity 
-            style={styles.cameraButton} 
-            onPress={() => setIsVisible(true)}
+    <View style={styles.imageContainer}>
+      <Text style={styles.label}>{label}</Text>
+      {image ? (
+        <View style={styles.imageWrapper}>
+          <Image
+            source={{ uri: image.uri }}
+            style={styles.idImage}
+          />
+          <TouchableOpacity
+            style={styles.retakeButton}
+            onPress={selectImage}
           >
-            <Text style={styles.cameraButtonText}>Chọn ảnh</Text>
+            <Text style={styles.retakeButtonText}>Chụp lại</Text>
           </TouchableOpacity>
-        )}
-      </View>
-
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={isVisible}
-        onRequestClose={() => setIsVisible(false)}
-      >
-        <Pressable 
-          style={styles.modalOverlay}
-          onPress={() => setIsVisible(false)}
+        </View>
+      ) : (
+        <TouchableOpacity
+          style={[styles.uploadButton, error && styles.inputError]}
+          onPress={selectImage}
         >
-          <View style={styles.bottomSheet}>
-            <View style={styles.bottomSheetContent}>
-              <View style={styles.bottomSheetHeader}>
-                <View style={styles.handleBar} />
-                <Text style={styles.bottomSheetTitle}>Vui lòng chọn phương thức</Text>
-              </View>
-
-              <TouchableOpacity 
-                style={styles.optionButton} 
-                onPress={openCamera}
-              >
-                <Text style={styles.optionText}>Chụp ảnh</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={styles.optionButton} 
-                onPress={openImagePicker}
-              >
-                <Text style={styles.optionText}>Chọn từ thư viện</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={[styles.optionButton, styles.cancelButton]} 
-                onPress={() => setIsVisible(false)}
-              >
-                <Text style={styles.cancelText}>Hủy</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Pressable>
-      </Modal>
+          <Ionicons name="camera" size={24} color="#007AFF" />
+          <Text style={styles.uploadButtonText}>Chụp ảnh</Text>
+        </TouchableOpacity>
+      )}
+      {error && <Text style={styles.errorText}>{error}</Text>}
     </View>
   );
 };
@@ -227,21 +148,20 @@ const PickerField = ({ label, items, selectedValue, onValueChange, enabled = tru
     setTemporaryValue(selectedValue);
   }, [selectedValue]);
 
-  // Improved display text function
+  // Improved display text function with better null checks
   const getDisplayText = useCallback(() => {
-    if (!items || !Array.isArray(items)) return "Select an option";
+    if (!items || !Array.isArray(items) || items.length === 0) return "Select an option";
     
-    // Find the selected item
-    const selectedItem = items.find(item => String(item.id) === String(selectedValue));
+    // Ensure both values are strings for comparison
+    const selectedItem = items.find(item => 
+      String(item.id) === String(selectedValue)
+    );
     
-    // Debug log to check the values
-    console.log('Selected Value:', selectedValue);
-    console.log('Selected Item:', selectedItem);
-    console.log('Items:', items);
-    
-    // Return the fullName if found, otherwise return placeholder
     return selectedItem?.fullName || "Select an option";
   }, [items, selectedValue]);
+
+  // Ensure items is always an array
+  const safeItems = Array.isArray(items) ? items : [];
 
   return (
     <View style={styles.inputContainer}>
@@ -293,23 +213,30 @@ const PickerField = ({ label, items, selectedValue, onValueChange, enabled = tru
                     <Text style={styles.modalDone}>Done</Text>
                   </TouchableOpacity>
                 </View>
-                <Picker
-                  selectedValue={temporaryValue}
-                  onValueChange={(value) => {
-                    console.log('Picker value changed:', value);
-                    setTemporaryValue(value);
-                  }}
-                  enabled={enabled}
-                >
-                  <Picker.Item label="Select an option" value="" />
-                  {items.map((item) => (
+                <View style={styles.pickerWrapper}>
+                  <Picker
+                    selectedValue={temporaryValue}
+                    onValueChange={(value) => {
+                      setTemporaryValue(value);
+                    }}
+                    enabled={enabled}
+                    itemStyle={styles.pickerItem} // Add specific styles for iOS picker items
+                  >
                     <Picker.Item 
-                      key={String(item.id)}
-                      label={item.fullName}
-                      value={String(item.id)}
+                      label="Select an option" 
+                      value="" 
+                      color={enabled ? '#000' : '#999'}
                     />
-                  ))}
-                </Picker>
+                    {safeItems.map((item) => (
+                      <Picker.Item 
+                        key={String(item.id)}
+                        label={item.fullName || ''}
+                        value={String(item.id)}
+                        color={enabled ? '#000' : '#999'}
+                      />
+                    ))}
+                  </Picker>
+                </View>
               </View>
             </View>
           </Modal>
@@ -323,12 +250,17 @@ const PickerField = ({ label, items, selectedValue, onValueChange, enabled = tru
             style={[styles.picker, !enabled && styles.pickerDisabled]}
             mode="dropdown"
           >
-            <Picker.Item label="Select an option" value="" />
-            {items.map((item) => (
+            <Picker.Item 
+              label="Select an option" 
+              value="" 
+              color={enabled ? '#000' : '#999'}
+            />
+            {safeItems.map((item) => (
               <Picker.Item 
                 key={String(item.id)}
-                label={item.fullName}
+                label={item.fullName || ''}
                 value={String(item.id)}
+                color={enabled ? '#000' : '#999'}
               />
             ))}
           </Picker>
@@ -983,30 +915,17 @@ const DriverIdentificationScreen = ({ navigation }) => {
       <ImageCameraField
   label="Ảnh mặt trước CCCD"
   image={formData.frontFile}
-  onImageSelect={(response) => {
-    const imageFile = response.assets[0];
-    handleInputChange('frontFile', {
-      uri: imageFile.uri,
-      type: imageFile.type || 'image/jpeg',
-      name: imageFile.fileName || 'photo.jpg'
-    });
-  }}
+  onImageSelect={(file) => handleInputChange('frontFile', file)}
+  error={errors.frontFile}
 />
-{errors.frontFile && <Text style={styles.errorText}>{errors.frontFile}</Text>}
 
 <ImageCameraField
   label="Ảnh mặt sau CCCD"
   image={formData.backFile}
-  onImageSelect={(response) => {
-    const imageFile = response.assets[0];
-    handleInputChange('backFile', {
-      uri: imageFile.uri,
-      type: imageFile.type || 'image/jpeg',
-      name: imageFile.fileName || 'photo.jpg'
-    });
-  }}
+  onImageSelect={(file) => handleInputChange('backFile', file)}
+  error={errors.backFile}
 />
-{errors.backFile && <Text style={styles.errorText}>{errors.backFile}</Text>}
+
 
 <TouchableOpacity 
   style={[
@@ -1057,26 +976,32 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   imageContainer: {
-    position: 'relative',
-    borderRadius: 12,
-    overflow: 'hidden',
-    elevation: 3,
+    marginBottom: 20,
   },
-  imagePreview: {
+  imageWrapper: {
+    position: 'relative',
+  },
+  idImage: {
     width: '100%',
     height: 200,
-    borderRadius: 12,
+    borderRadius: 8,
+    marginBottom: 10,
   },
-  cameraButton: {
-    backgroundColor: '#00b5ec',
-    padding: 15,
-    borderRadius: 12,
+  uploadButton: {
+    backgroundColor: '#f0f0f0',
+    padding: 20,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderStyle: 'dashed',
     alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
   },
-  cameraButtonText: {
-    color: '#fff',
+  uploadButtonText: {
+    color: '#007AFF',
     fontSize: 16,
-    fontWeight: '600',
+    marginLeft: 10,
   },
   retakeButton: {
     position: 'absolute',
@@ -1087,72 +1012,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 20,
   },
-  retakeText: {
+  retakeButtonText: {
     color: '#fff',
     fontSize: 14,
     fontWeight: '500',
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  bottomSheet: {
-    backgroundColor: 'white',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    minHeight: SCREEN_HEIGHT * 0.25,
-  },
-  bottomSheetContent: {
-    padding: 20,
-  },
-  bottomSheetHeader: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  handleBar: {
-    width: 40,
-    height: 4,
-    backgroundColor: '#DDD',
-    borderRadius: 2,
-    marginBottom: 10,
-  },
-  bottomSheetTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-  },
-  optionButton: {
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EFEFEF',
-  },
-  optionText: {
-    fontSize: 16,
-    color: '#00b5ec',
-    textAlign: 'center',
-  },
-  cancelButton: {
-    borderBottomWidth: 0,
-    marginTop: 10,
-  },
-  cancelText: {
-    fontSize: 16,
-    color: '#FF3B30',
-    textAlign: 'center',
-    fontWeight: '600',
-  },
-
-  // radioGroup: {
-  //   flexDirection: 'row', // Entire group in one row
-  //   alignItems: 'center', // Vertically center
-  //   gap: 20 // Space between radio button groups
-  // },
-  // radioItem: {
-  //   flexDirection: 'row', // Radio button and text in row
-  //   alignItems: 'center'
-  // },
-  // ... existing styles
   errorText: {
    color: "red",
    fontSize: 12,
@@ -1370,6 +1234,27 @@ submitButtonText: {
   //   backgroundColor: '#f5f5f5',
   //   color: '#999',
   // }
+
+  pickerWrapper: {
+    backgroundColor: '#fff',
+    width: '100%',
+    height: 200, // Ensure enough height for the picker
+  },
+  pickerItem: {
+    fontSize: 16,
+    height: 180, // Adjust the height of items
+    color: '#000', // Ensure text is visible
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingBottom: 20, // Add padding to avoid safe area issues
+  },
  
 });
 
