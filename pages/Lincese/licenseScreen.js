@@ -20,6 +20,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { AuthContext } from "../../contexts/AuthContext";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import * as ImagePicker from "expo-image-picker";
+import DatePickerField from '../../components/DatePickerField';
 
 const LicenseScreen = () => {
   const navigation = useNavigation();
@@ -69,8 +70,8 @@ const LicenseScreen = () => {
         setLicenseId(licenseData.licenseId);
         setLicenseDetails({
           ...licenseData,
-          issuedDate: new Date(licenseData.issuedDate).toISOString(),
-          expiryDate: new Date(licenseData.expiryDate).toISOString(),
+          issuedDate: licenseData.issuedDate ? new Date(licenseData.issuedDate).toISOString().split('T')[0] : "",
+          expiryDate: licenseData.expiryDate ? new Date(licenseData.expiryDate).toISOString().split('T')[0] : "",
           frontView: licenseData.frontView,
           backView: licenseData.backView,
         });
@@ -163,26 +164,50 @@ const LicenseScreen = () => {
   };
 
   const selectImage = async (view) => {
-    try {
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.5,
-      });
-
-      if (!result.canceled) {
-        // Cập nhật ảnh vào state
-        setLicenseDetails((prev) => ({
-          ...prev,
-          [view]: result.assets[0].uri,
-        }));
-        setErrors((prev) => ({ ...prev, [view]: null }));
-      }
-    } catch (error) {
-      Alert.alert("Lỗi", "Không thể chọn ảnh");
-      console.error("Image picker error:", error);
-    }
+    Alert.alert(
+      "Chọn nguồn ảnh",
+      "Chọn chụp ảnh hoặc lấy từ thư viện",
+      [
+        {
+          text: "Camera",
+          onPress: async () => {
+            const result = await ImagePicker.launchCameraAsync({
+              mediaTypes: ImagePicker.MediaTypeOptions.Images,
+              allowsEditing: true,
+              aspect: [4, 3],
+              quality: 0.5,
+            });
+            if (!result.canceled) {
+              setLicenseDetails((prev) => ({
+                ...prev,
+                [view]: result.assets[0].uri,
+              }));
+              setErrors((prev) => ({ ...prev, [view]: null }));
+            }
+          },
+        },
+        {
+          text: "Thư viện",
+          onPress: async () => {
+            const result = await ImagePicker.launchImageLibraryAsync({
+              mediaTypes: ImagePicker.MediaTypeOptions.Images,
+              allowsEditing: true,
+              aspect: [4, 3],
+              quality: 0.5,
+            });
+            if (!result.canceled) {
+              setLicenseDetails((prev) => ({
+                ...prev,
+                [view]: result.assets[0].uri,
+              }));
+              setErrors((prev) => ({ ...prev, [view]: null }));
+            }
+          },
+        },
+        { text: "Hủy", style: "cancel" },
+      ],
+      { cancelable: true }
+    );
   };
 
   const updateLicenseDetails = async () => {
@@ -406,7 +431,6 @@ const LicenseScreen = () => {
       <Text style={styles.label}>{label}</Text>
       <TouchableOpacity
         onPress={() => {
-          console.log("helllooooooooo");
           setCurrentField(field);
           setShowDatePicker(true);
         }}
@@ -461,8 +485,20 @@ const LicenseScreen = () => {
               "licenseType",
               "Nhập loại giấy phép"
             )}
-            {renderDateField("Ngày cấp", "issuedDate")}
-            {renderDateField("Ngày hết hạn", "expiryDate")}
+            <DatePickerField
+              label="Ngày cấp"
+              value={licenseDetails.issuedDate}
+              onChange={(value) => handleInputChange("issuedDate", value)}
+              field="issuedDate"
+              error={errors.issuedDate}
+            />
+            <DatePickerField
+              label="Ngày hết hạn"
+              value={licenseDetails.expiryDate}
+              onChange={(value) => handleInputChange("expiryDate", value)}
+              field="expiryDate"
+              error={errors.expiryDate}
+            />
             {renderInputField(
               "Cơ quan cấp",
               "issuingAuthority",
@@ -479,23 +515,6 @@ const LicenseScreen = () => {
               </Text>
             </TouchableOpacity>
           </>
-        )}
-        {showDatePicker && (
-          <DateTimePicker
-            value={
-              currentField === "issuedDate"
-                ? licenseDetails.issuedDate
-                  ? new Date(licenseDetails.issuedDate)
-                  : new Date()
-                : licenseDetails.expiryDate
-                  ? new Date(licenseDetails.expiryDate)
-                  : new Date()
-            }
-            mode="date"
-            display="spinner" // Sử dụng "spinner" cho iOS
-            preferredDatePickerStyle="wheels"
-            onChange={handleDateChange}
-          />
         )}
       </ScrollView>
     </SafeAreaView>
@@ -588,6 +607,7 @@ const styles = StyleSheet.create({
     height: 200,
     borderRadius: 8,
     marginBottom: 10,
+    borderWidth: 1,
   },
   uploadButton: {
     backgroundColor: "#f0f0f0",
@@ -615,6 +635,37 @@ const styles = StyleSheet.create({
   retakeButtonText: {
     color: "#fff",
     fontSize: 14,
+  },
+  datePickerContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    zIndex: 1000,
+    height: '100%',
+    justifyContent: 'flex-end',
+  },
+  datePickerWrapper: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 10,
+    borderTopRightRadius: 10,
+  },
+  datePickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  datePickerButtonText: {
+    color: '#007AFF',
+    fontSize: 16,
+  },
+  datePickerIOS: {
+    height: 200,
+    width: '100%',
   },
 });
 

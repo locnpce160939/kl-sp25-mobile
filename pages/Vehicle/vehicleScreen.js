@@ -14,11 +14,11 @@ import {
 import axios from "axios";
 import { BASE_URl } from "../../configUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import DateTimePicker from "@react-native-community/datetimepicker";
 import { AuthContext } from "../../contexts/AuthContext";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { useNavigation } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
+import DatePickerField from '../../components/DatePickerField';
 
 const VehicleScreen = () => {
     // State và biến
@@ -103,25 +103,52 @@ const VehicleScreen = () => {
 
     // Hàm chọn ảnh
     const selectImage = async (field) => {
-        try {
-            const result = await ImagePicker.launchCameraAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                allowsEditing: true,
-                aspect: [4, 3],
-                quality: 0.5,
-            });
-
-            if (!result.canceled) {
-                setFormData((prev) => ({
-                    ...prev,
-                    [field]: result.assets[0].uri,
-                }));
-                setErrors((prev) => ({ ...prev, [field]: "" }));
-            }
-        } catch (error) {
-            Alert.alert("Lỗi", "Không thể chọn ảnh");
-            console.error("Image picker error:", error);
-        }
+        Alert.alert(
+            "Chọn nguồn ảnh",
+            "Chọn phương thức lấy ảnh",
+            [
+                {
+                    text: "Chụp ảnh",
+                    onPress: async () => {
+                        const result = await ImagePicker.launchCameraAsync({
+                            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                            allowsEditing: true,
+                            aspect: [4, 3],
+                            quality: 0.5,
+                        });
+                        if (!result.canceled) {
+                            setFormData((prev) => ({
+                                ...prev,
+                                [field]: result.assets[0].uri,
+                            }));
+                            setErrors((prev) => ({ ...prev, [field]: "" }));
+                        }
+                    },
+                },
+                {
+                    text: "Thư viện",
+                    onPress: async () => {
+                        const result = await ImagePicker.launchImageLibraryAsync({
+                            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                            allowsEditing: true,
+                            aspect: [4, 3],
+                            quality: 0.5,
+                        });
+                        if (!result.canceled) {
+                            setFormData((prev) => ({
+                                ...prev,
+                                [field]: result.assets[0].uri,
+                            }));
+                            setErrors((prev) => ({ ...prev, [field]: "" }));
+                        }
+                    },
+                },
+                {
+                    text: "Hủy",
+                    style: "cancel"
+                }
+            ]
+        );
     };
 
     // Hàm xử lý thay đổi input
@@ -370,32 +397,6 @@ const VehicleScreen = () => {
         </View>
     );
 
-    const renderDateField = (label, field) => (
-        <View style={styles.inputContainer}>
-            <Text style={styles.label}>{label}</Text>
-            <TouchableOpacity
-                onPress={() => {
-                    setCurrentDateField(field);
-                    setShowPicker(true);
-                }}
-            >
-                <TextInput
-                    style={[styles.input, errors[field] && styles.inputError]}
-                    value={
-                        formData[field]
-                            ? new Date(formData[field]).toLocaleDateString("vi-VN")
-                            : ""
-                    }
-                    editable={false}
-                    placeholder="Chọn ngày"
-                    placeholderTextColor="#999"
-                    pointerEvents="none"
-                />
-            </TouchableOpacity>
-            {errors[field] && <Text style={styles.errorText}>{errors[field]}</Text>}
-        </View>
-    );
-
     // Render form nhập thông tin xe
     const renderForm = () => (
         <ScrollView contentContainerStyle={styles.container}>
@@ -412,9 +413,14 @@ const VehicleScreen = () => {
             {inputFields.map(({ field, label }) => {
                 if (field === "registrationExpiryDate") {
                     return (
-                        <View key={field}>
-                            {renderDateField(label, field)}
-                        </View>
+                        <DatePickerField
+                            key={field}
+                            label={label}
+                            value={formData[field]}
+                            onChange={(value) => handleInputChange(field, value)}
+                            field={field}
+                            error={errors[field]}
+                        />
                     );
                 }
                 return (
@@ -441,25 +447,26 @@ const VehicleScreen = () => {
             <TouchableOpacity style={styles.button} onPress={createOrUpdateVehicle}>
                 <Text style={styles.buttonText}>{vehicleId ? "Cập nhật" : "Tạo mới"}</Text>
             </TouchableOpacity>
-
-            {showPicker && (
-                <DateTimePicker
-                    value={new Date(formData[currentDateField] || Date.now())}
-                    mode="date"
-                    display="spinner"
-                    onChange={(event, selectedDate) => {
-                        setShowPicker(false);
-                        if (selectedDate) {
-                            const formattedDate = selectedDate.toISOString().split("T")[0];
-                            setFormData((prev) => ({ ...prev, [currentDateField]: formattedDate }));
-                        }
-                    }}
-                />
-            )}
         </ScrollView>
     );
     // Render giao diện chính
-    return viewMode === "list" ? renderList() : renderForm();
+    return viewMode === "list" ? (
+        <View style={styles.listContainer}>
+            {loading ? (
+                <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />
+            ) : (
+                renderList()
+            )}
+        </View>
+    ) : (
+        <ScrollView contentContainerStyle={styles.container}>
+            {loading ? (
+                <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />
+            ) : (
+                renderForm()
+            )}
+        </ScrollView>
+    );
 };
 
 const styles = StyleSheet.create({
@@ -473,7 +480,7 @@ const styles = StyleSheet.create({
         backgroundColor: "#f9f9f9",
     },
     header: {
-        marginTop: Platform.OS === "ios" ? 50 : 30,
+        marginTop: Platform.OS === "ios" ? 20 : 10,
         flexDirection: "row",
         alignItems: "center",
         marginBottom: 20,
@@ -636,12 +643,52 @@ const styles = StyleSheet.create({
         height: 200,
         borderRadius: 8,
         marginBottom: 10,
+        borderWidth: 1,
     },
     imageContainer: {
         marginBottom: 20,
     },
     imageWrapper: {
         alignItems: "center",
+    },
+    dateButton: {
+        borderWidth: 1,
+        borderColor: '#ddd',
+        borderRadius: 8,
+        padding: 10,
+        backgroundColor: '#fff',
+    },
+    dateButtonText: {
+        color: '#333',
+        fontSize: 14,
+    },
+    iosDatePickerContainer: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        backgroundColor: 'white',
+        zIndex: 1000,
+    },
+    iosDatePickerHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        padding: 10,
+        backgroundColor: '#f8f8f8',
+        borderTopWidth: 1,
+        borderColor: '#ddd',
+    },
+    iosDatePicker: {
+        height: 200,
+    },
+    iosDatePickerCancel: {
+        color: '#007AFF',
+        fontSize: 16,
+    },
+    iosDatePickerDone: {
+        color: '#007AFF',
+        fontSize: 16,
+        fontWeight: '600',
     },
 });
 
