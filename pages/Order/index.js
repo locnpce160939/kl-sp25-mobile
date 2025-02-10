@@ -8,24 +8,34 @@ import {
   Modal,
   ActivityIndicator,
   Dimensions,
+  TextInput,
+  KeyboardAvoidingView,
+  TouchableWithoutFeedback,
+  Alert,
 } from "react-native";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import MapView, { Marker } from "react-native-maps";
 import io from "socket.io-client";
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation } from "@react-navigation/native";
+import { CloudCog } from "lucide-react-native";
+import { BASE_URl } from "../../configUrl";
 const Order = () => {
   const [bookings, setBookings] = useState([]);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [visible, setVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [socket, setSocket] = useState(null);
+  const [showMap, setShowMap] = useState(false);
   const [location, setLocation] = useState({
     latitude: 10.762622,
     longitude: 106.660172,
   });
+  const [rating, setRating] = useState(1);
+  const [comment, setComment] = useState("");
   const socketRef = useRef(null);
   const lastSendTime = useRef(0);
   const sendInterval = 1000;
@@ -134,60 +144,6 @@ const Order = () => {
       newSocket.disconnect();
     };
   }, []);
-  // useEffect(() => {
-  //   // Kết nối với Socket.IO server
-  //   socketRef.current = io("wss://api.ftcs.online", {
-  //     query: {
-  //       username: "testDriver",
-  //       room: "1029",
-  //     },
-  //     transports: ["websocket"],
-  //     upgrade: false,
-  //     forceNew: true,
-  //   });
-  //   socketRef.current.on("connect", () => {
-  //     console.log("Socket.IO connected");
-  //   });
-  //   socketRef.current.on("LOCATION_SEND", (data) => {
-  //     console.log("Received LOCATION_SEND event:", data);
-  //     try {
-  //       let locationData =
-  //         typeof data.content === "string"
-  //           ? JSON.parse(data.content)
-  //           : data.content;
-  //       if (locationData && locationData.locationDriver) {
-  //         const [lat, lng] = locationData.locationDriver.split(",");
-  //         setLocation({
-  //           latitude: parseFloat(lat),
-  //           longitude: parseFloat(lng),
-  //         });
-  //       }
-  //     } catch (error) {
-  //       console.error("Error processing location data:", error);
-  //     }
-  //   });
-  //   socketRef.current.on("disconnect", () => {
-  //     console.log("Socket.IO disconnected");
-  //   });
-  //   return () => {
-  //     socketRef.current.disconnect();
-  //   };
-  // }, []);
-  // const sendLocation = (latLng) => {
-  //   const now = Date.now();
-  //   if (now - lastSendTime.current >= sendInterval) {
-  //     const payload = {
-  //       messageType: "LOCATION_SEND",
-  //       content: JSON.stringify({
-  //         id: 1,
-  //         locationDriver: `${latLng.latitude},${latLng.longitude}`,
-  //       }),
-  //     };
-  //     console.log("Sending location:", payload);
-  //     socketRef.current.emit("LOCATION_SEND", payload);
-  //     lastSendTime.current = now;
-  //   }
-  // };
   const renderBookingCard = (booking) => (
     <TouchableOpacity
       key={booking.bookingId}
@@ -221,8 +177,52 @@ const Order = () => {
       </View>
     </TouchableOpacity>
   );
-  const renderDetailModal = () => {
 
+  const renderStars = () => {
+    const stars = [];
+    for (let i = 1; i <= 5; i++) {
+      stars.push(
+        <TouchableOpacity key={i} onPress={() => setRating(i)}>
+          <Icon
+            name={i <= rating ? "star" : "star-border"}
+            size={40}
+            color={i <= rating ? "#FFD700" : "#e0e0e0"}
+          />
+        </TouchableOpacity>
+      );
+    }
+    return stars;
+  };
+
+  const handleRating = async () => {
+    try {
+      const token = await AsyncStorage.getItem("token");
+      const response = await axios.post(
+        `${BASE_URl}/api/review/create/${selectedBooking.bookingId}`,
+        {
+          rating: rating,
+          reviewText: comment,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      if (response.data.code === 200) {
+        setComment("");
+        setRating(1);
+        Alert.alert("Rating submitted successfully!");
+        setModalVisible(false);
+        fetchBookings();
+      }
+    } catch (err) {
+      console.error("Error rating booking:", err);
+    }
+  };
+
+  const renderDetailModal = () => {
     const navigation = useNavigation();
     if (!selectedBooking) return null;
     return (
@@ -247,7 +247,7 @@ const Order = () => {
             {/* Status Card */}
             <View style={styles.statusCard}>
               <View style={styles.statusHeader}>
-                <Icon name="local-taxi" size={24} color="#0066cc" />
+                <Icon name="local-taxi" size={24} color="#00b5ec" />
                 <Text style={styles.statusTitle}>
                   Status: {selectedBooking.status}
                 </Text>
@@ -290,50 +290,50 @@ const Order = () => {
             </View>
             {/* Driver Card */}
             {selectedBooking.driver && (
-  <View style={styles.detailCard}>
-    <Text style={styles.cardTitle}>Driver Information</Text>
-    <View style={styles.driverInfo}>
-      <View style={styles.driverAvatar}>
-        <Icon name="account-circle" size={40} color="#0066cc" />
-      </View>
-      <View style={styles.driverDetails}>
-        <Text style={styles.driverName}>
-          {selectedBooking.driver.fullName}
-        </Text>
-        <View style={styles.contactInfo}>
-          <Icon name="phone" size={16} color="#666" />
-          <Text style={styles.contactText}>
-            {selectedBooking.driver.phone}
-          </Text>
-        </View>
-        <View style={styles.contactInfo}>
-          <Icon name="email" size={16} color="#666" />
-          <Text style={styles.contactText}>
-            {selectedBooking.driver.email}
-          </Text>
-        </View>
-        
-        {/* Thêm nút chat */}
-        <TouchableOpacity 
-  style={styles.chatButton}
-  onPress={() => {
-    console.log("Booking ID:", selectedBooking.bookingId);  // This will show the correct booking ID
-    navigation.navigate('ChatCustomer', {
-      driverId: selectedBooking.driver.accountId,  // Changed from id to accountId
-      driverName: selectedBooking.driver.fullName,
-      bookingId: selectedBooking.bookingId,
-    });
-  }}
->
-  <Icon name="chat" size={20} color="#fff" />
-  <Text style={styles.chatButtonText}>Chat with Driver</Text>
-</TouchableOpacity>
+              <View style={styles.detailCard}>
+                <Text style={styles.cardTitle}>Driver Information</Text>
+                <View style={styles.driverInfo}>
+                  <View style={styles.driverAvatar}>
+                    <Icon name="account-circle" size={40} color="#00b5ec" />
+                  </View>
+                  <View style={styles.driverDetails}>
+                    <Text style={styles.driverName}>
+                      {selectedBooking.driver.fullName}
+                    </Text>
+                    <View style={styles.contactInfo}>
+                      <Icon name="phone" size={16} color="#666" />
+                      <Text style={styles.contactText}>
+                        {selectedBooking.driver.phone}
+                      </Text>
+                    </View>
+                    <View style={styles.contactInfo}>
+                      <Icon name="email" size={16} color="#666" />
+                      <Text style={styles.contactText}>
+                        {selectedBooking.driver.email}
+                      </Text>
+                    </View>
 
-
-      </View>
-    </View>
-  </View>
-)}
+                    {/* Thêm nút chat */}
+                    <TouchableOpacity
+                      style={styles.chatButton}
+                      onPress={() => {
+                        console.log("Booking ID:", selectedBooking.bookingId); // This will show the correct booking ID
+                        navigation.navigate("ChatCustomer", {
+                          driverId: selectedBooking.driver.accountId, // Changed from id to accountId
+                          driverName: selectedBooking.driver.fullName,
+                          bookingId: selectedBooking.bookingId,
+                        });
+                      }}
+                    >
+                      <Icon name="chat" size={20} color="#fff" />
+                      <Text style={styles.chatButtonText}>
+                        Chat with Driver
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            )}
             {/* Trip Agreement Card */}
             {selectedBooking.tripAgreement && (
               <View style={styles.detailCard}>
@@ -391,44 +391,81 @@ const Order = () => {
               </View>
             </View>
             {/* Location Tracking */}
-            <MapView
-              style={styles.map}
-              region={{
-                latitude: location.latitude,
-                longitude: location.longitude,
-                latitudeDelta: 0.01,
-                longitudeDelta: 0.01,
-              }}
-              showsUserLocation={true}
-              followsUserLocation={true}
-            >
-              <Marker
-                coordinate={{
-                  latitude: location.latitude,
-                  longitude: location.longitude,
-                }}
-                title="Driver Location"
-                pinColor="#0066cc"
+            <View style={styles.actionButtonsContainer}>
+              <TouchableOpacity
+                style={styles.mapToggleButton}
+                onPress={() => setShowMap(!showMap)}
               >
-                <Icon name="account-circle" size={40} color="#0066cc" />
-              </Marker>
-            </MapView>
-            {/* <MapView
-              style={styles.map}
-              initialRegion={{
-                latitude: location.latitude,
-                longitude: location.longitude,
-                latitudeDelta: 0.05,
-                longitudeDelta: 0.05,
-              }}
-              onPress={(e) => {
-                const { latitude, longitude } = e.nativeEvent.coordinate;
-                setLocation({ latitude, longitude });
-                sendLocation({ latitude, longitude });
-              }}
-            >
-              <Marker coordinate={location} />
-            </MapView> */}
+                {!showMap && <Icon name={"map"} size={20} color="#fff" />}
+                <Text style={styles.buttonText}>
+                  {showMap ? "Ẩn vị trí tài xế" : "Hiện vị trí tài xế"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Map View */}
+            {showMap && (
+              <View style={styles.mapContainer}>
+                <MapView
+                  style={styles.map}
+                  region={{
+                    latitude: location.latitude,
+                    longitude: location.longitude,
+                    latitudeDelta: 0.01,
+                    longitudeDelta: 0.01,
+                  }}
+                  showsUserLocation={true}
+                  followsUserLocation={true}
+                >
+                  <Marker
+                    coordinate={{
+                      latitude: location.latitude,
+                      longitude: location.longitude,
+                    }}
+                    title="Driver Location"
+                    pinColor="#00b5ec"
+                  >
+                    <Icon name="account-circle" size={40} color="#00b5ec" />
+                  </Marker>
+                </MapView>
+              </View>
+            )}
+            <View>
+              <View style={styles.modalContentRate}>
+                {/* Avatar Circle */}
+                <View style={styles.avatarContainer}>
+                  <Icon name="account-circle" size={80} color="#00b5ec" />
+                </View>
+                {/* Driver Name */}
+                {selectedBooking.driver.fullName}
+                <Text style={styles.driverName}>
+                  {selectedBooking.driver.fullName}
+                </Text>
+                {/* Star Rating */}
+                <View style={styles.starContainer}>{renderStars()}</View>
+                {/* Comments Section */}
+                <View style={styles.commentSection}>
+                  <Text style={styles.commentLabel}>Viết đánh giá của bạn</Text>
+                  <TextInput
+                    style={styles.commentInput}
+                    placeholder="Đánh giá..."
+                    placeholderTextColor="#9E9E9E"
+                    multiline={true}
+                    numberOfLines={4}
+                    value={comment}
+                    onChangeText={setComment}
+                  />
+                </View>
+
+                {/* Submit Button */}
+                <TouchableOpacity
+                  style={styles.submitButton}
+                  onPress={() => handleRating()}
+                >
+                  <Text style={styles.submitButtonText}>Xác nhận</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           </ScrollView>
         </View>
       </Modal>
@@ -438,7 +475,7 @@ const Order = () => {
   if (loading) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#0066cc" />
+        <ActivityIndicator size="large" color="#00b5ec" />
       </View>
     );
   }
@@ -491,7 +528,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   status: {
-    color: "#0066cc",
+    color: "#00b5ec",
     fontWeight: "500",
   },
   cardContent: {
@@ -564,7 +601,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "600",
     marginLeft: 12,
-    color: "#0066cc",
+    color: "#00b5ec",
   },
   bookingMeta: {
     flexDirection: "row",
@@ -713,17 +750,152 @@ const styles = StyleSheet.create({
   },
   //_____chat
   chatButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#0066cc',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#00b5ec",
     padding: 8,
     borderRadius: 8,
     marginTop: 10,
   },
   chatButtonText: {
-    color: '#fff',
+    color: "#fff",
     marginLeft: 8,
     fontSize: 14,
-  }
+  },
+
+  // Button
+  actionButtonsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    padding: 16,
+    backgroundColor: "white",
+    marginBottom: 16,
+    borderRadius: 12,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+
+  mapToggleButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#00b5ec",
+    padding: 12,
+    borderRadius: 8,
+    flex: 1,
+    marginRight: 8,
+    justifyContent: "center",
+  },
+
+  completeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#28a745",
+    padding: 12,
+    borderRadius: 8,
+    flex: 1,
+    marginLeft: 8,
+    justifyContent: "center",
+  },
+
+  buttonText: {
+    color: "#fff",
+    marginLeft: 8,
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  mapContainer: {
+    height: 400, // Fixed height for the map container
+    marginBottom: 16,
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+
+  map: {
+    width: "100%",
+    height: "100%",
+  },
+
+  // Rating Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(6, 4, 4, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  modalContentRate: {
+    backgroundColor: "white",
+    borderRadius: 20,
+    padding: 20,
+    width: "100%",
+    maxWidth: 400,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  avatarContainer: {
+    marginBottom: 16,
+  },
+  avatarCircle: {
+    width: 128,
+    height: 128,
+    borderRadius: 64,
+    borderWidth: 2,
+    borderColor: "#4285F4",
+    backgroundColor: "#f5f5f5",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  avatarText: {
+    color: "#9e9e9e",
+    fontSize: 14,
+  },
+  driverName: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 24,
+    color: "#333",
+  },
+  starContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginBottom: 32,
+    gap: 8,
+  },
+  commentSection: {
+    width: "100%",
+    marginBottom: 24,
+  },
+  commentLabel: {
+    fontSize: 14,
+    color: "#666",
+    marginBottom: 8,
+  },
+  commentInput: {
+    width: "100%",
+    height: 100,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+    borderRadius: 8,
+    padding: 12,
+    textAlignVertical: "top",
+  },
+  submitButton: {
+    backgroundColor: "#00b5ec",
+    width: "100%",
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  submitButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "600",
+  },
 });
 export default Order;

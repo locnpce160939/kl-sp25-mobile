@@ -8,6 +8,7 @@ import {
   Modal,
   ActivityIndicator,
   Dimensions,
+  Alert,
 } from "react-native";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -15,6 +16,7 @@ import Icon from "react-native-vector-icons/MaterialIcons";
 import MapView, { Marker } from "react-native-maps";
 import io from "socket.io-client";
 import { useNavigation } from "@react-navigation/native";
+import { BASE_URl } from "../../configUrl";
 
 const OrderDriver = ({ route }) => {
   const [userId, setUserId] = useState(null);
@@ -25,6 +27,8 @@ const OrderDriver = ({ route }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [socket, setSocket] = useState(null);
+  const [showMap, setShowMap] = useState(false);
+
   const [location, setLocation] = useState({
     latitude: 10.762622,
     longitude: 106.660172,
@@ -98,6 +102,32 @@ const OrderDriver = ({ route }) => {
       minute: "2-digit",
     });
   };
+
+  const handleCompleteTrip = async () => {
+    try {
+      const token = await AsyncStorage.getItem("token");
+      const response = await axios.put(
+        `${BASE_URl}/api/tripBookings/updateStatus/${selectedBooking.bookingId}`,
+        {
+          "status" : "ORDER_COMPLETE"
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      if (response.data.code === 200) {
+        Alert.alert("Done");
+        fetchBookings();
+        setModalVisible(false);
+      }
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   useEffect(() => {
     const loadUserId = async () => {
       try {
@@ -319,7 +349,7 @@ const OrderDriver = ({ route }) => {
                 <Text style={styles.cardTitle}>Customer Information</Text>
                 <View style={styles.driverInfo}>
                   <View style={styles.driverAvatar}>
-                    <Icon name="account-circle" size={40} color="#0066cc" />
+                    <Icon name="account-circle" size={40} color="#00b5ec" />
                   </View>
                   <View style={styles.driverDetails}>
                     <Text style={styles.driverName}>
@@ -415,24 +445,59 @@ const OrderDriver = ({ route }) => {
                 </View>
               </View>
             </View>
-            {/* Location Tracking */}
-            <MapView
-              style={styles.map}
-              initialRegion={{
-                latitude: location2.latitude,
-                longitude: location2.longitude,
-                latitudeDelta: 0.01,
-                longitudeDelta: 0.01,
-              }}
-            >
-              <Marker
-                coordinate={{
-                  latitude: location2.latitude,
-                  longitude: location2.longitude,
+            <View style={styles.actionButtonsContainer}>
+              <TouchableOpacity
+                style={styles.mapToggleButton}
+                onPress={() => setShowMap(!showMap)}
+              >
+                <Icon
+                  name={showMap ? "map-off" : "map"}
+                  size={20}
+                  color="#fff"
+                />
+                <Text style={styles.buttonText}>
+                  {showMap ? "Hide Map" : "Show Map"}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.completeButton}
+                onPress={() => {
+                  handleCompleteTrip(selectedBooking.bookingId);
                 }}
-                title="Vị trí tài xế"
-              />
-            </MapView>
+              >
+                <Icon name="check-circle" size={20} color="#fff" />
+                <Text style={styles.buttonText}>Complete Trip</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Map View */}
+            {showMap && (
+              <View style={styles.mapContainer}>
+                <MapView
+                  style={styles.map}
+                  region={{
+                    latitude: location.latitude,
+                    longitude: location.longitude,
+                    latitudeDelta: 0.01,
+                    longitudeDelta: 0.01,
+                  }}
+                  showsUserLocation={true}
+                  followsUserLocation={true}
+                >
+                  <Marker
+                    coordinate={{
+                      latitude: location.latitude,
+                      longitude: location.longitude,
+                    }}
+                    title="Driver Location"
+                    pinColor="#0066cc"
+                  >
+                    <Icon name="account-circle" size={40} color="#0066cc" />
+                  </Marker>
+                </MapView>
+              </View>
+            )}
             {/* <MapView
               style={styles.map}
               initialRegion={{
@@ -735,7 +800,7 @@ const styles = StyleSheet.create({
   chatButton: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#0066cc",
+    backgroundColor: "#00b5ec",
     padding: 8,
     borderRadius: 8,
     marginTop: 10,
@@ -744,6 +809,59 @@ const styles = StyleSheet.create({
     color: "#fff",
     marginLeft: 8,
     fontSize: 14,
+  },
+  actionButtonsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    padding: 16,
+    backgroundColor: "white",
+    marginBottom: 16,
+    borderRadius: 12,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+
+  mapToggleButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#00b5ec",
+    padding: 12,
+    borderRadius: 8,
+    flex: 1,
+    marginRight: 8,
+    justifyContent: "center",
+  },
+
+  completeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#28a745",
+    padding: 12,
+    borderRadius: 8,
+    flex: 1,
+    marginLeft: 8,
+    justifyContent: "center",
+  },
+
+  buttonText: {
+    color: "#fff",
+    marginLeft: 8,
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  mapContainer: {
+    height: 400, // Fixed height for the map container
+    marginBottom: 16,
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+
+  map: {
+    width: "100%",
+    height: "100%",
   },
 });
 export default OrderDriver;
