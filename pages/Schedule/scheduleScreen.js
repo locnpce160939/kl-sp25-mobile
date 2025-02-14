@@ -429,6 +429,7 @@ const ScheduleScreen = () => {
                   style={styles.map}
                   initialRegion={initialRegion}
                   onPress={handleMapPress}
+                  showsUserLocation	={true}
                 >
                   {locations.startLocation && selectingPoint === "start" && (
                     <Marker

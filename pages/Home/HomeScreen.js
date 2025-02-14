@@ -78,7 +78,7 @@ const HomeScreen = () => {
       icon: "home-outline",
       label: "Thêm nhà",
       color: "#16a34a",
-      navigate: "Chat",
+      navigate: "Search",
     },
     {
       id: 4,
