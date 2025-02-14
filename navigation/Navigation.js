@@ -23,7 +23,7 @@ import ScheduleListScreen from "../pages/Schedule/scheduleListScreen";
 import ChatCustomer from "../pages/Chat/ChatCustomer";
 import ChatDriver from "../pages/Chat/ChatDriver";
 import ChatDriverReal from "../pages/Chat/ChatDriverReal";
-import MapSearch from "../pages/test";
+
 
 const Stack = createNativeStackNavigator();
 
@@ -92,11 +92,6 @@ const Navigation = () => {
               name="ChatDriver"
               component={ChatDriver}
               options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="Search"
-              component={MapSearch}
-              
             />
           </>
         ) : (
