@@ -30,6 +30,8 @@ import axios from "axios";
 import { Ionicons } from "@expo/vector-icons";
 import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import Icon from "react-native-vector-icons/MaterialIcons";
+
 import { Button } from "react-native";
 
 const TripBooking = () => {
@@ -47,8 +49,15 @@ const TripBooking = () => {
   const [isBottomSheetOpen, setIsBottomSheetOpen] = useState(false);
   const [titlePickup, setTitlePickup] = useState(false);
   const [titleDropoff, setTitleDropoff] = useState(false);
-
-
+  const [showBookingDatePicker, setShowBookingDatePicker] = useState(false);
+  const [showExpirationDatePicker, setShowExpirationDatePicker] =
+    useState(false);
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
+  const [activeLocationField, setActiveLocationField] = useState(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchText, setSearchText] = useState("");
+  const [resultLocation, setResultLocation] = useState([]);
+  const mapViewRef = useRef(null);
   // Error states
   const [errors, setErrors] = useState({
     bookingDate: "",
@@ -57,13 +66,6 @@ const TripBooking = () => {
     dropoffLocation: "",
     capacity: "",
   });
-
-  // Modal states
-  const [showBookingDatePicker, setShowBookingDatePicker] = useState(false);
-  const [showExpirationDatePicker, setShowExpirationDatePicker] =
-    useState(false);
-  const [showLocationPicker, setShowLocationPicker] = useState(false);
-  const [activeLocationField, setActiveLocationField] = useState(null);
 
   const data = [
     { label: "Round-trip", value: "Round-trip" },
@@ -162,6 +164,7 @@ const TripBooking = () => {
   };
 
   const handleLocationSelect = async (coordinate) => {
+    console.log("🚀 ~ handleLocationSelect ~ coordinate:", coordinate);
     if (activeLocationField === "pickup") {
       setPickupLocation({
         latitude: coordinate.latitude,
@@ -178,9 +181,20 @@ const TripBooking = () => {
     setIsBottomSheetOpen(true);
   };
 
-  const getLocationDisplayText = (location) => {
-    if (!location) return "Select location";
-    return `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`;
+  const onMarkerDragEnd = (e) => {
+    const { latitude, longitude } = e.nativeEvent.coordinate;
+    setMarkerPosition({ latitude, longitude });
+
+    // Làm mượt bản đồ đến vị trí mới
+    mapViewRef.current?.animateToRegion(
+      {
+        latitude,
+        longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      },
+      1000 // Thời gian chuyển động (ms)
+    );
   };
 
   // Render date picker based on platform
@@ -285,7 +299,6 @@ const TripBooking = () => {
 
           startLocationAddress,
           endLocationAddress,
-
         },
         {
           headers: {
@@ -334,8 +347,6 @@ const TripBooking = () => {
         long: item.geometry.location.lng,
       }));
       setLocationState(locationData);
-
-
     } catch (error) {
       console.error(
         "Error:",
@@ -351,9 +362,7 @@ const TripBooking = () => {
         longitude: item.long,
       });
       setTitlePickup(item.formatted_address);
-
       setStartLocationAddress(item.formatted_address);
-
     } else {
       setDropoffLocation({
         latitude: item.lat,
@@ -380,7 +389,6 @@ const TripBooking = () => {
             latitude,
             longitude,
           });
-
           await getNearLocation({ latitude, longitude });
         } else {
           setInitialRegion({
@@ -395,6 +403,77 @@ const TripBooking = () => {
       }
     })();
   }, []);
+
+  const findLocation = async () => {
+    try {
+      let token = await AsyncStorage.getItem("token");
+      const res = await axios.get(
+        `${BASE_URl}/api/location/address-geocode?address=${searchText}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      const result = res.data.data.results;
+      setResultLocation(result);
+    } catch (error) {
+      console.error(
+        "Error:",
+        error.response ? error.response.data : error.message
+      );
+    }
+  };
+
+  const handleSearchChange = (text) => {
+    setSearchText(text);
+    if (text.length >= 5) {
+      findLocation();
+    }
+  };
+
+  const renderLocationItem = ({ item }) => (
+    <TouchableOpacity
+      style={styles.locationItemContainer}
+      onPress={() => {
+        if (activeLocationField === "pickup") {
+          setPickupLocation({
+            latitude: item.geometry.location.lat,
+            longitude: item.geometry.location.lng,
+          });
+          setTitlePickup(item.formatted_address);
+          setStartLocationAddress(item.formatted_address);
+        } else {
+          setDropoffLocation({
+            latitude: item.geometry.location.lat,
+            longitude: item.geometry.location.lng,
+          });
+          setTitleDropoff(item.formatted_address);
+          setEndLocationAddress(item.formatted_address);
+        }
+        setSearchText("");
+        setResultLocation([]);
+        setIsSearching(false);
+        setShowLocationPicker(false);
+      }}
+    >
+      <View style={styles.locationContent}>
+        <View style={styles.iconContainer}>
+          <Icon name="location-on" size={24} color="#007AFF" />
+        </View>
+        <View style={styles.locationDetails}>
+          <Text style={styles.mainAddressText} numberOfLines={1}>
+            {item.name || item.address_components[0].long_name}
+          </Text>
+          <Text style={styles.secondaryAddressText} numberOfLines={2}>
+            {item.formatted_address}
+          </Text>
+        </View>
+        <Icon name="chevron-right" size={24} color="#CCCCCC" />
+      </View>
+    </TouchableOpacity>
+  );
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -526,18 +605,49 @@ const TripBooking = () => {
         >
           <GestureHandlerRootView>
             <View style={styles.mapContainer}>
+              <View style={styles.searchContainer}>
+                <View style={styles.searchInputContainer}>
+                  <Icon
+                    name="search"
+                    size={24}
+                    color="#666"
+                    style={styles.searchIcon}
+                  />
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="Tìm kiếm địa điểm..."
+                    onFocus={() => setIsSearching(true)}
+                    value={searchText}
+                    onChangeText={(text) => handleSearchChange(text)}
+                  />
+                </View>
+                {resultLocation.length > 0 && (
+                  <FlatList
+                    data={resultLocation}
+                    renderItem={renderLocationItem}
+                    keyExtractor={(item) => item.place_id}
+                    style={styles.resultsList}
+                  />
+                )}
+              </View>
               <MapView
                 style={styles.map}
                 initialRegion={initialRegion}
                 onPress={(e) => handleLocationSelect(e.nativeEvent.coordinate)}
+                // showsUserLocation={true}
               >
                 {activeLocationField === "pickup" && pickupLocation && (
-                  <Marker coordinate={pickupLocation} title="Điểm đi" />
+                  <Marker
+                    coordinate={pickupLocation}
+                    title="Điểm đi"
+                    onDragEnd={onMarkerDragEnd}
+                  />
                 )}
                 {activeLocationField === "dropoff" && dropoffLocation && (
                   <Marker
                     coordinate={dropoffLocation}
                     title="Điểm đến"
+                    onDragEnd={onMarkerDragEnd}
                   />
                 )}
               </MapView>
@@ -548,35 +658,41 @@ const TripBooking = () => {
                 <Ionicons name="arrow-back-outline" size={24}></Ionicons>
               </TouchableOpacity>
 
-              <BottomSheet ref={bottomSheetRef} index={0} snapPoints={["50%"]}>
-                <BottomSheetView>
-                  <FlatList
-                    data={locationState}
-                    keyExtractor={(item, index) => index.toString()}
-                    renderItem={({ item }) => (
-                      <TouchableOpacity
-                        style={styles.locationItem}
-                        onPress={() => handleNearLocationPress(item)}
-                      >
-                        <Ionicons
-                          name="location-outline"
-                          size={24}
-                          color="black"
-                        />
-                        <Text>{item.formatted_address}</Text>
-                      </TouchableOpacity>
-                    )}
-                  />
-                  <TouchableOpacity
-                    style={styles.confirmLocation}
-                    onPress={() => {
-                      setShowLocationPicker(false);
-                    }}
-                  >
-                    <Text style={styles.confirmText}>Xác nhận </Text>
-                  </TouchableOpacity>
-                </BottomSheetView>
-              </BottomSheet>
+              {!isSearching && (
+                <BottomSheet
+                  ref={bottomSheetRef}
+                  index={0}
+                  snapPoints={["50%"]}
+                >
+                  <BottomSheetView>
+                    <FlatList
+                      data={locationState}
+                      keyExtractor={(item, index) => index.toString()}
+                      renderItem={({ item }) => (
+                        <TouchableOpacity
+                          style={styles.locationItem}
+                          onPress={() => handleNearLocationPress(item)}
+                        >
+                          <Ionicons
+                            name="location-outline"
+                            size={24}
+                            color="black"
+                          />
+                          <Text>{item.formatted_address}</Text>
+                        </TouchableOpacity>
+                      )}
+                    />
+                    <TouchableOpacity
+                      style={styles.confirmLocation}
+                      onPress={() => {
+                        setShowLocationPicker(false);
+                      }}
+                    >
+                      <Text style={styles.confirmText}>Xác nhận </Text>
+                    </TouchableOpacity>
+                  </BottomSheetView>
+                </BottomSheet>
+              )}
             </View>
           </GestureHandlerRootView>
         </Modal>
@@ -802,6 +918,101 @@ const styles = StyleSheet.create({
     width: "100%",
     height: 200,
     backgroundColor: "#FFFFFF",
+  },
+  searchContainer: {
+    position: "absolute",
+    top: 20,
+    left: 20,
+    right: 20,
+    zIndex: 1,
+  },
+  searchInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "white",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    height: 50,
+    fontSize: 16,
+  },
+  locationItemContainer: {
+    backgroundColor: "white",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0F0F0",
+  },
+  locationContent: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  iconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#F0F8FF",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  locationDetails: {
+    flex: 1,
+    marginRight: 8,
+  },
+  mainAddressText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333333",
+    marginBottom: 4,
+  },
+  secondaryAddressText: {
+    fontSize: 14,
+    color: "#666666",
+    lineHeight: 20,
+  },
+  resultsList: {
+    backgroundColor: "white",
+    borderRadius: 8,
+    marginTop: 8,
+    maxHeight: 300,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  searchContainer: {
+    position: "absolute",
+    top: 60,
+    left: 80,
+    right: 20,
+    zIndex: 1,
+  },
+  searchInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "white",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
 });
 

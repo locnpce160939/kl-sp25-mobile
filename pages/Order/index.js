@@ -21,6 +21,7 @@ import io from "socket.io-client";
 import { useNavigation } from "@react-navigation/native";
 import { CloudCog } from "lucide-react-native";
 import { BASE_URl } from "../../configUrl";
+import { FlatList, GestureHandlerRootView } from "react-native-gesture-handler";
 const Order = () => {
   const [bookings, setBookings] = useState([]);
   const [selectedBooking, setSelectedBooking] = useState(null);
@@ -30,6 +31,7 @@ const Order = () => {
   const [error, setError] = useState(null);
   const [socket, setSocket] = useState(null);
   const [showMap, setShowMap] = useState(false);
+  const [reviews, setReviews] = useState([]);
   const [location, setLocation] = useState({
     latitude: 10.762622,
     longitude: 106.660172,
@@ -67,7 +69,7 @@ const Order = () => {
     try {
       const token = await AsyncStorage.getItem("token");
       const response = await axios.get(
-        `https://api.ftcs.online/api/tripBookings/${bookingId}`,
+        `${BASE_URl}/api/tripBookings/${bookingId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -78,6 +80,10 @@ const Order = () => {
       if (response.data.code === 200) {
         setSelectedBooking(response.data.data);
         setModalVisible(true);
+        // Fetch reviews when booking details are loaded
+        if (response.data.data.driver) {
+          fetchReviews(response.data.data.driver.accountId);
+        }
       }
     } catch (err) {
       setError(err.message);
@@ -221,6 +227,55 @@ const Order = () => {
       console.error("Error rating booking:", err);
     }
   };
+
+  // Add new function to fetch reviews
+  const fetchReviews = async (driverId) => {
+    try {
+      const token = await AsyncStorage.getItem("token");
+      const response = await axios.get(
+        `${BASE_URl}/api/review/driver/${driverId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      if (response.data.code === 200) {
+        setReviews(response.data.data);
+      }
+    } catch (err) {
+      console.error("Error fetching reviews:", err);
+    }
+  };
+
+  // Add review history section to the modal content
+  const renderReviewHistory = () => (
+    <View style={styles.detailCardReview}>
+      <Text style={styles.cardTitle}>Lịch sử đánh giá</Text>
+      {reviews.map((review, index) => (
+        <View key={index} style={styles.reviewItem}>
+          <View style={styles.reviewHeader}>
+            <Text style={styles.reviewerName}>{review.fullName}</Text>
+            <View style={styles.ratingContainer}>
+              {[...Array(5)].map((_, i) => (
+                <Icon
+                  key={i}
+                  name={i < review.rating ? "star" : "star-border"}
+                  size={16}
+                  color={i < review.rating ? "#FFD700" : "#e0e0e0"}
+                />
+              ))}
+            </View>
+          </View>
+          {review.reviewText && (
+            <Text style={styles.reviewText}>{review.reviewText}</Text>
+          )}
+          <Text style={styles.reviewDate}>{formatDate(review.createAt)}</Text>
+        </View>
+      ))}
+    </View>
+  );
 
   const renderDetailModal = () => {
     const navigation = useNavigation();
@@ -437,7 +492,6 @@ const Order = () => {
                   <Icon name="account-circle" size={80} color="#00b5ec" />
                 </View>
                 {/* Driver Name */}
-                {selectedBooking.driver.fullName}
                 <Text style={styles.driverName}>
                   {selectedBooking.driver.fullName}
                 </Text>
@@ -448,6 +502,7 @@ const Order = () => {
                   <Text style={styles.commentLabel}>Viết đánh giá của bạn</Text>
                   <TextInput
                     style={styles.commentInput}
+                    s
                     placeholder="Đánh giá..."
                     placeholderTextColor="#9E9E9E"
                     multiline={true}
@@ -464,6 +519,7 @@ const Order = () => {
                 >
                   <Text style={styles.submitButtonText}>Xác nhận</Text>
                 </TouchableOpacity>
+                {renderReviewHistory()}
               </View>
             </View>
           </ScrollView>
@@ -632,6 +688,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   cardTitle: {
+    margintop: 6,
     fontSize: 16,
     fontWeight: "600",
     marginBottom: 16,
@@ -827,6 +884,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContentRate: {
+    flex: 1,
     backgroundColor: "white",
     borderRadius: 20,
     padding: 20,
@@ -896,6 +954,40 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 16,
     fontWeight: "600",
+  },
+  reviewItem: {
+    borderBottomWidth: 1,
+    borderBottomColor: "#e0e0e0",
+    paddingVertical: 12,
+  },
+  reviewHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  reviewerName: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#333",
+  },
+  ratingContainer: {
+    flexDirection: "row",
+    gap: 2,
+  },
+  reviewText: {
+    fontSize: 14,
+    color: "#666",
+    marginBottom: 8,
+  },
+  reviewDate: {
+    fontSize: 12,
+    color: "#999",
+  },
+  detailCardReview: {
+    marginTop: 26,
+    width: "100%",
+    justifyContent: "center",
   },
 });
 export default Order;
