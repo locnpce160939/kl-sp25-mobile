@@ -778,7 +778,7 @@ const DriverIdentificationScreen = ({ navigation }) => {
     >
       <Text style={[
         styles.genderText,
-        formData.gender === 'Nữ' && styles.genderTextSelected
+        formData.gender === 'Nam' && styles.genderTextSelected
       ]}>Nam</Text>
     </TouchableOpacity>
     
