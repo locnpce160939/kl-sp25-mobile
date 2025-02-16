@@ -72,7 +72,10 @@ const Navigation = () => {
             />
             <Stack.Screen name="RightTrip" component={RightTrip} />
             <Stack.Screen name="ViewTrip" component={ViewTrip} />
-            <Stack.Screen name="Order" component={Order} />
+            <Stack.Screen name="Order" 
+            component={Order} 
+            options={{ headerShown: false }}
+             />
             <Stack.Screen name="OrderDriver" component={OrderDriver} />
             <Stack.Screen
               name="ScheduleListScreen"

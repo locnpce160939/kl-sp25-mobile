@@ -150,14 +150,14 @@ const PickerField = ({ label, items, selectedValue, onValueChange, enabled = tru
 
   // Improved display text function with better null checks
   const getDisplayText = useCallback(() => {
-    if (!items || !Array.isArray(items) || items.length === 0) return "Select an option";
+    if (!items || !Array.isArray(items) || items.length === 0) return "Chọn địa chỉ của bạn";
     
     // Ensure both values are strings for comparison
     const selectedItem = items.find(item => 
       String(item.id) === String(selectedValue)
     );
     
-    return selectedItem?.fullName || "Select an option";
+    return selectedItem?.fullName || "Chọn địa chỉ của bạn";
   }, [items, selectedValue]);
 
   // Ensure items is always an array
@@ -206,11 +206,11 @@ const PickerField = ({ label, items, selectedValue, onValueChange, enabled = tru
               <View style={styles.modalContent}>
                 <View style={styles.modalHeader}>
                   <TouchableOpacity onPress={handleCancel}>
-                    <Text style={styles.modalCancel}>Cancel</Text>
+                    <Text style={styles.modalCancel}>Hủy</Text>
                   </TouchableOpacity>
                   <Text style={styles.modalTitle}>{label}</Text>
                   <TouchableOpacity onPress={handleDone}>
-                    <Text style={styles.modalDone}>Done</Text>
+                    <Text style={styles.modalDone}>Xong</Text>
                   </TouchableOpacity>
                 </View>
                 <View style={styles.pickerWrapper}>
@@ -223,7 +223,7 @@ const PickerField = ({ label, items, selectedValue, onValueChange, enabled = tru
                     itemStyle={styles.pickerItem} // Add specific styles for iOS picker items
                   >
                     <Picker.Item 
-                      label="Select an option" 
+                      label="Chọn địa chỉ của bạn" 
                       value="" 
                       color={enabled ? '#000' : '#999'}
                     />
@@ -251,7 +251,7 @@ const PickerField = ({ label, items, selectedValue, onValueChange, enabled = tru
             mode="dropdown"
           >
             <Picker.Item 
-              label="Select an option" 
+              label="Chọn địa chỉ của bạn" 
               value="" 
               color={enabled ? '#000' : '#999'}
             />
@@ -300,7 +300,7 @@ const DatePickerField = ({ label, value, onChange }) => {
         onPress={() => setShow(true)}
       >
         <Text style={styles.dateButtonText}>
-          {value ? value.split("T")[0] : "Select a date"}
+          {value ? value.split("T")[0] : "Vui lòng chọn ngày"}
         </Text>
       </TouchableOpacity>
 
@@ -735,53 +735,64 @@ const DriverIdentificationScreen = ({ navigation }) => {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Driver Identification Form</Text>
+      <TouchableOpacity onPress={() => navigation.goBack()}>
+                <View style={styles.header}>
+                  <Ionicons
+                    name="arrow-back"
+                    size={24}
+                    color="#000"
+                    
+                    style={styles.backIcon}
+                  />
+                  <Text style={styles.title}>Căn Cước Công Dân</Text>
+                </View>
+              </TouchableOpacity>
 
       <InputField
-        label="ID Number"
+        label="Số CCCD"
         value={formData.idNumber}
         onChangeText={(value) => handleInputChange("idNumber", value)}
-        placeholder="Enter your ID number"
+        placeholder="Nhập số cccd của bạn"
         keyboardType="numeric"
       />
       {errors.idNumber && <Text style={styles.errorText}>{errors.idNumber}</Text>}
 
    <InputField
-        label="Full Name"
+        label="Họ và Tên"
         value={formData.fullName}
         onChangeText={(value) => handleInputChange("fullName", value)}
-        placeholder="Enter your full name"
+        placeholder="Nhập tên của bạn"
       />
       {errors.fullName && <Text style={styles.errorText}>{errors.fullName}</Text>}
 
       <View>
       <View style={styles.inputContainer}>
-  <Text style={styles.label}>Gender <Text style={styles.required}>*</Text></Text>
+  <Text style={styles.label}>Giới Tính <Text style={styles.required}>*</Text></Text>
   <View style={styles.genderGroup}>
     <TouchableOpacity 
       style={[
         styles.genderOption, 
-        formData.gender === 'male' && styles.genderOptionSelected
+        formData.gender === 'Nam' && styles.genderOptionSelected
       ]} 
-      onPress={() => handleGenderChange('male')}
+      onPress={() => handleGenderChange('Nam')}
     >
       <Text style={[
         styles.genderText,
-        formData.gender === 'male' && styles.genderTextSelected
-      ]}>Male</Text>
+        formData.gender === 'Nữ' && styles.genderTextSelected
+      ]}>Nam</Text>
     </TouchableOpacity>
     
     <TouchableOpacity 
       style={[
         styles.genderOption, 
-        formData.gender === 'female' && styles.genderOptionSelected
+        formData.gender === 'Nữ' && styles.genderOptionSelected
       ]} 
-      onPress={() => handleGenderChange('female')}
+      onPress={() => handleGenderChange('Nữ')}
     >
       <Text style={[
         styles.genderText,
-        formData.gender === 'female' && styles.genderTextSelected
-      ]}>Female</Text>
+        formData.gender === 'Nữ' && styles.genderTextSelected
+      ]}>Nữ</Text>
     </TouchableOpacity>
   </View>
   {errors.gender && <Text style={styles.errorText}>{errors.gender}</Text>}
@@ -791,22 +802,22 @@ const DriverIdentificationScreen = ({ navigation }) => {
 
 
       <DatePickerField
-        label="Birthday"
+        label="Ngày Sinh"
         value={formData.birthday}
         onChange={(value) => handleInputChange("birthday", value)}
       />
       {errors.birthday && <Text style={styles.errorText}>{errors.birthday}</Text>}
 
       <InputField
-        label="Country"
+        label="Quốc Tịch"
         value={formData.country}
         onChangeText={(value) => handleInputChange("country", value)}
-        placeholder="Enter your country"
+        placeholder="Nhập quốc tịch của bạn"
       />
       {errors.country && <Text style={styles.errorText}>{errors.country}</Text>}
 
       <PickerField
-        label="Permanent Address Province"
+        label="Địa chỉ thường trú Tỉnh/Thành PHố"
         items={provinces}
         selectedValue={formData.permanentAddressProvince}
         onValueChange={(value) => handleProvinceChange(value, "permanent")}
@@ -816,7 +827,7 @@ const DriverIdentificationScreen = ({ navigation }) => {
       )}
 
       <PickerField
-        label="Permanent Address District"
+        label="Địa chỉ thường trú Quận/Huyện"
         items={permanentDistricts}
         selectedValue={formData.permanentAddressDistrict}
         onValueChange={(value) => handleDistrictChange(value, "permanent")}
@@ -827,7 +838,7 @@ const DriverIdentificationScreen = ({ navigation }) => {
       )}
 
       <PickerField
-        label="Permanent Address Ward"
+        label="Địa chỉ thường trú Phường/Xã"
         items={permanentWards}
         selectedValue={formData.permanentAddressWard}
         onValueChange={(value) => handleInputChange("permanentAddressWard", value)}
@@ -838,17 +849,17 @@ const DriverIdentificationScreen = ({ navigation }) => {
       )}
 
       <InputField
-        label="Permanent Street Address"
+        label="Địa chỉ Đường thường trú "
         value={formData.permanentStreetAddress}
         onChangeText={(value) => handleInputChange("permanentStreetAddress", value)}
-        placeholder="Enter your street address"
+        placeholder="Nhập tên đường của bạn, số nhà....."
       />
       {errors.permanentStreetAddress && (
         <Text style={styles.errorText}>{errors.permanentStreetAddress}</Text>
       )}
 
       <PickerField
-        label="Temporary Address Province"
+        label="Địa chỉ tạm trú Tỉnh/Thành PHố"
         items={provinces}
         selectedValue={formData.temporaryAddressProvince}
         onValueChange={(value) => handleProvinceChange(value, "temporary")}
@@ -858,7 +869,7 @@ const DriverIdentificationScreen = ({ navigation }) => {
       )}
 
       <PickerField
-        label="Temporary Address District"
+        label="Địa chỉ tạm trú Quận/Huyện"
         items={temporaryDistricts}
         selectedValue={formData.temporaryAddressDistrict}
         onValueChange={(value) => handleDistrictChange(value, "temporary")}
@@ -869,7 +880,7 @@ const DriverIdentificationScreen = ({ navigation }) => {
       )}
 
       <PickerField
-        label="Temporary Address Ward"
+        label="Địa chỉ tạm trú Phường/Xã"
         items={temporaryWards}
         selectedValue={formData.temporaryAddressWard}
         onValueChange={(value) => handleInputChange("temporaryAddressWard", value)}
@@ -880,34 +891,34 @@ const DriverIdentificationScreen = ({ navigation }) => {
       )}
 
       <InputField
-        label="Temporary Street Address"
+        label="Địa chỉ Đường tạm trú"
         value={formData.temporaryStreetAddress}
         onChangeText={(value) => handleInputChange("temporaryStreetAddress", value)}
-        placeholder="Enter your street address"
+        placeholder="Nhập tên đường của bạn, số nhà....."
       />
       {errors.temporaryStreetAddress && (
         <Text style={styles.errorText}>{errors.temporaryStreetAddress}</Text>
       )}
 
       <DatePickerField
-        label="Issue Date"
+        label="Ngày cấp"
         value={formData.issueDate}
         onChange={(value) => handleInputChange("issueDate", value)}
       />
       {errors.issueDate && <Text style={styles.errorText}>{errors.issueDate}</Text>}
 
       <DatePickerField
-        label="Expiry Date"
+        label="Ngày hết hạn"
         value={formData.expiryDate}
         onChange={(value) => handleInputChange("expiryDate", value)}
       />
       {errors.expiryDate && <Text style={styles.errorText}>{errors.expiryDate}</Text>}
 
       <InputField
-        label="Issued By"
+        label="Được cấp bởi"
         value={formData.issuedBy}
         onChangeText={(value) => handleInputChange("issuedBy", value)}
-        placeholder="Enter issuer"
+        placeholder="Nhập nơi cấp cccd của bạn"
       />
       {errors.issuedBy && <Text style={styles.errorText}>{errors.issuedBy}</Text>}
 
@@ -936,7 +947,7 @@ const DriverIdentificationScreen = ({ navigation }) => {
   disabled={isLoading}
 >
   <Text style={styles.submitButtonText}>
-    {isLoading ? 'Processing...' : isEditMode ? 'Save' : 'Submit'}
+    {isLoading ? 'Processing...' : isEditMode ? 'Lưu' : 'Xong'}
   </Text>
 </TouchableOpacity>
     </ScrollView>
@@ -1028,13 +1039,18 @@ const styles = StyleSheet.create({
    flexGrow: 1,
  },
  title: {
-   fontSize: 18,
-   fontWeight: "bold",
-   textAlign: "center",
-   marginTop: 30,
-   marginBottom: 20,
-   color: "#00b5ec",
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#000",
  },
+
+ header: {
+  marginTop: Platform.OS === "ios" ? 20 : 10,
+  flexDirection: "row",
+  alignItems: "center",
+  marginBottom: 20,
+  
+},
  inputContainer: {
    marginBottom: 15,
  },
