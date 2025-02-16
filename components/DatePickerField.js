@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, TextInput, StyleSheet, Platform } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
-const DatePickerField = ({ label, value, onChange, field, error }) => {
+const DatePickerField = ({ label, value, onChange, error }) => {
   const [show, setShow] = useState(false);
   const [tempDate, setTempDate] = useState(value ? new Date(value) : new Date());
 
@@ -77,7 +77,6 @@ const DatePickerField = ({ label, value, onChange, field, error }) => {
 };
 
 const styles = StyleSheet.create({
-  // ... copy styles from existing components ...
   inputContainer: {
     marginBottom: 20,
   },

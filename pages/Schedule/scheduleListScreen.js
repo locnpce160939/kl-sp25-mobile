@@ -84,7 +84,7 @@ const ScheduleListScreen = () => {
 
     // Gọi hàm fetchSchedules
     fetchSchedules();
-  }, []); // Dependency array rỗng để đảm bảo useEffect chỉ chạy một lần khi component mount
+  }, []); 
 
   const renderItem = ({ item }) => (
     <TouchableOpacity
