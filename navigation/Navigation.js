@@ -23,6 +23,7 @@ import ScheduleListScreen from "../pages/Schedule/scheduleListScreen";
 import ChatCustomer from "../pages/Chat/ChatCustomer";
 import ChatDriver from "../pages/Chat/ChatDriver";
 import ChatDriverReal from "../pages/Chat/ChatDriverReal";
+import ProfileUserScreen from "../pages/Profile/profileUserScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -90,6 +91,11 @@ const Navigation = () => {
             <Stack.Screen
               name="ChatDriver"
               component={ChatDriver}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="ProfileUserScreen"
+              component={ProfileUserScreen}
               options={{ headerShown: false }}
             />
           </>
