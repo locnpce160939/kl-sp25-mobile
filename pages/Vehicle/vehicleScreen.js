@@ -55,7 +55,7 @@ const VehicleScreen = () => {
         (async () => {
             const { status } = await ImagePicker.requestCameraPermissionsAsync();
             if (status !== "granted") {
-                Alert.alert("Lỗi", "Cần cấp quyền truy cập camera để sử dụng tính năng này!");
+                Alert.alert("Error", "Camera access is required to use this feature!");
             }
         })();
     }, []);
@@ -65,7 +65,7 @@ const VehicleScreen = () => {
         setLoading(true);
         try {
             const token = await AsyncStorage.getItem("token");
-            if (!token) throw new Error("Token không tồn tại. Vui lòng đăng nhập lại.");
+            if (!token) throw new Error("Token does not exist. Please log in again.");
 
             const response = await axios.get(`${BASE_URl}/api/registerDriver/vehicle`, {
                 headers: {
@@ -79,7 +79,7 @@ const VehicleScreen = () => {
             setVehicles(vehicleData);
         } catch (error) {
             handleVehicleError(error);
-            console.log("Không thể tải danh sách xe.", error.response?.data?.message);
+            Alert.alert("Error", "Failed to load vehicle list.");
         } finally {
             setLoading(false);
         }
@@ -87,28 +87,26 @@ const VehicleScreen = () => {
     // Hàm xử lý lỗi
     const handleVehicleError = async (error) => {
         if (error.response?.status === 401) {
-            Alert.alert("Phiên đăng nhập hết hạn", "Vui lòng đăng nhập lại.", [
+            Alert.alert("Session expired", "Please log in again.", [
                 { text: "OK", onPress: async () => { await logout(); } },
             ], { cancelable: false });
         } else if (error.response?.data?.message === "Vehicle not found") {
-            console.log("Không tìm thấy phương tiện.");
+            console.log("Vehicle not found.");
         } else if (error.response?.status === 400) {
             Alert.alert(error.response?.data?.message);
-            console.log("Error fetching Vehicle details:", error);
         } else {
             Alert.alert("Something went wrong", error);
-            console.log("Error fetching Vehicle details:", error);
         }
     };
 
     // Hàm chọn ảnh
     const selectImage = async (field) => {
         Alert.alert(
-            "Chọn nguồn ảnh",
-            "Chọn phương thức lấy ảnh",
+            "Select image source",
+            "Choose image source",
             [
                 {
-                    text: "Chụp ảnh",
+                    text: "Take photo",
                     onPress: async () => {
                         const result = await ImagePicker.launchCameraAsync({
                             mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -126,7 +124,7 @@ const VehicleScreen = () => {
                     },
                 },
                 {
-                    text: "Thư viện",
+                    text: "Library",
                     onPress: async () => {
                         const result = await ImagePicker.launchImageLibraryAsync({
                             mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -144,7 +142,7 @@ const VehicleScreen = () => {
                     },
                 },
                 {
-                    text: "Hủy",
+                    text: "Cancel",
                     style: "cancel"
                 }
             ]
@@ -214,24 +212,24 @@ const VehicleScreen = () => {
 
         let formErrors = {};
 
-        if (!licensePlate) formErrors.licensePlate = "Biển số xe là bắt buộc.";
-        if (!vehicleType) formErrors.vehicleType = "Loại xe là bắt buộc.";
-        if (!make) formErrors.make = "Hãng xe là bắt buộc.";
-        if (!model) formErrors.model = "Mẫu xe là bắt buộc.";
-        if (!year) formErrors.year = "Năm sản xuất là bắt buộc.";
+        if (!licensePlate) formErrors.licensePlate = "License plate is required.";
+        if (!vehicleType) formErrors.vehicleType = "Vehicle type is required.";
+        if (!make) formErrors.make = "Make is required.";
+        if (!model) formErrors.model = "Model is required.";
+        if (!year) formErrors.year = "Year is required.";
 
         const currentYear = new Date().getFullYear();
         const manufacturingYear = parseInt(year);
         if (isNaN(manufacturingYear)) {
-            formErrors.year = "Năm sản xuất phải là số.";
+            formErrors.year = "Year must be a number.";
         } else if (currentYear - manufacturingYear > 25) {
-            formErrors.year = "Xe không được quá 25 năm tuổi.";
+            formErrors.year = "Vehicle cannot be older than 25 years.";
         }
-        if (!capacity) formErrors.capacity = "Sức chứa là bắt buộc.";
-        if (capacity < 1 || capacity > 15) formErrors.capacity = "Sức chứa phải từ 1 đến 15 tấn.";
-        if (!dimensions) formErrors.dimensions = "Kích thước là bắt buộc.";
-        if (!insuranceStatus) formErrors.insuranceStatus = "Tình trạng bảo hiểm là bắt buộc.";
-        if (!registrationExpiryDate) formErrors.registrationExpiryDate = "Ngày hết hạn đăng ký là bắt buộc.";
+        if (!capacity) formErrors.capacity = "Capacity is required.";
+        if (capacity < 1 || capacity > 15) formErrors.capacity = "Capacity must be between 1 and 15 tons.";
+        if (!dimensions) formErrors.dimensions = "Dimensions are required.";
+        if (!insuranceStatus) formErrors.insuranceStatus = "Insurance status is required.";
+        if (!registrationExpiryDate) formErrors.registrationExpiryDate = "Registration expiry date is required.";
 
         setErrors(formErrors);
         return Object.keys(formErrors).length === 0;
@@ -293,7 +291,7 @@ const VehicleScreen = () => {
             });
 
             if (response.status === 200) {
-                Alert.alert("Thông báo", "Thông tin xe đã được lưu");
+                Alert.alert("Notification", "Vehicle information has been saved");
                 setViewMode("list");
             }
         } catch (error) {
@@ -311,7 +309,7 @@ const VehicleScreen = () => {
                     <TouchableOpacity onPress={() => navigation.goBack()}>
                         <Ionicons name="arrow-back" size={24} color="#000" style={styles.backIcon} />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Vehicle</Text>
+                    <Text style={styles.headerTitle}>Phương tiện</Text>
                 </View>
 
                 {loading ? (
@@ -337,12 +335,12 @@ const VehicleScreen = () => {
                                         style={styles.manageButton}
                                         onPress={() => handleSelectVehicle(vehicle)}
                                     >
-                                        <Text style={styles.manageButtonText}>Manage</Text>
+                                        <Text style={styles.manageButtonText}>Quản lý</Text>
                                     </TouchableOpacity>
                                 </View>
                             ))
                         ) : (
-                            <Text style={styles.noDataText}>Không có xe nào trong danh sách.</Text>
+                            <Text style={styles.noDataText}>Không có phương tiện nào trong danh sách.</Text>
                         )}
                     </>
                 )}
@@ -357,15 +355,15 @@ const VehicleScreen = () => {
 
     //Nhập dữ liệu 
     const inputFields = [
-        { field: "licensePlate", label: "Biển số xe" },
+        { field: "licensePlate", label: "Biển số" },
         { field: "vehicleType", label: "Loại xe" },
         { field: "make", label: "Hãng xe" },
-        { field: "model", label: "Mẫu xe" },
+        { field: "model", label: "Dòng xe" },
         { field: "year", label: "Năm sản xuất" },
-        { field: "capacity", label: "Sức chứa" },
+        { field: "capacity", label: "Tải trọng" },
         { field: "dimensions", label: "Kích thước" },
         { field: "insuranceStatus", label: "Tình trạng bảo hiểm" },
-        { field: "registrationExpiryDate", label: "Ngày hết hạn đăng ký" },
+        { field: "registrationExpiryDate", label: "Ngày hết hạn đăng kiểm" },
     ];
 
     const renderImageSection = (field, label) => (
@@ -405,7 +403,7 @@ const VehicleScreen = () => {
                     <Ionicons name="arrow-back" size={24} color="#000" style={styles.backIcon} />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>
-                    {vehicleId ? "Cập nhật thông tin xe" : "Tạo thông tin xe mới"}
+                    {vehicleId ? "Cập nhật thông tin xe" : "Tạo mới thông tin xe"}
                 </Text>
             </View>
 
@@ -428,7 +426,7 @@ const VehicleScreen = () => {
                         <Text style={styles.label}>{label}</Text>
                         <TextInput
                             style={[styles.input, errors[field] && styles.inputError]}
-                            placeholder={`Nhập ${label.toLowerCase()}`}
+                            placeholder={`Enter ${label.toLowerCase()}`}
                             value={formData[field]}
                             keyboardType={field === "year" || field === "capacity" ? "numeric" : "default"}
                             onChangeText={(text) => handleInputChange(field, text)}
@@ -476,7 +474,7 @@ const styles = StyleSheet.create({
     },
     container: {
         flexGrow: 1,
-        padding: 20,
+        padding: 30,
         backgroundColor: "#f9f9f9",
     },
     header: {
@@ -489,7 +487,7 @@ const styles = StyleSheet.create({
         marginRight: 10,
     },
     headerTitle: {
-        fontSize: 24,
+        fontSize: 26,
         fontWeight: "bold",
         color: "#000",
     },
@@ -498,7 +496,7 @@ const styles = StyleSheet.create({
         alignItems: "center",
         backgroundColor: "#fff",
         padding: 15,
-        borderRadius: 8,
+        borderRadius: 10,
         marginBottom: 10,
         borderWidth: 1,
         borderColor: "#ddd",
@@ -564,6 +562,7 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         paddingHorizontal: 10,
         backgroundColor: "#fff",
+        padding: 16,
     },
     inputError: {
         borderColor: "red",
@@ -579,10 +578,11 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         alignItems: "center",
         marginTop: 20,
+        paddingVertical: 16,
     },
     buttonText: {
         color: "#fff",
-        fontSize: 16,
+        fontSize: 18,
         fontWeight: "600",
     },
     floatingButton: {

@@ -17,6 +17,7 @@ import MapView, { Marker } from "react-native-maps";
 import io from "socket.io-client";
 import { useNavigation } from "@react-navigation/native";
 import { BASE_URl } from "../../configUrl";
+import { getTripBookingStatusText, getAgreementStatusText, getPaymentStatusText } from '../../components/StatusMapper';
 
 const OrderDriver = ({ route }) => {
   const [userId, setUserId] = useState(null);
@@ -251,7 +252,7 @@ const OrderDriver = ({ route }) => {
     >
       <View style={styles.cardHeader}>
         <Text style={styles.bookingId}>Booking #{booking.bookingId}</Text>
-        <Text style={styles.status}>{booking.status}</Text>
+        <Text style={styles.status}>{getTripBookingStatusText(booking.status)}</Text>
       </View>
       <View style={styles.cardContent}>
         <View style={styles.locationContainer}>
@@ -276,6 +277,7 @@ const OrderDriver = ({ route }) => {
       </View>
     </TouchableOpacity>
   );
+
   const renderDetailModal = () => {
     const navigation = useNavigation();
     if (!selectedBooking) return null;
@@ -304,7 +306,7 @@ const OrderDriver = ({ route }) => {
               <View style={styles.statusHeader}>
                 <Icon name="local-taxi" size={24} color="#0066cc" />
                 <Text style={styles.statusTitle}>
-                  Status: {selectedBooking.status}
+                  Status: {getTripBookingStatusText(selectedBooking.status)}
                 </Text>
               </View>
               <View style={styles.bookingMeta}>
@@ -398,14 +400,14 @@ const OrderDriver = ({ route }) => {
                     <Icon name="check-circle" size={20} color="#28a745" />
                     <Text style={styles.agreementLabel}>Agreement Status</Text>
                     <Text style={styles.agreementValue}>
-                      {selectedBooking.tripAgreement.agreementStatus}
+                      {getAgreementStatusText(selectedBooking.tripAgreement.agreementStatus)}
                     </Text>
                   </View>
                   <View style={styles.agreementItem}>
                     <Icon name="payment" size={20} color="#ffc107" />
                     <Text style={styles.agreementLabel}>Payment Status</Text>
                     <Text style={styles.agreementValue}>
-                      {selectedBooking.tripAgreement.paymentStatus}
+                      {getPaymentStatusText(selectedBooking.tripAgreement.paymentStatus)}
                     </Text>
                   </View>
                   <View style={styles.agreementItem}>

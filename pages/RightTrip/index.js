@@ -12,6 +12,7 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BASE_URl } from "../../configUrl";
 import Icon from "react-native-vector-icons/MaterialIcons";
+import { getTripBookingStatusText } from '../../components/StatusMapper';
 
 const RightTrip = () => {
   const [tripData, setTripData] = useState(null);
@@ -204,7 +205,9 @@ const RightTrip = () => {
                   <View style={styles.timelineLine} />
                 </View>
                 <View style={styles.timelineContent}>
-                  <Text style={styles.timelineText}>Arranging driver</Text>
+                  <Text style={styles.timelineText}>
+                    {getTripBookingStatusText('ARRANGING_DRIVER')}
+                  </Text>
                   <Text style={styles.timelineTime}>
                     {formatDateTime(selectedTrip.updateAt)}
                   </Text>

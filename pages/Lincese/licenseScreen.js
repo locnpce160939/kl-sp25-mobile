@@ -34,8 +34,6 @@ const LicenseScreen = () => {
   });
   const [licenseId, setLicenseId] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [currentField, setCurrentField] = useState(null);
   const [errors, setErrors] = useState({});
   const { logout } = useContext(AuthContext);
 
@@ -43,10 +41,7 @@ const LicenseScreen = () => {
     (async () => {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert(
-          "Lỗi",
-          "Cần cấp quyền truy cập camera để sử dụng tính năng này!"
-        );
+        Alert.alert("Lỗi", "Cần cho phép truy cập máy ảnh để sử dụng tính năng này!");
       }
     })();
     fetchLicenseDetails();
@@ -100,7 +95,7 @@ const LicenseScreen = () => {
   const handleLicenseError = async (error) => {
     if (error.response?.status === 401) {
       Alert.alert(
-        "Phiên đăng nhập hết hạn",
+        "Phiên đăng nhập đã hết hạn",
         "Vui lòng đăng nhập lại.",
         [
           {
@@ -115,12 +110,12 @@ const LicenseScreen = () => {
     } else if (error.response?.data?.message === "License not found") {
       setLicenseId(null);
       resetLicenseDetails();
-      console.log("Không tìm thấy giấy phép.");
+      console.log("Không tìm thấy bằng lái.");
     } else if (error.response?.status === 400) {
-      Alert.alert(error.response?.data?.message);
+      Alert.alert("Lỗi", "Lỗi khi lấy thông tin bằng lái!");
       console.log("Error fetching License details!", error);
     } else {
-      Alert.alert(error.response?.data?.message);
+      Alert.alert("Lỗi", "Lỗi khi lấy thông tin bằng lái!");
       console.log("Error fetching License details:", error);
     }
   };
@@ -129,10 +124,10 @@ const LicenseScreen = () => {
     const newErrors = {};
 
     if (!licenseDetails.licenseNumber.trim()) {
-      newErrors.licenseNumber = "Số giấy phép là bắt buộc.";
+      newErrors.licenseNumber = "Số bằng lái là bắt buộc.";
     }
     if (!licenseDetails.licenseType.trim()) {
-      newErrors.licenseType = "Loại giấy phép là bắt buộc.";
+      newErrors.licenseType = "Loại bằng lái là bắt buộc.";
     }
     if (!licenseDetails.issuingAuthority.trim()) {
       newErrors.issuingAuthority = "Cơ quan cấp là bắt buộc.";
@@ -144,10 +139,10 @@ const LicenseScreen = () => {
       newErrors.expiryDate = "Ngày hết hạn là bắt buộc.";
     }
     if (!licenseDetails.frontView) {
-      newErrors.frontView = "Ảnh mặt trước giấy phép là bắt buộc.";
+      newErrors.frontView = "Mặt trước bằng lái là bắt buộc.";
     }
     if (!licenseDetails.backView) {
-      newErrors.backView = "Ảnh mặt sau giấy phép là bắt buộc.";
+      newErrors.backView = "Mặt sau bằng lái là bắt buộc.";
     }
     if (
       licenseDetails.issuedDate &&
@@ -165,10 +160,10 @@ const LicenseScreen = () => {
   const selectImage = async (view) => {
     Alert.alert(
       "Chọn nguồn ảnh",
-      "Chọn chụp ảnh hoặc lấy từ thư viện",
+      "Chọn chụp ảnh hoặc chọn từ thư viện",
       [
         {
-          text: "Camera",
+          text: "Máy ảnh",
           onPress: async () => {
             const result = await ImagePicker.launchCameraAsync({
               mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -203,7 +198,7 @@ const LicenseScreen = () => {
             }
           },
         },
-        { text: "Hủy", style: "cancel" },
+        { text: "Cancel", style: "cancel" },
       ],
       { cancelable: true }
     );
@@ -266,12 +261,12 @@ const LicenseScreen = () => {
       );
 
       if (status === 200) {
-        Alert.alert("Thành công", "Cập nhật giấy phép thành công.");
+        Alert.alert("Thành công", "Cập nhật bằng lái thành công.");
         setLicenseId(data.data.licenseId);
       } else {
         Alert.alert(
           "Lỗi",
-          `Không thể cập nhật giấy phép. Mã lỗi: ${response.status}`
+          `Không thể cập nhật bằng lái. Mã lỗi: ${response.status}`
         );
       }
     } catch (error) {
@@ -344,13 +339,13 @@ const LicenseScreen = () => {
       // Xử lý phản hồi
       if (status === 200) {
         // Xử lý thành công nếu status = 200
-        alert("License registered successfully!");
+        alert("Đăng ký bằng lái thành công!");
       } else {
-        throw new Error("Đăng ký giấy phép thất bại");
+        throw new Error("Đăng ký bằng lái thất bại");
       }
     } catch (error) {
       console.error(error);
-      alert(error.message || "Đã có lỗi xảy ra!");
+      alert("Đã xảy ra lỗi!");
     } finally {
       setLoading(false);
     }
@@ -359,27 +354,6 @@ const LicenseScreen = () => {
   const handleInputChange = (field, value) => {
     setLicenseDetails((prev) => ({ ...prev, [field]: value }));
     setErrors((prev) => ({ ...prev, [field]: null }));
-  };
-
-  const handleDateChange = (event, selectedDate) => {
-    if (event.type === "set") {
-      const currentDate = selectedDate || new Date();
-      if (
-        currentField === "expiryDate" &&
-        licenseDetails.issuedDate &&
-        currentDate < new Date(licenseDetails.issuedDate)
-      ) {
-        Alert.alert("Lỗi", "Ngày hết hạn phải sau ngày cấp.");
-        setShowDatePicker(false);
-        return;
-      }
-
-      setLicenseDetails((prev) => ({
-        ...prev,
-        [currentField]: currentDate.toISOString(),
-      }));
-    }
-    setShowDatePicker(false);
   };
 
   const renderImageSection = (view, label) => (
@@ -425,32 +399,6 @@ const LicenseScreen = () => {
     </View>
   );
 
-  const renderDateField = (label, field) => (
-    <View style={styles.inputContainer}>
-      <Text style={styles.label}>{label}</Text>
-      <TouchableOpacity
-        onPress={() => {
-          setCurrentField(field);
-          setShowDatePicker(true);
-        }}
-      >
-        <TextInput
-          style={[styles.input, errors[field] && styles.inputError]}
-          value={
-            licenseDetails[field]
-              ? new Date(licenseDetails[field]).toLocaleDateString("vi-VN")
-              : ""
-          }
-          editable={false}
-          placeholder={"Chọn ngày"}
-          placeholderTextColor={"#999"}
-          pointerEvents="none"
-        />
-      </TouchableOpacity>
-      {errors[field] && <Text style={styles.errorText}>{errors[field]}</Text>}
-    </View>
-  );
-
   return (
     <SafeAreaView style={styles.safeContainer}>
       <ScrollView contentContainerStyle={styles.container}>
@@ -462,7 +410,7 @@ const LicenseScreen = () => {
               color="#000"
               style={styles.backIcon}
             />
-            <Text style={styles.headerTitle}>License</Text>
+            <Text style={styles.headerTitle}>Bằng lái</Text>
           </View>
         </TouchableOpacity>
 
@@ -475,14 +423,14 @@ const LicenseScreen = () => {
         ) : (
           <>
             {renderInputField(
-              "Số giấy phép",
+              "Số bằng lái",
               "licenseNumber",
-              "Nhập số giấy phép"
+              "Nhập số bằng lái"
             )}
             {renderInputField(
-              "Loại giấy phép",
+              "Loại bằng lái",
               "licenseType",
-              "Nhập loại giấy phép"
+              "Nhập loại bằng lái"
             )}
             <DatePickerField
               label="Ngày cấp"
@@ -503,14 +451,14 @@ const LicenseScreen = () => {
               "issuingAuthority",
               "Nhập cơ quan cấp"
             )}
-            {renderImageSection("frontView", "Mặt trước giấy phép")}
-            {renderImageSection("backView", "Mặt sau giấy phép")}
+            {renderImageSection("frontView", "Mặt trước bằng lái")}
+            {renderImageSection("backView", "Mặt sau bằng lái")}
             <TouchableOpacity
               style={styles.saveButton}
               onPress={licenseId ? updateLicenseDetails : createNewLicense}
             >
               <Text style={styles.saveButtonText}>
-                {licenseId ? "Cập nhật" : "Tạo mới giấy phép"}
+                {licenseId ? "Cập nhật" : "Tạo mới bằng lái"}
               </Text>
             </TouchableOpacity>
           </>
@@ -527,7 +475,7 @@ const styles = StyleSheet.create({
   },
   container: {
     flexGrow: 1,
-    padding: 20,
+    padding: 30,
   },
   header: {
     marginTop: Platform.OS === "ios" ? 20 : 10,
@@ -539,7 +487,7 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: "bold",
     color: "#000",
   },
@@ -554,7 +502,7 @@ const styles = StyleSheet.create({
   },
   input: {
     backgroundColor: "#fff",
-    padding: 14,
+    padding: 16,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: "#ddd",
@@ -571,7 +519,7 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     backgroundColor: "#007AFF",
-    paddingVertical: 14,
+    paddingVertical: 16,
     borderRadius: 8,
     alignItems: "center",
     marginTop: 20,
@@ -589,7 +537,7 @@ const styles = StyleSheet.create({
   },
   saveButtonText: {
     color: "#fff",
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "600",
   },
   loader: {

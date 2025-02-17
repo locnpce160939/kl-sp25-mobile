@@ -55,7 +55,6 @@ const ProfileUserScreen = () => {
                 setUserDetails(userData);
             }
         } catch (error) {
-            console.error("Error fetching user details:", error);
             handleUserError(error);
         } finally {
             setLoading(false);
@@ -63,10 +62,9 @@ const ProfileUserScreen = () => {
     };
 
     const handleUserError = async (error) => {
-        console.error("User error:", error);
         if (error.response?.status === 401) {
             Alert.alert(
-                "Phiên đăng nhập hết hạn",
+                "Phiên đăng nhập đã hết hạn",
                 "Vui lòng đăng nhập lại.",
                 [
                     {
@@ -128,7 +126,7 @@ const ProfileUserScreen = () => {
     const selectProfilePicture = async () => {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== "granted") {
-            Alert.alert("Lỗi", "Cần cấp quyền truy cập thư viện ảnh để sử dụng tính năng này!");
+            Alert.alert("Lỗi", "Cần cho phép truy cập thư viện ảnh để sử dụng tính năng này!");
             return;
         }
 
@@ -213,7 +211,7 @@ const ProfileUserScreen = () => {
 
                     <View style={styles.formContainer}>
                         {renderInputField("Tên đăng nhập", "username", "Nhập tên đăng nhập", "person-outline")}
-                        {renderInputField("Họ và tên", "fullName", "Nhập họ và tên", "card-outline")}
+                        {renderInputField("Họ tên", "fullName", "Nhập họ tên", "card-outline")}
                         {renderInputField("Email", "email", "Nhập email", "mail-outline")}
                         {renderInputField("Số điện thoại", "phone", "Nhập số điện thoại", "call-outline")}
 
@@ -221,7 +219,7 @@ const ProfileUserScreen = () => {
                             style={styles.saveButton}
                             onPress={updateUserDetails}
                         >
-                            <Text style={styles.saveButtonText}>Cập nhật thông tin</Text>
+                            <Text style={styles.saveButtonText}>Cập nhật</Text>
                         </TouchableOpacity>
                     </View>
                 </ScrollView>
@@ -246,10 +244,10 @@ const styles = StyleSheet.create({
         borderBottomColor: "#eee",
         ...Platform.select({
             ios: {
-                paddingTop: 48,
+                paddingTop: 20,
             },
             android: {
-                paddingTop: 16,
+                paddingTop: 15,
             },
         }),
     },
