@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
   View,
-  Text,
+  Text,modalContainer
   ScrollView,
   StyleSheet,
   TouchableOpacity,
@@ -603,6 +603,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   modalContainer: {
+    marginTop: 24,
     flex: 1,
     backgroundColor: "#f8f9fa",
   },
