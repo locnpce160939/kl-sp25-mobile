@@ -9,6 +9,8 @@ import {
   Platform,
   StyleSheet,
   SafeAreaView,
+  ScrollView,
+  Animated,
 } from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import io from "socket.io-client";
@@ -17,6 +19,14 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 const HOST = "https://api.ftcs.online";
 const SOCKET_URL = "wss://api.ftcs.online";
 
+
+const QUICK_MESSAGES = [
+  "Tôi đang trên đường tới điểm hẹn",
+  "Tôi sẽ đến điểm nhận hàng trong vài phút nữa",
+  "Xin vui lòng đợi trong vài phút !!!",
+  "Cảm ơn bạn !",
+  "Bạn nhớ chờ điện thoại nhé",
+];
 function getUserIdFromToken(token) {
   try {
     const payload = JSON.parse(atob(token.split(".")[1]));
@@ -28,14 +38,24 @@ function getUserIdFromToken(token) {
 }
 
 const ChatDriverReal = ({ route, navigation }) => {
-  const { driverId, driverName, bookingId } = route.params;
+  const { driverId, customerName, bookingId, scheduleId = null } = route.params || {};
+  
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState("");
   const [token, setToken] = useState(null);
   const [currentUserId, setCurrentUserId] = useState(null);
   const socket = useRef(null);
   const flatListRef = useRef(null);
-
+  const quickMessagesHeight = useRef(new Animated.Value(1)).current;
+  const [showQuickMessages, setShowQuickMessages] = useState(true);
+  
+  useEffect(() => {
+    if (!driverId || !customerName || !bookingId) {
+      console.error("Missing required parameters");
+      navigation.goBack();
+      return;
+    }
+  }, [driverId, customerName, bookingId]);
   // Function to scroll to the bottom
   const scrollToBottom = () => {
     if (flatListRef.current && messages.length > 0) {
@@ -99,7 +119,7 @@ const ChatDriverReal = ({ route, navigation }) => {
     return () => {
       socket.current.disconnect();
     };
-  }, [token, currentUserId, bookingId]);
+  }, [token, currentUserId, bookingId, scheduleId]);
 
   // Scroll to bottom when messages are loaded
   useEffect(() => {
@@ -161,6 +181,18 @@ const ChatDriverReal = ({ route, navigation }) => {
     }
   };
 
+  //an hien quck mess
+  const toggleQuickMessages = () => {
+    const toValue = showQuickMessages ? 0 : 1;
+    setShowQuickMessages(!showQuickMessages);
+    Animated.timing(quickMessagesHeight, {
+      toValue,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+  };
+
+
   const renderMessage = ({ item }) => {
     const isCustomer = item.sender === "customer";
     return (
@@ -170,35 +202,82 @@ const ChatDriverReal = ({ route, navigation }) => {
           isCustomer ? styles.customerMessage : styles.driverMessage,
         ]}
       >
-        <Text style={[styles.messageText, !isCustomer && { color: "#000" }]}>
-          {item.text}
-        </Text>
-        <Text
-          style={[
-            styles.timestamp,
-            !isCustomer && { color: "rgba(0, 0, 0, 0.5)" },
-          ]}
-        >
-          {new Date(item.timestamp).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
-        </Text>
+        {!isCustomer && (
+          <View style={styles.avatarContainer}>
+            <Text style={styles.avatarText}>N</Text>
+          </View>
+        )}
+        <View style={[
+          styles.messageContent,
+          isCustomer ? styles.customerMessageContent : styles.driverMessageContent
+        ]}>
+          <Text style={[styles.messageText, !isCustomer && { color: "#000" }]}>
+            {item.text}
+          </Text>
+          <Text
+            style={[
+              styles.timestamp,
+              !isCustomer && { color: "rgba(0, 0, 0, 0.5)" },
+            ]}
+          >
+            {new Date(item.timestamp).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </Text>
+        </View>
       </View>
     );
   };
+
+  const renderQuickMessages = () => (
+    <Animated.View style={[
+      styles.quickMessagesWrapper,
+      {
+        maxHeight: quickMessagesHeight.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0, 100]
+        }),
+        opacity: quickMessagesHeight
+      }
+    ]}>
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false}
+        style={styles.quickMessagesContainer}
+      >
+        {QUICK_MESSAGES.map((message, index) => (
+          <TouchableOpacity
+            key={index}
+            style={styles.quickMessageButton}
+            onPress={() => {
+              setInputMessage(message);
+              sendMessage(message);
+            }}
+          >
+            <Text style={styles.quickMessageText}>{message}</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </Animated.View>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity
-          onPress={() => navigation.navigate("Order")}
+          onPress={() => navigation.goBack()}
           style={styles.backButton}
         >
           <Icon name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
-
-        <Text style={styles.headerTitle}>{driverName}</Text>
+        <View style={styles.headerTitleContainer}>
+          <Text style={styles.headerTitle}>{customerName}</Text>
+          <Text style={styles.headerSubtitle}>Đang hoạt động</Text>
+        </View>
+        <TouchableOpacity style={styles.phoneButton}>
+          <Icon name="phone" size={24} color="#000" />
+        </TouchableOpacity>
       </View>
 
       <FlatList
@@ -212,10 +291,22 @@ const ChatDriverReal = ({ route, navigation }) => {
         onLayout={scrollToBottom}
       />
 
+      {renderQuickMessages()}
+
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.inputContainer}
       >
+        <TouchableOpacity
+          onPress={toggleQuickMessages}
+          style={styles.toggleButton}
+        >
+          <Icon 
+            name={showQuickMessages ? "keyboard-arrow-down" : "keyboard-arrow-up"} 
+            size={24} 
+            color="#666"
+          />
+        </TouchableOpacity>
         <TextInput
           style={styles.input}
           value={inputMessage}
@@ -224,21 +315,20 @@ const ChatDriverReal = ({ route, navigation }) => {
           multiline
         />
         <TouchableOpacity
-          onPress={sendMessage}
+          onPress={() => sendMessage(inputMessage)}
           style={styles.sendButton}
           disabled={inputMessage.trim().length === 0}
         >
           <Icon
             name="send"
             size={24}
-            color={inputMessage.trim().length > 0 ? "#0066cc" : "#ccc"}
+            color={inputMessage.trim().length > 0 ? "#0099ff" : "#ccc"}
           />
         </TouchableOpacity>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -250,29 +340,61 @@ const styles = StyleSheet.create({
     padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
+    backgroundColor: "#fff",
   },
-  backButton: {
-    marginRight: 16,
+  headerTitleContainer: {
+    flex: 1,
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: "bold",
   },
+  headerSubtitle: {
+    fontSize: 12,
+    color: "#666",
+  },
+  backButton: {
+    marginRight: 16,
+  },
+  phoneButton: {
+    padding: 8,
+  },
   messagesList: {
     padding: 16,
   },
   messageContainer: {
-    maxWidth: "80%",
+    flexDirection: "row",
     marginVertical: 4,
+    maxWidth: "80%",
+  },
+  avatarContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#e0e0e0",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 8,
+  },
+  avatarText: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#666",
+  },
+  messageContent: {
     padding: 12,
     borderRadius: 16,
   },
   customerMessage: {
     alignSelf: "flex-end",
-    backgroundColor: "#0066cc",
   },
   driverMessage: {
     alignSelf: "flex-start",
+  },
+  customerMessageContent: {
+    backgroundColor: "#0099ff",
+  },
+  driverMessageContent: {
     backgroundColor: "#f0f0f0",
   },
   messageText: {
@@ -284,12 +406,34 @@ const styles = StyleSheet.create({
     color: "rgba(255, 255, 255, 0.7)",
     marginTop: 4,
   },
+  quickMessagesWrapper: {
+    overflow: 'hidden',
+    borderTopWidth: 1,
+    borderTopColor: "#eee",
+  },
+  quickMessagesContainer: {
+    padding: 8,
+  },
+  quickMessageButton: {
+    backgroundColor: "#f0f0f0",
+    padding: 8,
+    borderRadius: 16,
+    marginHorizontal: 4,
+  },
+  quickMessageText: {
+    color: "#000",
+    fontSize: 14,
+  },
   inputContainer: {
     flexDirection: "row",
     padding: 16,
     borderTopWidth: 1,
     borderTopColor: "#eee",
     alignItems: "center",
+  },
+  toggleButton: {
+    padding: 8,
+    marginRight: 8,
   },
   input: {
     flex: 1,
