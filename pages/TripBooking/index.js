@@ -27,7 +27,7 @@ import { Dropdown } from "react-native-element-dropdown";
 import { BASE_URl } from "../../configUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Icon from "react-native-vector-icons/MaterialIcons";
@@ -508,22 +508,47 @@ const TripBooking = () => {
   }, [pickupLocation, dropoffLocation, capacity]);
 
   const renderPrice = () => {
-    if (totalPrice.length != 0) {
+    if (totalPrice.length !== 0) {
       return (
-        <View style={styles.showPrice}>
-          <Text style={styles.priceText}>
-            Quãng đường: {totalPrice.expectedDistance} Km
-          </Text>
-          <Text style={styles.priceText}>
-            Tổng tiền:{" "}
-            {totalPrice.price.toLocaleString("vi-VN", {
-              style: "currency",
-              currency: "VND",
-            })}
-          </Text>
+        <View style={styles.priceContainer}>
+          <View style={styles.showPrice}>
+            <View style={styles.priceRow}>
+              <View style={styles.iconContainer}>
+                <Icon
+                  name="directions-car"
+                  size={24}
+                  color="#00b5ec"
+                />
+              </View>
+              <View style={styles.priceInfo}>
+                <Text style={styles.priceLabel}>Quãng đường</Text>
+                <Text style={styles.priceValue}>
+                  {totalPrice.expectedDistance} km
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.divider} />
+
+            <View style={styles.priceRow}>
+              <View style={styles.iconContainer}>
+                <Icon name="payment" size={24} color="#00b5ec" />
+              </View>
+              <View style={styles.priceInfo}>
+                <Text style={styles.priceLabel}>Tổng tiền</Text>
+                <Text style={styles.priceValue}>
+                  {totalPrice.price.toLocaleString("vi-VN", {
+                    style: "currency",
+                    currency: "VND",
+                  })}
+                </Text>
+              </View>
+            </View>
+          </View>
         </View>
       );
     }
+    return null;
   };
 
   return (
@@ -1067,25 +1092,55 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
   },
+  priceContainer: {
+    paddingHorizontal: 16,
+    width: "100%",
+  },
   showPrice: {
-    backgroundColor: "#fff",
+    backgroundColor: "#FFFFFF",
     borderRadius: 16,
-    paddingVertical: 20,
-    paddingHorizontal: 24,
+    padding: 20,
     marginBottom: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    elevation: 4, // Bóng cho Android
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+    shadowColor: "#000000",
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
     shadowOpacity: 0.12,
     shadowRadius: 8,
   },
-  priceText: {
+  priceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 8,
+  },
+  iconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#EDF3FF",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  priceInfo: {
+    flex: 1,
+  },
+  priceLabel: {
+    fontSize: 14,
+    color: "#666666",
+    marginBottom: 4,
+  },
+  priceValue: {
     fontSize: 18,
     fontWeight: "600",
-    color: "#222",
-    marginBottom: 6,
+    color: "#222222",
+  },
+  divider: {
+    height: 1,
+    backgroundColor: "#EEEEEE",
+    marginVertical: 12,
   },
 });
 
