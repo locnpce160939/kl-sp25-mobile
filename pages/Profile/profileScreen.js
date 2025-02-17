@@ -13,19 +13,19 @@ import Ionicons from "react-native-vector-icons/Ionicons";
 import { AuthContext } from "../../contexts/AuthContext";
 import { loadStatusDriverDocument } from "../../services/MenuService";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
 
 const ProfileScreen = () => {
-  const { logout } = useContext(AuthContext);
+  const { logout } = useContext(AuthContext); // Get userRole from context
   const navigation = useNavigation();
   const [expandedItem, setExpandedItem] = useState(null);
   const [showMissingInfoBanner, setShowMissingInfoBanner] = useState(false);
   const [showNoLicenseBanner, setShowNoLicenseBanner] = useState(false);
   const [showNoVehicleBanner, setShowNoVehicleBanner] = useState(false);
-const [showNoIdentificationBanner, setShowNoIdentificationBanner] = useState(false);
-
-  const handleLogout = () => {
-    logout();
-  };
+  const [showNoIdentificationBanner, setShowNoIdentificationBanner] = useState(false);
+  const [userRole, setUserRole] = useState(null);
+  const [fullname, setFullname] = useState(null);
   const [driverDocuments, setDriverDocuments] = useState({
     license: false,
     vehicle: false,
@@ -33,9 +33,23 @@ const [showNoIdentificationBanner, setShowNoIdentificationBanner] = useState(fal
   });
   const [isLoading, setIsLoading] = useState(false);
 
-  useFocusEffect(
-    useCallback(() => {
-      const fetchData = async () => {
+  const handleLogout = () => {
+    logout();
+  };
+
+  // Only fetch driver documents if user is a driver
+ useFocusEffect(
+  useCallback(() => {
+    const fetchData = async () => {
+      const userInfoString = await AsyncStorage.getItem("userInfo");
+      const userRole = JSON.parse(userInfoString)?.data?.role;
+      setUserRole(userRole); // Set role in state
+
+
+      const fullname = JSON.parse(userInfoString)?.data?.fullName;
+      setFullname(fullname); // Set role in state
+
+      if (userRole === "DRIVER") {
         try {
           setIsLoading(true);
           const data = await loadStatusDriverDocument();
@@ -60,78 +74,73 @@ const [showNoIdentificationBanner, setShowNoIdentificationBanner] = useState(fal
         } finally {
           setIsLoading(false);
         }
-      };
-  
-      fetchData();
-      return () => {};
-    }, [])
-  );
+      }
+    };
 
-  const sections = [
+    fetchData();
+  }, [])
+);
+
+  const driverMenuItems = [
+    
+    // {
+    //   id: 1,
+    //   icon: "calendar-outline",
+    //   label: "Đặt lịch",
+    //   screen: "Schedule",
+    // },
     {
-      title: "Phần 1",
-      items: [
-        {
-          id: 1,
-          icon: "calendar-outline",
-          label: "Đặt lịch",
-          screen: "Schedule",
-        },
-        {
-          id: 2,
-          icon: "document-text-outline",
-          label: "Hồ sơ Tài xế",
-          subItems: [
-            {
-              id: 5,
-              icon: "card-outline",
-              label: "Căn cước công dân",
-              screen: "DriverIdentificationScreen",
-              status: driverDocuments.identification,
-            },
-            {
-              id: 6,
-              icon: "car-outline",
-              label: "Hồ sơ phương tiện",
-              screen: "VehicleScreen",
-              status: driverDocuments.vehicle,
-            },
-            {
-              id: 7,
-              icon: "document-outline",
-              label: "Giấy phép lái xe",
-              screen: "LicenseScreen",
-              status: driverDocuments.license,
-            },
-          ],
-        },
-        { id: 3, icon: "person-add-outline", label: "Giới thiệu bạn bè" },
-        {
-          id: 4,
-          icon: "car-sport-outline",
-          label: "Xem đơn hàng",
-          screen: "ViewTrip",
-        },
+      id: 2,
+      icon: "document-text-outline",
+      label: "Hồ sơ Tài xế",
+      subItems: [
         {
           id: 5,
-          icon: "car-outline",
-          label: "Đơn hàng mới",
-          screen: "RightTrip",
+          icon: "card-outline",
+          label: "Căn cước công dân",
+          screen: "DriverIdentificationScreen",
+          status: driverDocuments.identification,
         },
         {
           id: 6,
-          icon: "cart-outline",
-          label: "Đơn hàng của bạn",
-          screen: "Order",
+          icon: "car-outline",
+          label: "Hồ sơ phương tiện",
+          screen: "VehicleScreen",
+          status: driverDocuments.vehicle,
         },
         {
-          id: 8,
-          icon: "list-outline",
-          label: "Danh sách lịch trình",
-          screen: "ScheduleListScreen",
+          id: 7,
+          icon: "document-outline",
+          label: "Giấy phép lái xe",
+          screen: "LicenseScreen",
+          status: driverDocuments.license,
         },
       ],
     },
+    // {
+    //   id: 5,
+    //   icon: "car-outline",
+    //   label: "Đơn hàng mới",
+    //   screen: "RightTrip",
+    // },
+    // {
+    //   id: 8,
+    //   icon: "list-outline",
+    //   label: "Danh sách lịch trình",
+    //   screen: "ScheduleListScreen",
+    // },
+  ];
+
+  const customerMenuItems = [
+    {
+      id: 6,
+      icon: "cart-outline",
+      label: "Đơn hàng của bạn",
+      screen: "Order",
+    },
+  ];
+
+  const commonSections = [
     {
       title: "Phần 2",
       items: [
@@ -147,17 +156,30 @@ const [showNoIdentificationBanner, setShowNoIdentificationBanner] = useState(fal
         {
           id: 12,
           icon: "person-outline",
-          label: "Thông tin cá nhân",
+          label: fullname,
           screen: "ProfileUserScreen",
         },
       ],
     },
   ];
 
+    
+  // Determine sections based on user role
+  const sections = [
+    ...commonSections.filter(section => section.title === "Phần 3"),  
+    {
+      title: "Phần 1",
+      items: userRole === 'DRIVER' ? driverMenuItems : customerMenuItems,
+    
+    },
+    ...commonSections.filter(section => section.title !== "Phần 3"), 
+  ];
+
   const renderSections = () => {
     return sections.map((section) => (
       <View key={section.title} style={styles.section}>
-        {section.title === "Phần 1" && (
+        {/* Only show banners for drivers */}
+        {section.title === "Phần 3" && userRole === 'DRIVER' && (
         <>
           {showNoLicenseBanner && (
             <View style={[styles.bannerCard, { backgroundColor: "#ffcc00" }]}>
@@ -221,8 +243,6 @@ const [showNoIdentificationBanner, setShowNoIdentificationBanner] = useState(fal
         </>
         )}  
 
-       
-
         {section.items.map((item) => (
           <View key={item.id}>
             <TouchableOpacity
@@ -276,6 +296,7 @@ const [showNoIdentificationBanner, setShowNoIdentificationBanner] = useState(fal
       </View>
     ));
   };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView}>

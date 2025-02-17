@@ -23,6 +23,7 @@ const HomeScreen = () => {
   const [userInfo, setUserInfo] = useState({});
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
   const navigation = useNavigation();
+    const [userRole, setUserRole] = useState(null);
 
   useEffect(() => {
     (async () => {
@@ -39,6 +40,10 @@ const HomeScreen = () => {
 
   useEffect(() => {
     const fetchUserInfo = async () => {
+      const userInfoString = await AsyncStorage.getItem("userInfo");
+      const userRole = JSON.parse(userInfoString)?.data?.role;
+      setUserRole(userRole); // Set role in stat
+console.log(userRole);
       const data = await getUserInfo();
       setUserInfo(data);
     };
@@ -46,9 +51,9 @@ const HomeScreen = () => {
   }, []);
 
   const banners = [
-    { id: 1, image: require("../../assets/BgcLogin.jpg") },
+    { id: 1, image: require("../../assets/zzz.jpg") },
     { id: 2, image: require("../../assets/BgcLogin.jpg") },
-    { id: 3, image: require("../../assets/BgcLogin.jpg") },
+    { id: 3, image: require("../../assets/ccc.jpg") },
   ];
 
   const bannersSale = [
@@ -57,7 +62,7 @@ const HomeScreen = () => {
     { id: 3, image: require("../../assets/saleRan.jpg") },
   ];
 
-  const quickActions = [
+  const quickActionsCustomer = [
     {
       id: 1,
       icon: "car-outline",
@@ -82,11 +87,45 @@ const HomeScreen = () => {
     },
     {
       id: 4,
-      icon: "business-outline",
+      icon: "chatbubble-outline",
       label: "Chat",
       color: "#eab308",
       navigate: "ChatDriver",
     },
+  ];
+
+
+  const quickActionsDriver = [
+    {
+      id: 1,
+      icon: "calendar-outline", // Đổi từ car-outline sang calendar-outline cho "Đặt Lịch"
+      label: "Đặt Lịch",
+      color: "#2563eb",
+      navigate: "Schedule",
+    },
+    {
+      id: 2,
+      icon: "clipboard-outline", // Đổi từ gift-outline sang clipboard-outline cho "Đơn Hàng Mới"
+      label: "Đơn Hàng Mới",
+      color: "#dc2626",
+      navigate: "RightTrip",
+    },
+    {
+      id: 3,
+      icon: "list-outline", // Đổi từ home-outline sang list-outline cho "Danh Sách Hành Trình"
+      label: "Danh Sách Hành Trình",
+      color: "#16a34a",
+      navigate: "ScheduleListScreen",
+    },
+    {
+      id: 4,
+      icon: "chatbubble-outline", // Đổi từ business-outline sang chatbubble-outline cho "Chat"
+      label: "Chat",
+      color: "#eab308",
+      navigate: "ChatDriver",
+    },
+  
+  
   ];
   const renderBanner = () => (
     <ScrollView
@@ -122,6 +161,9 @@ const HomeScreen = () => {
           <Text style={styles.pointsText}>12 ✓</Text>
         </TouchableOpacity>
       </View>
+
+       {/* Check if userRole is 'CUSTOMER' */}
+    {userRole === 'CUSTOMER' && (
       <TouchableOpacity
         style={styles.searchBar}
         onPress={() => navigation.navigate("Booking")}
@@ -129,6 +171,9 @@ const HomeScreen = () => {
         <Ionicons name="add-outline" size={24} color="#00b5ec" />
         <Text style={styles.searchText}>Tạo đơn hàng?</Text>
       </TouchableOpacity>
+
+      
+        )}
 
       {/* Nút Chat */}
       {/* <TouchableOpacity 
@@ -141,32 +186,38 @@ const HomeScreen = () => {
     </View>
   );
 
-  const renderQuickActions = () => (
-    <View style={styles.quickActionsContainer}>
-      {quickActions.map((action) => (
-        <TouchableOpacity
-          key={action.id}
-          style={styles.quickAction}
-          onPress={() => navigation.navigate(action.navigate)}
-        >
-          <View
-            style={[
-              styles.actionIcon,
-              { backgroundColor: `${action.color}15` },
-            ]}
+  const renderQuickActions = () => {
+    const quickActionsList =
+      userRole === "DRIVER" ? quickActionsDriver : quickActionsCustomer;
+  
+    return (
+      <View style={styles.quickActionsContainer}>
+        {quickActionsList.map((action) => (
+          <TouchableOpacity
+            key={action.id}
+            style={styles.quickAction}
+            onPress={() => navigation.navigate(action.navigate)}
           >
-            <Ionicons name={action.icon} size={24} color={action.color} />
-            {action.hot && (
-              <View style={styles.hotBadge}>
-                <Text style={styles.hotText}>Hot</Text>
-              </View>
-            )}
-          </View>
-          <Text style={styles.actionLabel}>{action.label}</Text>
-        </TouchableOpacity>
-      ))}
-    </View>
-  );
+            <View
+              style={[
+                styles.actionIcon,
+                { backgroundColor: `${action.color}15` },
+              ]}
+            >
+              <Ionicons name={action.icon} size={24} color={action.color} />
+              {action.hot && (
+                <View style={styles.hotBadge}>
+                  <Text style={styles.hotText}>Hot</Text>
+                </View>
+              )}
+            </View>
+            <Text style={styles.actionLabel}>{action.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    );
+  };
+  
 
   const renderPromotions = () => (
     <View style={styles.promotionsContainer}>
@@ -243,7 +294,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   greeting: {
-    fontSize: 14,
+    fontSize: 18,
     color: "#6b7280",
     marginBottom: 4,
   },
