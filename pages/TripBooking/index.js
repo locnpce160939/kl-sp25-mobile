@@ -27,7 +27,7 @@ import { Dropdown } from "react-native-element-dropdown";
 import { BASE_URl } from "../../configUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Icon from "react-native-vector-icons/MaterialIcons";
@@ -57,6 +57,7 @@ const TripBooking = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [resultLocation, setResultLocation] = useState([]);
+  const [totalPrice, setTotalPrice] = useState([]);
   const mapViewRef = useRef(null);
   // Error states
   const [errors, setErrors] = useState({
@@ -475,6 +476,81 @@ const TripBooking = () => {
     </TouchableOpacity>
   );
 
+  const getPrice = async () => {
+    try {
+      let token = await AsyncStorage.getItem("token");
+      const origin = `${pickupLocation.latitude},${pickupLocation.longitude}`;
+      const destination = `${dropoffLocation.latitude},${dropoffLocation.longitude}`;
+      const weight = parseInt(capacity);
+      const res = await axios.get(
+        `${BASE_URl}/api/tripBookings/direction?origin=${origin}&destination=${destination}&weight=${weight}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      const result = res.data.data;
+      setTotalPrice(result);
+    } catch (error) {
+      console.error(
+        "Error:",
+        error.response ? error.response.data : error.message
+      );
+    }
+  };
+
+  useEffect(() => {
+    if (pickupLocation && dropoffLocation && capacity) {
+      getPrice(pickupLocation, dropoffLocation, capacity);
+    }
+  }, [pickupLocation, dropoffLocation, capacity]);
+
+  const renderPrice = () => {
+    if (totalPrice.length !== 0) {
+      return (
+        <View style={styles.priceContainer}>
+          <View style={styles.showPrice}>
+            <View style={styles.priceRow}>
+              <View style={styles.iconContainer}>
+                <Icon
+                  name="directions-car"
+                  size={24}
+                  color="#00b5ec"
+                />
+              </View>
+              <View style={styles.priceInfo}>
+                <Text style={styles.priceLabel}>Quãng đường</Text>
+                <Text style={styles.priceValue}>
+                  {totalPrice.expectedDistance} km
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.divider} />
+
+            <View style={styles.priceRow}>
+              <View style={styles.iconContainer}>
+                <Icon name="payment" size={24} color="#00b5ec" />
+              </View>
+              <View style={styles.priceInfo}>
+                <Text style={styles.priceLabel}>Tổng tiền</Text>
+                <Text style={styles.priceValue}>
+                  {totalPrice.price.toLocaleString("vi-VN", {
+                    style: "currency",
+                    currency: "VND",
+                  })}
+                </Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      );
+    }
+    return null;
+  };
+
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <KeyboardAvoidingView
@@ -587,6 +663,8 @@ const TripBooking = () => {
                 <Text style={styles.errorText}>{errors.capacity}</Text>
               )}
             </View>
+
+            {renderPrice()}
 
             <TouchableOpacity
               style={styles.submitButton}
@@ -1013,6 +1091,56 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
+  },
+  priceContainer: {
+    paddingHorizontal: 16,
+    width: "100%",
+  },
+  showPrice: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    elevation: 4,
+    shadowColor: "#000000",
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+  },
+  priceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 8,
+  },
+  iconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#EDF3FF",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  priceInfo: {
+    flex: 1,
+  },
+  priceLabel: {
+    fontSize: 14,
+    color: "#666666",
+    marginBottom: 4,
+  },
+  priceValue: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#222222",
+  },
+  divider: {
+    height: 1,
+    backgroundColor: "#EEEEEE",
+    marginVertical: 12,
   },
 });
 

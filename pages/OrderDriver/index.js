@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
   View,
-  Text,
+  Text,modalContainer,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
@@ -18,6 +18,8 @@ import io from "socket.io-client";
 import { useNavigation } from "@react-navigation/native";
 import { BASE_URl } from "../../configUrl";
 import { getTripBookingStatusText, getAgreementStatusText, getPaymentStatusText } from '../../components/StatusMapper';
+import ScheduleScreen from "../Schedule/scheduleScreen";
+
 
 const OrderDriver = ({ route }) => {
   const [userId, setUserId] = useState(null);
@@ -282,6 +284,19 @@ const OrderDriver = ({ route }) => {
     const navigation = useNavigation();
     if (!selectedBooking) return null;
 
+    const handleChatPress = () => {
+      setModalVisible(false); // First close the modal
+      // Use setTimeout to ensure modal is closed before navigation
+      setTimeout(() => {
+        navigation.navigate("ChatDriverReal", {
+          driverId: selectedBooking.driver.accountId,
+          customerName: selectedBooking.customer.fullName,
+          bookingId: selectedBooking.bookingId,
+          scheduleId: selectedBooking.scheduleId,
+        });
+      }, 300); // Add a small delay to ensure smooth transition
+    };
+
     return (
       <Modal
         visible={modalVisible}
@@ -372,21 +387,14 @@ const OrderDriver = ({ route }) => {
 
                     {/* Thêm nút chat */}
                     <TouchableOpacity
-                      style={styles.chatButton}
-                      onPress={() => {
-                        console.log("Booking ID:", selectedBooking.bookingId); // This will show the correct booking ID
-                        navigation.navigate("ChatDriverReal", {
-                          driverId: selectedBooking.customer.accountId, // Changed from id to accountId
-                          driverName: selectedBooking.customer.fullName,
-                          bookingId: selectedBooking.bookingId,
-                        });
-                      }}
-                    >
-                      <Icon name="chat" size={20} color="#fff" />
-                      <Text style={styles.chatButtonText}>
-                        Chat with Customer
-                      </Text>
-                    </TouchableOpacity>
+          style={styles.chatButton}
+          onPress={handleChatPress}
+        >
+          <Icon name="chat" size={20} color="#fff" />
+          <Text style={styles.chatButtonText}>
+            Chat with Customer
+          </Text>
+        </TouchableOpacity>
                   </View>
                 </View>
               </View>
@@ -605,6 +613,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   modalContainer: {
+    marginTop: 24,
     flex: 1,
     backgroundColor: "#f8f9fa",
   },

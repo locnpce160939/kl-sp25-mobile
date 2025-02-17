@@ -304,9 +304,26 @@ const Order = () => {
     </View>
   );
 
+  
+
   const renderDetailModal = () => {
     const navigation = useNavigation();
     if (!selectedBooking) return null;
+
+
+    const handleChatPress = () => {
+      setModalVisible(false); // First close the modal
+      // Use setTimeout to ensure modal is closed before navigation
+      setTimeout(() => {
+        navigation.navigate("ChatCustomer", {
+          driverId: selectedBooking.driver.accountId,
+          driverName: selectedBooking.driver.fullName,
+          bookingId: selectedBooking.bookingId,
+        });
+      }, 300); // Add a small delay to ensure smooth transition
+    };
+
+
     return (
       <Modal
         visible={modalVisible}
@@ -397,21 +414,14 @@ const Order = () => {
 
                     {/* Thêm nút chat */}
                     <TouchableOpacity
-                      style={styles.chatButton}
-                      onPress={() => {
-                        console.log("Booking ID:", selectedBooking.bookingId); // This will show the correct booking ID
-                        navigation.navigate("ChatCustomer", {
-                          driverId: selectedBooking.driver.accountId, // Changed from id to accountId
-                          driverName: selectedBooking.driver.fullName,
-                          bookingId: selectedBooking.bookingId,
-                        });
-                      }}
-                    >
-                      <Icon name="chat" size={20} color="#fff" />
-                      <Text style={styles.chatButtonText}>
-                        Chat with Driver
-                      </Text>
-                    </TouchableOpacity>
+          style={styles.chatButton}
+          onPress={handleChatPress}
+        >
+          <Icon name="chat" size={20} color="#fff" />
+          <Text style={styles.chatButtonText}>
+            Chat with Driver
+          </Text>
+        </TouchableOpacity>
                   </View>
                 </View>
               </View>
@@ -553,7 +563,6 @@ const Order = () => {
         </View>
       </Modal>
     );
-    F;
   };
   if (loading) {
     return (
@@ -642,6 +651,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   modalContainer: {
+    marginTop: 24,
     flex: 1,
     backgroundColor: "#f8f9fa",
   },
