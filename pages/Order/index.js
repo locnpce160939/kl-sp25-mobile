@@ -635,6 +635,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   modalContainer: {
+    marginTop: 24,
     flex: 1,
     backgroundColor: "#f8f9fa",
   },
