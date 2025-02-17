@@ -57,6 +57,7 @@ const TripBooking = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [resultLocation, setResultLocation] = useState([]);
+  const [totalPrice, setTotalPrice] = useState([]);
   const mapViewRef = useRef(null);
   // Error states
   const [errors, setErrors] = useState({
@@ -475,6 +476,56 @@ const TripBooking = () => {
     </TouchableOpacity>
   );
 
+  const getPrice = async () => {
+    try {
+      let token = await AsyncStorage.getItem("token");
+      const origin = `${pickupLocation.latitude},${pickupLocation.longitude}`;
+      const destination = `${dropoffLocation.latitude},${dropoffLocation.longitude}`;
+      const weight = parseInt(capacity);
+      const res = await axios.get(
+        `${BASE_URl}/api/tripBookings/direction?origin=${origin}&destination=${destination}&weight=${weight}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      const result = res.data.data;
+      setTotalPrice(result);
+    } catch (error) {
+      console.error(
+        "Error:",
+        error.response ? error.response.data : error.message
+      );
+    }
+  };
+
+  useEffect(() => {
+    if (pickupLocation && dropoffLocation && capacity) {
+      getPrice(pickupLocation, dropoffLocation, capacity);
+    }
+  }, [pickupLocation, dropoffLocation, capacity]);
+
+  const renderPrice = () => {
+    if (totalPrice.length != 0) {
+      return (
+        <View style={styles.showPrice}>
+          <Text style={styles.priceText}>
+            Quãng đường: {totalPrice.expectedDistance} Km
+          </Text>
+          <Text style={styles.priceText}>
+            Tổng tiền:{" "}
+            {totalPrice.price.toLocaleString("vi-VN", {
+              style: "currency",
+              currency: "VND",
+            })}
+          </Text>
+        </View>
+      );
+    }
+  };
+
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <KeyboardAvoidingView
@@ -587,6 +638,8 @@ const TripBooking = () => {
                 <Text style={styles.errorText}>{errors.capacity}</Text>
               )}
             </View>
+
+            {renderPrice()}
 
             <TouchableOpacity
               style={styles.submitButton}
@@ -1013,6 +1066,26 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
+  },
+  showPrice: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    paddingVertical: 20,
+    paddingHorizontal: 24,
+    marginBottom: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 4, // Bóng cho Android
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+  },
+  priceText: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#222",
+    marginBottom: 6,
   },
 });
 
