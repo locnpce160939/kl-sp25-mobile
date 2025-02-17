@@ -141,6 +141,17 @@ const [showNoIdentificationBanner, setShowNoIdentificationBanner] = useState(fal
         { id: 11, icon: "map-outline", label: "Đóng góp bản đồ" },
       ],
     },
+    {
+      title: "Phần 3",
+      items: [
+        {
+          id: 12,
+          icon: "person-outline",
+          label: "Thông tin cá nhân",
+          screen: "ProfileUserScreen",
+        },
+      ],
+    },
   ];
 
   const renderSections = () => {

@@ -22,6 +22,7 @@ import { useNavigation } from "@react-navigation/native";
 import { CloudCog } from "lucide-react-native";
 import { BASE_URl } from "../../configUrl";
 import { FlatList, GestureHandlerRootView } from "react-native-gesture-handler";
+import HomeNavigation from "../../navigation/HomeNavigation";
 const Order = () => {
   const [bookings, setBookings] = useState([]);
   const [selectedBooking, setSelectedBooking] = useState(null);
@@ -41,6 +42,7 @@ const Order = () => {
   const socketRef = useRef(null);
   const lastSendTime = useRef(0);
   const sendInterval = 1000;
+
   useEffect(() => {
     fetchBookings();
   }, []);
@@ -150,6 +152,26 @@ const Order = () => {
       newSocket.disconnect();
     };
   }, []);
+  // Header component
+   
+
+  const renderHeader = () => {
+    const navigation = useNavigation(); // Lấy navigation trong header
+    return (
+      <View style={styles.header}>
+        <TouchableOpacity
+          onPress={() => navigation.navigate("HomeScreen")}
+          style={styles.backButton}
+        >
+          <Icon name="arrow-back" size={24} color="#000" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Order</Text>
+        <View style={styles.placeholder} />
+      </View>
+    );
+  };
+  
+  
   const renderBookingCard = (booking) => (
     <TouchableOpacity
       key={booking.bookingId}
@@ -526,7 +548,6 @@ const Order = () => {
         </View>
       </Modal>
     );
-    F;
   };
   if (loading) {
     return (
@@ -544,7 +565,10 @@ const Order = () => {
   }
   return (
     <View style={styles.container}>
-      <ScrollView>{bookings.map(renderBookingCard)}</ScrollView>
+      {renderHeader()}
+      <ScrollView style={styles.scrollContent}>
+        {bookings.map(renderBookingCard)}
+      </ScrollView>
       {renderDetailModal()}
     </View>
   );
@@ -988,6 +1012,34 @@ const styles = StyleSheet.create({
     marginTop: 26,
     width: "100%",
     justifyContent: "center",
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    backgroundColor: 'white',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#000',
+  },
+  backButton: {
+    padding: 8,
+  },
+  placeholder: {
+    width: 40,
+  },
+  scrollContent: {
+    flex: 1,
   },
 });
 export default Order;
