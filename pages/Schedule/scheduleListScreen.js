@@ -16,6 +16,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AuthContext } from "../../contexts/AuthContext";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { useNavigation } from "@react-navigation/native";
+import { getScheduleStatusText } from "../../components/StatusMapper";
 
 const ScheduleListScreen = () => {
   const [schedules, setSchedules] = useState([]);
@@ -98,12 +99,12 @@ const ScheduleListScreen = () => {
         <View
           style={[
             styles.statusBadge,
-            item.status === "Waiting for delivery"
+            getScheduleStatusText(item.status) === "Đang chờ giao hàng"
               ? styles.waitingStatus
               : styles.activeStatus,
           ]}
         >
-          <Text style={styles.statusText}>{item.status}</Text>
+          <Text style={styles.statusText}>{getScheduleStatusText(item.status)}</Text>
         </View>
       </View>
 

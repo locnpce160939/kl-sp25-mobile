@@ -23,6 +23,11 @@ import { CloudCog } from "lucide-react-native";
 import { BASE_URl } from "../../configUrl";
 import { FlatList, GestureHandlerRootView } from "react-native-gesture-handler";
 import HomeNavigation from "../../navigation/HomeNavigation";
+import {
+  getTripBookingStatusText,
+  getAgreementStatusText,
+  getPaymentStatusText,
+} from "../../components/StatusMapper";
 const Order = () => {
   const [bookings, setBookings] = useState([]);
   const [selectedBooking, setSelectedBooking] = useState(null);
@@ -180,7 +185,7 @@ const Order = () => {
     >
       <View style={styles.cardHeader}>
         <Text style={styles.bookingId}>Booking #{booking.bookingId}</Text>
-        <Text style={styles.status}>{booking.status}</Text>
+        <Text style={styles.status}>{getTripBookingStatusText(booking.status)}</Text>
       </View>
       <View style={styles.cardContent}>
         <View style={styles.locationContainer}>
@@ -343,7 +348,7 @@ const Order = () => {
               <View style={styles.statusHeader}>
                 <Icon name="local-taxi" size={24} color="#00b5ec" />
                 <Text style={styles.statusTitle}>
-                  Status: {selectedBooking.status}
+                  Status: {getTripBookingStatusText(selectedBooking.status)}
                 </Text>
               </View>
               <View style={styles.bookingMeta}>
@@ -430,14 +435,14 @@ const Order = () => {
                     <Icon name="check-circle" size={20} color="#28a745" />
                     <Text style={styles.agreementLabel}>Agreement Status</Text>
                     <Text style={styles.agreementValue}>
-                      {selectedBooking.tripAgreement.agreementStatus}
+                      {getAgreementStatusText(selectedBooking.tripAgreement.agreementStatus)}
                     </Text>
                   </View>
                   <View style={styles.agreementItem}>
                     <Icon name="payment" size={20} color="#ffc107" />
                     <Text style={styles.agreementLabel}>Payment Status</Text>
                     <Text style={styles.agreementValue}>
-                      {selectedBooking.tripAgreement.paymentStatus}
+                      {getPaymentStatusText(selectedBooking.tripAgreement.paymentStatus)}
                     </Text>
                   </View>
                   <View style={styles.agreementItem}>
@@ -583,6 +588,7 @@ const Order = () => {
     </View>
   );
 };
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,

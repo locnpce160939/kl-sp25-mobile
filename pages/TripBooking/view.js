@@ -10,6 +10,7 @@ import {
 import axios from "axios";
 import { BASE_URl } from "../../configUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getTripBookingStatusText } from '../../components/StatusMapper';
 
 const TripCard = ({ booking }) => {
   const formatDate = (dateString) => {
@@ -29,7 +30,7 @@ const TripCard = ({ booking }) => {
             },
           ]}
         >
-          <Text style={styles.statusText}>{booking.status}</Text>
+          <Text style={styles.statusText}>{getTripBookingStatusText(booking?.status)}</Text>
         </View>
       </View>
 

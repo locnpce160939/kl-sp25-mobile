@@ -11,10 +11,20 @@ const DatePickerField = ({ label, value, onChange, error }) => {
     return d.toISOString().split('T')[0];
   };
 
+  const minDate = new Date(new Date().getFullYear() - 100, 0, 1);
+  const maxDate = new Date();
+
+  const isValidDate = (date) => {
+    return date >= minDate && date <= maxDate;
+  };
+
   const handleDateChange = (event, selectedDate) => {
     if (Platform.OS === 'android') {
       setShow(false);
       if (selectedDate && event.type === "set") {
+        if (!isValidDate(selectedDate)) {
+          return onChange("Ngày không hợp lệ");
+        }
         onChange(formatDate(selectedDate));
       }
     } else {
@@ -24,6 +34,9 @@ const DatePickerField = ({ label, value, onChange, error }) => {
 
   const handleIOSConfirm = () => {
     setShow(false);
+    if (!isValidDate(tempDate)) {
+      return onChange("Ngày không hợp lệ");
+    }
     onChange(formatDate(tempDate));
   };
 
