@@ -9,6 +9,10 @@ import {
   Platform,
   StyleSheet,
   SafeAreaView,
+  StatusBar,
+  Animated,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import io from "socket.io-client";
@@ -21,7 +25,9 @@ const suggestedMessages = [
   "Tôi đang đợi ở điểm nhận hàng",
   "Bạn sắp đến chưa?",
   "Cảm ơn bạn!",
-  "khi nào bạn tới thì nhớ gọi cho tôi !!!",
+  "Khi nào bạn tới thì nhớ gọi cho tôi!",
+  "Tôi đang ở đây rồi",
+  "Bạn có thể đến sớm hơn không?",
 ];
 
 function getUserIdFromToken(token) {
@@ -35,119 +41,150 @@ function getUserIdFromToken(token) {
 }
 
 const ChatCustomer = ({ route, navigation }) => {
-  const { driverId, driverName, bookingId } = route.params;
+  const { driverId, driverName, driverPhone, bookingId } = route.params;
+  
+  // State management
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState("");
   const [token, setToken] = useState(null);
   const [currentUserId, setCurrentUserId] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isConnected, setIsConnected] = useState(false);
+  const [driverStatus, setDriverStatus] = useState("Đang hoạt động");
+  const [showQuickMessages, setShowQuickMessages] = useState(true);
+  
+  // Refs
   const socket = useRef(null);
   const flatListRef = useRef(null);
-  const [showQuickMessages, setShowQuickMessages] = useState(true);
+  const quickMessagesHeight = useRef(new Animated.Value(80)).current;
+  const inputRef = useRef(null);
 
-  const scrollToBottom = () => {
-    if (flatListRef.current && messages.length > 0) {
-      flatListRef.current.scrollToEnd({ animated: true });
-    }
-  };
-
-  const handleSendMessage = (messageText) => {
-    if (messageText.trim().length > 0 && socket.current) {
-      const newMessage = {
-        id: Date.now().toString(),
-        sender: "customer",
-        text: messageText.trim(),
-        timestamp: new Date().toISOString(),
-      };
-
-      setMessages((prevMessages) => [...prevMessages, newMessage]);
-
-      const payload = {
-        messageType: "MESSAGE_SEND",
-        content: JSON.stringify({
-          tripBookingId: bookingId,
-          message: messageText.trim(),
-        }),
-        room: currentUserId.toString(),
-        username: "customer_1028",
-      };
-
-      socket.current.emit("MESSAGE_SEND", payload);
-      setTimeout(scrollToBottom, 100);
-    }
-  };
-
-  const sendMessage = () => {
-    if (inputMessage.trim().length > 0) {
-      handleSendMessage(inputMessage);
-      setInputMessage("");
-    }
-  };
-
-  const sendSuggestedMessage = (message) => {
-    handleSendMessage(message);
-  };
-
-  useEffect(() => {
-    const fetchToken = async () => {
-      try {
-        const userInfoString = await AsyncStorage.getItem("userInfo");
-        const accessToken = JSON.parse(userInfoString)?.data?.access_token;
-        setToken(accessToken);
-        if (accessToken) {
-          const userId = getUserIdFromToken(accessToken);
-          setCurrentUserId(userId);
-        }
-      } catch (error) {
-        console.error("Error fetching token:", error);
-      }
-    };
-
-    fetchToken();
-  }, []);
-
-  useEffect(() => {
+  // Handle socket connection and disconnection
+  const connectSocket = () => {
     if (!token || !currentUserId) return;
 
     socket.current = io(SOCKET_URL, {
-      query: { username: "customer_1028", room: currentUserId.toString() },
+      query: { 
+        username: `customer_${currentUserId}`, 
+        room: currentUserId.toString() 
+      },
       transports: ["websocket"],
       upgrade: false,
       forceNew: true,
     });
 
-    fetchMessages();
-
-    socket.current.on("MESSAGE_RECEIVED", (data) => {
-      try {
-        const content = JSON.parse(data.content);
-        setMessages((prevMessages) => [
-          ...prevMessages,
-          {
-            id: Date.now().toString(),
-            sender: "driver",
-            text: content.message,
-            timestamp: new Date().toISOString(),
-          },
-        ]);
-        setTimeout(scrollToBottom, 100);
-      } catch (error) {
-        console.error("Error parsing message:", error);
-      }
+    socket.current.on("connect", () => {
+      setIsConnected(true);
+      console.log("Socket connected");
     });
 
-    socket.current.on("connect_error", (error) => {
-      console.error("Connection error:", error);
+    socket.current.on("disconnect", () => {
+      setIsConnected(false);
+      console.log("Socket disconnected");
     });
 
-    return () => {
-      if (socket.current) {
-        socket.current.disconnect();
-      }
+    socket.current.on("MESSAGE_RECEIVED", handleIncomingMessage);
+    socket.current.on("DRIVER_STATUS_CHANGE", handleDriverStatusChange);
+    socket.current.on("connect_error", handleConnectionError);
+  };
+
+  const handleIncomingMessage = (data) => {
+    try {
+      const content = JSON.parse(data.content);
+      const newMessage = {
+        id: Date.now().toString(),
+        sender: "driver",
+        text: content.message,
+        timestamp: new Date().toISOString(),
+      };
+      
+      setMessages(prev => [...prev, newMessage]);
+      scrollToBottom();
+    } catch (error) {
+      console.error("Error parsing message:", error);
+    }
+  };
+
+  const handleDriverStatusChange = (status) => {
+    setDriverStatus(status);
+  };
+
+  const handleConnectionError = (error) => {
+    console.error("Connection error:", error);
+    Alert.alert(
+      "Lỗi kết nối",
+      "Không thể kết nối với máy chủ. Vui lòng thử lại sau.",
+      [{ text: "OK" }]
+    );
+  };
+
+  // Message handling
+  const handleSendMessage = (messageText) => {
+    if (!messageText.trim() || !socket.current) return;
+
+    const newMessage = {
+      id: Date.now().toString(),
+      sender: "customer",
+      text: messageText.trim(),
+      timestamp: new Date().toISOString(),
     };
-  }, [token, currentUserId, bookingId]);
 
+    setMessages(prev => [...prev, newMessage]);
+
+    const payload = {
+      messageType: "MESSAGE_SEND",
+      content: JSON.stringify({
+        tripBookingId: bookingId,
+        message: messageText.trim(),
+      }),
+      room: currentUserId.toString(),
+      username: `customer_${currentUserId}`,
+    };
+
+    socket.current.emit("MESSAGE_SEND", payload);
+    scrollToBottom();
+  };
+
+  const sendMessage = () => {
+    if (inputMessage.trim()) {
+      handleSendMessage(inputMessage);
+      setInputMessage("");
+      inputRef.current?.blur();
+    }
+  };
+
+  const scrollToBottom = () => {
+    setTimeout(() => {
+      flatListRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+  };
+
+  // Animation handlers
+  const toggleQuickMessages = () => {
+    setShowQuickMessages(!showQuickMessages);
+    Animated.timing(quickMessagesHeight, {
+      toValue: showQuickMessages ? 0 : 80,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
+  };
+
+  // Handle phone call
+  const handlePhoneCall = () => {
+    if (driverPhone) {
+      // Use your preferred method to handle phone calls
+      // For example: Linking.openURL(`tel:${driverPhone}`);
+      Alert.alert("Gọi tài xế", `Gọi ${driverName} - ${driverPhone}?`, [
+        { text: "Hủy", style: "cancel" },
+        { text: "Gọi", onPress: () => {} },
+      ]);
+    }
+  };
+
+  // Data fetching
   const fetchMessages = async () => {
     if (!token) return;
+    
     try {
       const response = await fetch(`${HOST}/api/chat-message/${bookingId}`, {
         method: "GET",
@@ -156,6 +193,7 @@ const ChatCustomer = ({ route, navigation }) => {
           "Content-Type": "application/json",
         },
       });
+
       const result = await response.json();
 
       if (result.code === 200) {
@@ -166,30 +204,97 @@ const ChatCustomer = ({ route, navigation }) => {
           timestamp: msg.createAt,
         }));
         setMessages(formattedMessages);
-        setTimeout(scrollToBottom, 100);
+        scrollToBottom();
       }
     } catch (error) {
       console.error("Error fetching messages:", error);
+      Alert.alert(
+        "Lỗi",
+        "Không thể tải tin nhắn. Vui lòng thử lại.",
+        [{ text: "OK" }]
+      );
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  // Component lifecycle
+  useEffect(() => {
+    const initialize = async () => {
+      try {
+        const userInfoString = await AsyncStorage.getItem("userInfo");
+        const accessToken = JSON.parse(userInfoString)?.data?.access_token;
+        setToken(accessToken);
+        
+        if (accessToken) {
+          const userId = getUserIdFromToken(accessToken);
+          setCurrentUserId(userId);
+        }
+      } catch (error) {
+        console.error("Error initializing:", error);
+        Alert.alert(
+          "Lỗi",
+          "Không thể khởi tạo ứng dụng. Vui lòng thử lại.",
+          [{ text: "OK" }]
+        );
+      }
+    };
+
+    initialize();
+
+    return () => {
+      if (socket.current) {
+        socket.current.disconnect();
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (token && currentUserId) {
+      connectSocket();
+      fetchMessages();
+    }
+  }, [token, currentUserId]);
+
+  // Render functions
   const renderMessage = ({ item }) => {
     const isCustomer = item.sender === "customer";
+    
     return (
       <View
-        style={[
-          styles.messageContainer,
-          isCustomer ? styles.customerMessage : styles.driverMessage,
-        ]}
-      >
-        <Text 
+      style={[
+        styles.messageContainer,
+        isCustomer ? styles.customerMessage : styles.driverMessage,
+      ]}
+    >
+      {!isCustomer && (
+        <View style={styles.avatarContainer}>
+          <Text style={styles.avatarText}>
+            {driverName.charAt(0).toUpperCase()}
+          </Text>
+        </View>
+      )}
+      
+      <View style={[
+        styles.messageContent,
+        isCustomer ? styles.customerContent : styles.driverContent,
+      ]}>
+        <View
           style={[
-            styles.messageText, 
-            !isCustomer && styles.driverMessageText
+            styles.messageBubble,
+            isCustomer ? styles.customerBubble : styles.driverBubble,
           ]}
         >
-          {item.text}
-        </Text>
+          <Text
+            style={[
+              styles.messageText,
+              isCustomer ? styles.customerMessageText : styles.driverMessageText,
+            ]}
+          >
+            {item.text}
+          </Text>
+        </View>
+        
         <Text
           style={[
             styles.timestamp,
@@ -202,26 +307,59 @@ const ChatCustomer = ({ route, navigation }) => {
           })}
         </Text>
       </View>
+    </View>
+  );
+};
+
+  const renderQuickMessage = ({ item }) => (
+    <TouchableOpacity
+      style={styles.quickMessageButton}
+      onPress={() => {
+        handleSendMessage(item);
+        toggleQuickMessages();
+      }}
+    >
+      <Text style={styles.quickMessageText}>{item}</Text>
+    </TouchableOpacity>
+  );
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#2B2D42" />
+      </View>
     );
-  };
+  }
 
   return (
     <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+      
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
-          onPress={() => navigation.navigate("Order")}
-          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+          style={styles.headerButton}
         >
-          <Icon name="arrow-back" size={24} color="#00b5ec" />
+          <Icon name="arrow-back" size={24} color="#2B2D42" />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>{driverName}</Text>
+        <View style={styles.headerInfo}>
+          <Text style={styles.headerName}>{driverName}</Text>
+          <Text style={styles.headerStatus}>
+            {isConnected ? driverStatus : "Đang kết nối lại..."}
+          </Text>
+        </View>
 
-        <TouchableOpacity style={styles.callButton}>
-          <Icon name="phone" size={24} color="#00b5ec" />
+        <TouchableOpacity 
+          style={styles.headerButton}
+          onPress={handlePhoneCall}
+        >
+          <Icon name="phone" size={24} color="#2B2D42" />
         </TouchableOpacity>
       </View>
 
+      {/* Messages List */}
       <FlatList
         ref={flatListRef}
         data={messages}
@@ -232,67 +370,61 @@ const ChatCustomer = ({ route, navigation }) => {
         onLayout={scrollToBottom}
       />
 
-      <View style={styles.suggestedMessagesWrapper}>
-        <View style={styles.suggestedMessagesHeader}>
-          <Text style={styles.suggestedMessagesTitle}></Text>
-          <TouchableOpacity 
-            onPress={() => setShowQuickMessages(!showQuickMessages)}
-            style={styles.toggleQuickMessagesButton}
+      {/* Quick Messages */}
+      <Animated.View style={[styles.quickMessages, { height: quickMessagesHeight }]}>
+        <FlatList
+          data={suggestedMessages}
+          renderItem={renderQuickMessage}
+          keyExtractor={(item, index) => index.toString()}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.quickMessagesList}
+        />
+      </Animated.View>
+
+      {/* Input Area */}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+      >
+        <View style={styles.inputContainer}>
+          <TouchableOpacity
+            onPress={toggleQuickMessages}
+            style={styles.quickMessagesButton}
           >
             <Icon 
-              name={showQuickMessages ? "keyboard-arrow-up" : "keyboard-arrow-down"} 
+              name={showQuickMessages ? "keyboard-arrow-down" : "keyboard-arrow-up"} 
               size={24} 
-              color="#00b5ec" 
+              color="#2B2D42" 
+            />
+          </TouchableOpacity>
+          
+          <TextInput
+            ref={inputRef}
+            style={styles.input}
+            value={inputMessage}
+            onChangeText={setInputMessage}
+            placeholder="Nhập tin nhắn..."
+            placeholderTextColor="#8D99AE"
+            multiline
+            maxHeight={100}
+          />
+          
+          <TouchableOpacity
+            onPress={sendMessage}
+            style={[
+              styles.sendButton,
+              inputMessage.trim().length > 0 && styles.sendButtonActive
+            ]}
+            disabled={inputMessage.trim().length === 0}
+          >
+            <Icon
+              name="send"
+              size={24}
+              color={inputMessage.trim().length > 0 ? "#2B2D42" : "#8D99AE"}
             />
           </TouchableOpacity>
         </View>
-
-        {showQuickMessages && (
-          <View style={styles.suggestedMessagesContainer}>
-            <FlatList
-              data={suggestedMessages}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              keyExtractor={(item, index) => index.toString()}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.suggestedMessage}
-                  onPress={() => sendSuggestedMessage(item)}
-                >
-                  <Text style={styles.suggestedMessageText}>{item}</Text>
-                </TouchableOpacity>
-              )}
-            />
-          </View>
-        )}
-      </View>
-
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.inputContainer}
-      >
-        <TextInput
-          style={styles.input}
-          value={inputMessage}
-          onChangeText={setInputMessage}
-          placeholder="Nhập tin nhắn..."
-          placeholderTextColor="#999"
-          multiline
-        />
-        <TouchableOpacity
-          onPress={sendMessage}
-          style={[
-            styles.sendButton,
-            inputMessage.trim().length > 0 && styles.sendButtonActive
-          ]}
-          disabled={inputMessage.trim().length === 0}
-        >
-          <Icon
-            name="send"
-            size={24}
-            color={inputMessage.trim().length > 0 ? "#00b5ec" : "#ccc"}
-          />
-        </TouchableOpacity>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -301,160 +433,216 @@ const ChatCustomer = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: "#FFFFFF",
   },
-
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#00b5ec",
+  },
+  
   // Header styles
   header: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#e8e8e8",
-    backgroundColor: "#fff",
+    borderBottomColor: "#EDF2F4",
+    backgroundColor: "#FFFFFF",
     elevation: 2,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
   },
-  backButton: {
+  headerButton: {
     padding: 8,
-    marginRight: 8,
+    borderRadius: 8,
+    backgroundColor: "#EDF2F4",
   },
-  headerTitle: {
+  headerInfo: {
     flex: 1,
+    marginHorizontal: 12,
+  },
+  headerName: {
     fontSize: 18,
     fontWeight: "600",
-    color: "#333",
-    marginHorizontal: 8,
+    color: "#2B2D42",
+    marginBottom: 2,
   },
-  headerRightButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  toggleButton: {
-    padding: 8,
+  headerStatus: {
+    fontSize: 12,
+    color: "#8D99AE",
   },
 
-  // Messages list
+  // Messages styles
   messagesList: {
     padding: 16,
     flexGrow: 1,
   },
   messageContainer: {
-    maxWidth: "80%",
-    marginVertical: 4,
+    flexDirection: "row",
+    marginVertical: 8,
+    width: "100%",
+    justifyContent: "flex-start", // Default alignment for driver messages
+  },
+  
+  customerMessage: {
+    justifyContent: "flex-end", // Align customer messages to the right
+  },
+  
+  driverMessage: {
+    justifyContent: "flex-start", // Align driver messages to the left
+  },
+
+  avatarContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#EDF2F4",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 8,
+  },
+  
+  messageContent: {
+    maxWidth: "70%", // Limit the width of the message content
+  },
+
+  messageBubble: {
     padding: 12,
     borderRadius: 20,
-    elevation: 1,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 1,
+    alignSelf: "flex-start", // Default alignment for the bubble
   },
-  customerMessage: {
-    alignSelf: "flex-end",
+
+  customerBubble: {
     backgroundColor: "#00b5ec",
     borderTopRightRadius: 4,
-    marginLeft: "20%",
+    alignSelf: "flex-end", // Align customer bubbles to the right
   },
-  driverMessage: {
-    alignSelf: "flex-start",
-    backgroundColor: "#f8f9fa",
+
+  driverBubble: {
+    backgroundColor: "#EDF2F4",
     borderTopLeftRadius: 4,
-    marginRight: "20%",
-    borderWidth: 1,
-    borderColor: "#e8e8e8",
+    alignSelf: "flex-start", // Align driver bubbles to the left
+  
   },
   messageText: {
     fontSize: 16,
-    color: "#fff",
     lineHeight: 22,
   },
+  customerMessageText: {
+    color: "#FFFFFF",
+  },
   driverMessageText: {
-    color: "#333",
+    color: "#2B2D42",
   },
   timestamp: {
     fontSize: 11,
     marginTop: 4,
+    marginHorizontal: 12,
   },
   customerTimestamp: {
-    color: "rgba(255, 255, 255, 0.8)",
+    color: "#8D99AE",
     textAlign: "right",
   },
   driverTimestamp: {
-    color: "#999",
+    color: "#8D99AE",
     textAlign: "left",
   },
 
-  // Suggested messages section
-  suggestedMessagesContainer: {
+  // Quick messages styles
+  quickMessages: {
+    backgroundColor: "#FFFFFF",
     borderTopWidth: 1,
-    borderTopColor: "#e8e8e8",
-    backgroundColor: "#fff",
+    borderTopColor: "#EDF2F4",
+    overflow: "hidden",
   },
-  suggestedMessagesHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+  quickMessagesList: {
+    padding: 12,
   },
-  suggestedMessagesTitle: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#666",
-  },
-  suggestedMessagesContent: {
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-  },
-  suggestedMessage: {
-    backgroundColor: "#f0f7ff",
+  quickMessageButton: {
+    backgroundColor: "#EDF2F4",
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 20,
     marginHorizontal: 6,
     borderWidth: 1,
-    borderColor: "rgba(0, 181, 236, 0.12)", // #00b5ec with 12% opacity
+    borderColor: "rgba(43, 45, 66, 0.1)",
   },
-  suggestedMessageText: {
+  quickMessageText: {
     fontSize: 14,
-    color: "#00b5ec",
+    color: "#2B2D42",
     fontWeight: "500",
   },
 
-  // Input section
+  // Input area styles
   inputContainer: {
     flexDirection: "row",
-    padding: 12,
-    borderTopWidth: 1,
-    borderTopColor: "#e8e8e8",
     alignItems: "center",
-    backgroundColor: "#fff",
+    padding: 12,
+    backgroundColor: "#FFFFFF",
+    borderTopWidth: 1,
+    borderTopColor: "#EDF2F4",
+  },
+  quickMessagesButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: "#EDF2F4",
+    marginRight: 8,
   },
   input: {
     flex: 1,
-    backgroundColor: "#f8f9fa",
+    backgroundColor: "#EDF2F4",
     borderRadius: 24,
     paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingVertical: 12,
     marginRight: 8,
-    maxHeight: 100,
     fontSize: 16,
-    color: "#333",
-    borderWidth: 1,
-    borderColor: "#e8e8e8",
+    color: "#2B2D42",
+    maxHeight: 100,
+    minHeight: 45,
   },
   sendButton: {
     padding: 8,
-    borderRadius: 50,
+    borderRadius: 8,
+    backgroundColor: "#EDF2F4",
   },
   sendButtonActive: {
-    backgroundColor: "#f0f7ff",
+    backgroundColor: "#EDF2F4",
   },
+
+  // Connection status styles
+  connectionStatus: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    padding: 4,
+    backgroundColor: "#FF9F1C",
+    alignItems: "center",
+  },
+  connectionStatusText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "500",
+  },
+
+  // Empty state styles
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: "#8D99AE",
+    textAlign: "center",
+    marginTop: 12,
+  },
+  
   
 });
 
