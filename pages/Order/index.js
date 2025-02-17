@@ -526,7 +526,6 @@ const Order = () => {
         </View>
       </Modal>
     );
-    F;
   };
   if (loading) {
     return (
