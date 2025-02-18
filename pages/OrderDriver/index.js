@@ -31,15 +31,8 @@ const OrderDriver = ({ route }) => {
   const [error, setError] = useState(null);
   const [socket, setSocket] = useState(null);
   const [showMap, setShowMap] = useState(false);
-
-  const [location, setLocation] = useState({
-    latitude: 10.762622,
-    longitude: 106.660172,
-  });
-  const [location2, setLocation2] = useState({
-    latitude: 10.762622,
-    longitude: 106.660172,
-  });
+  const [pickupLocation, setPickupLocation] = useState(null);
+  const [dropoffLocation, setDropoffLocation] = useState(null);
   const socketRef = useRef(null);
   const lastSendTime = useRef(0);
   const sendInterval = 1000;
@@ -82,12 +75,17 @@ const OrderDriver = ({ route }) => {
       if (response.data.code === 200) {
         setSelectedBooking(response.data.data);
 
-        const [latitude2, longitude2] =
-          response.data.data.pickupLocation.split(",");
-        setLocation2({
-          latitude: parseFloat(latitude2),
-          longitude: parseFloat(longitude2),
-        });
+        const [pickupLat, pickupLng] = response.data.data.pickupLocation
+          .split(",")
+          .map(parseFloat);
+
+        const [dropoffLat, dropoffLng] = response.data.data.dropoffLocation
+          .split(",")
+          .map(parseFloat);
+
+        setPickupLocation({ latitude: pickupLat, longitude: pickupLng });
+        setDropoffLocation({ latitude: dropoffLat, longitude: dropoffLng });
+
         setModalVisible(true);
       }
     } catch (err) {
@@ -112,7 +110,7 @@ const OrderDriver = ({ route }) => {
       const response = await axios.put(
         `${BASE_URl}/api/tripBookings/updateStatus/${selectedBooking.bookingId}`,
         {
-          "status" : "ORDER_COMPLETE"
+          status: StatusEnum.ORDER_COMPLETE,
         },
         {
           headers: {
@@ -131,121 +129,6 @@ const OrderDriver = ({ route }) => {
     }
   };
 
-  useEffect(() => {
-    const loadUserId = async () => {
-      try {
-        const userInfoString = await AsyncStorage.getItem("userInfo");
-        const userId = JSON.parse(userInfoString)?.data?.userId;
-        setUserId(userId);
-      } catch (error) {
-        console.error("Error loading userId:", error);
-      }
-    };
-
-    loadUserId(); // Call the function to load the userId
-    // Khởi tạo kết nối socket
-    const newSocket = io("wss://api.ftcs.online", {
-      transports: ["websocket"],
-      query: {
-        username: "testCustomer",
-        room: userId,
-      },
-      upgrade: false,
-    });
-    // Xử lý kết nối thành công
-    newSocket.on("connect", () => {
-      console.log("Connected to WebSocket server Customer");
-      console.log("Socket ID:", newSocket.id);
-      console.log("====================================");
-    });
-    // Lắng nghe sự kiện LOCATION
-    newSocket.on("LOCATION", (data) => {
-      try {
-        const locationData = JSON.parse(data.content);
-        if (locationData && locationData.locationDriver) {
-          const [lat, lng] = locationData.locationDriver.split(",").map(Number);
-          if (!isNaN(lat) && !isNaN(lng)) {
-            setLocation({
-              latitude: lat,
-              longitude: lng,
-            });
-          }
-        }
-      } catch (error) {
-        console.error("Error processing location data:", error);
-      }
-    });
-    // Xử lý các sự kiện lỗi
-    newSocket.on("connect_error", (error) => {
-      console.error("Connection error:", error);
-    });
-    newSocket.on("disconnect", (reason) => {
-      console.log("Disconnected:", reason);
-      // Thử kết nối lại sau 5 giây
-      setTimeout(() => {
-        newSocket.connect();
-      }, 5000);
-    });
-    setSocket(newSocket);
-    // Cleanup khi component unmount
-    return () => {
-      newSocket.disconnect();
-    };
-  }, []);
-  // useEffect(() => {
-  //   // Kết nối với Socket.IO server
-  //   socketRef.current = io("wss://api.ftcs.online", {
-  //     query: {
-  //       username: "testDriver",
-  //       room: "1029",
-  //     },
-  //     transports: ["websocket"],
-  //     upgrade: false,
-  //     forceNew: true,
-  //   });
-  //   socketRef.current.on("connect", () => {
-  //     console.log("Socket.IO connected");
-  //   });
-  //   socketRef.current.on("LOCATION_SEND", (data) => {
-  //     console.log("Received LOCATION_SEND event:", data);
-  //     try {
-  //       let locationData =
-  //         typeof data.content === "string"
-  //           ? JSON.parse(data.content)
-  //           : data.content;
-  //       if (locationData && locationData.locationDriver) {
-  //         const [lat, lng] = locationData.locationDriver.split(",");
-  //         setLocation({
-  //           latitude: parseFloat(lat),
-  //           longitude: parseFloat(lng),
-  //         });
-  //       }
-  //     } catch (error) {
-  //       console.error("Error processing location data:", error);
-  //     }
-  //   });
-  //   socketRef.current.on("disconnect", () => {
-  //     console.log("Socket.IO disconnected");
-  //   });
-  //   return () => {
-  //     socketRef.current.disconnect();
-  //   };
-  // }, []);
-  // const sendLocation = (latLng) => {
-  //   const now = Date.now();
-  //   if (now - lastSendTime.current >= sendInterval) {
-  //     const payload = {
-  //       messageType: "LOCATION_SEND",
-  //       content: JSON.stringify({
-  //         id: 1,
-  //         locationDriver: `${latLng.latitude},${latLng.longitude}`,
-  //       }),
-  //     };
-  //     console.log("Sending location:", payload);
-  //     socketRef.current.emit("LOCATION_SEND", payload);
-  //     lastSendTime.current = now;
-  //   }
-  // };
   const renderBookingCard = (booking) => (
     <TouchableOpacity
       key={booking.bookingId}
@@ -482,48 +365,34 @@ const OrderDriver = ({ route }) => {
             </View>
 
             {/* Map View */}
-            {showMap && (
+            {showMap && pickupLocation && dropoffLocation && (
               <View style={styles.mapContainer}>
                 <MapView
                   style={styles.map}
-                  region={{
-                    latitude: location.latitude,
-                    longitude: location.longitude,
-                    latitudeDelta: 0.01,
-                    longitudeDelta: 0.01,
+                  initialRegion={{
+                    latitude: pickupLocation.latitude,
+                    longitude: pickupLocation.longitude,
+                    latitudeDelta: 0.05,
+                    longitudeDelta: 0.05,
                   }}
                   showsUserLocation={true}
-                  followsUserLocation={true}
                 >
+                  {/* Marker cho điểm đón */}
                   <Marker
-                    coordinate={{
-                      latitude: location.latitude,
-                      longitude: location.longitude,
-                    }}
-                    title="Driver Location"
-                    pinColor="#0066cc"
-                  >
-                    <Icon name="account-circle" size={40} color="#0066cc" />
-                  </Marker>
+                    coordinate={pickupLocation}
+                    title="Điểm đi"
+                    pinColor="green"
+                  />
+
+                  {/* Marker cho điểm trả */}
+                  <Marker
+                    coordinate={dropoffLocation}
+                    title="Điểm đến"
+                    pinColor="red"
+                  />
                 </MapView>
               </View>
             )}
-            {/* <MapView
-              style={styles.map}
-              initialRegion={{
-                latitude: location.latitude,
-                longitude: location.longitude,
-                latitudeDelta: 0.05,
-                longitudeDelta: 0.05,
-              }}
-              onPress={(e) => {
-                const { latitude, longitude } = e.nativeEvent.coordinate;
-                setLocation({ latitude, longitude });
-                sendLocation({ latitude, longitude });
-              }}
-            >
-              <Marker coordinate={location} />
-            </MapView> */}
           </ScrollView>
         </View>
       </Modal>
