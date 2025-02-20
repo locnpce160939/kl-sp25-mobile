@@ -24,7 +24,7 @@ import ChatCustomer from "../pages/Chat/ChatCustomer";
 import ChatDriver from "../pages/Chat/ChatDriver";
 import ChatDriverReal from "../pages/Chat/ChatDriverReal";
 import ProfileUserScreen from "../pages/Profile/profileUserScreen";
-
+import PaymentScreen from "../pages/Payment";
 
 const Stack = createNativeStackNavigator();
 
@@ -72,10 +72,11 @@ const Navigation = () => {
             />
             <Stack.Screen name="RightTrip" component={RightTrip} />
             <Stack.Screen name="ViewTrip" component={ViewTrip} />
-            <Stack.Screen name="Order" 
-            component={Order} 
-            options={{ headerShown: false }}
-             />
+            <Stack.Screen
+              name="Order"
+              component={Order}
+              options={{ headerShown: false }}
+            />
             <Stack.Screen name="OrderDriver" component={OrderDriver} />
             <Stack.Screen
               name="ScheduleListScreen"
@@ -102,6 +103,7 @@ const Navigation = () => {
               component={ProfileUserScreen}
               options={{ headerShown: false }}
             />
+            <Stack.Screen name="Payment" component={PaymentScreen} />
           </>
         ) : (
           <>

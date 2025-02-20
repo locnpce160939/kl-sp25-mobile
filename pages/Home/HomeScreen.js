@@ -23,7 +23,7 @@ const HomeScreen = () => {
   const [userInfo, setUserInfo] = useState({});
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
   const navigation = useNavigation();
-    const [userRole, setUserRole] = useState(null);
+  const [userRole, setUserRole] = useState(null);
 
   useEffect(() => {
     (async () => {
@@ -43,7 +43,7 @@ const HomeScreen = () => {
       const userInfoString = await AsyncStorage.getItem("userInfo");
       const userRole = JSON.parse(userInfoString)?.data?.role;
       setUserRole(userRole); // Set role in stat
-console.log(userRole);
+      console.log(userRole);
       const data = await getUserInfo();
       setUserInfo(data);
     };
@@ -83,7 +83,6 @@ console.log(userRole);
       icon: "home-outline",
       label: "Thêm nhà",
       color: "#16a34a",
-      
     },
     {
       id: 4,
@@ -93,7 +92,6 @@ console.log(userRole);
       navigate: "ChatDriver",
     },
   ];
-
 
   const quickActionsDriver = [
     {
@@ -124,8 +122,6 @@ console.log(userRole);
       color: "#eab308",
       navigate: "ChatDriver",
     },
-  
-  
   ];
   const renderBanner = () => (
     <ScrollView
@@ -162,18 +158,16 @@ console.log(userRole);
         </TouchableOpacity>
       </View>
 
-       {/* Check if userRole is 'CUSTOMER' */}
-    {userRole === 'CUSTOMER' && (
-      <TouchableOpacity
-        style={styles.searchBar}
-        onPress={() => navigation.navigate("Booking")}
-      >
-        <Ionicons name="add-outline" size={24} color="#00b5ec" />
-        <Text style={styles.searchText}>Tạo đơn hàng?</Text>
-      </TouchableOpacity>
-
-      
-        )}
+      {/* Check if userRole is 'CUSTOMER' */}
+      {userRole === "CUSTOMER" && (
+        <TouchableOpacity
+          style={styles.searchBar}
+          onPress={() => navigation.navigate("Booking")}
+        >
+          <Ionicons name="add-outline" size={24} color="#00b5ec" />
+          <Text style={styles.searchText}>Tạo đơn hàng?</Text>
+        </TouchableOpacity>
+      )}
 
       {/* Nút Chat */}
       {/* <TouchableOpacity 
@@ -189,7 +183,7 @@ console.log(userRole);
   const renderQuickActions = () => {
     const quickActionsList =
       userRole === "DRIVER" ? quickActionsDriver : quickActionsCustomer;
-  
+
     return (
       <View style={styles.quickActionsContainer}>
         {quickActionsList.map((action) => (
@@ -217,7 +211,6 @@ console.log(userRole);
       </View>
     );
   };
-  
 
   const renderPromotions = () => (
     <View style={styles.promotionsContainer}>
