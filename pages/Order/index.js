@@ -93,7 +93,11 @@ const Order = () => {
         }
       }
     } catch (err) {
-      setError(err.message);
+      if (err.response.status === 500) {
+        setError("Chưa có tài xế nhận chuyến đi");
+      } else {
+        setError(err.message);
+      }
     }
   };
   const formatDate = (dateString) => {
@@ -158,7 +162,6 @@ const Order = () => {
     };
   }, []);
   // Header component
-   
 
   const renderHeader = () => {
     const navigation = useNavigation(); // Lấy navigation trong header
@@ -175,8 +178,7 @@ const Order = () => {
       </View>
     );
   };
-  
-  
+
   const renderBookingCard = (booking) => (
     <TouchableOpacity
       key={booking.bookingId}
@@ -184,28 +186,30 @@ const Order = () => {
       onPress={() => fetchBookingDetails(booking.bookingId)}
     >
       <View style={styles.cardHeader}>
-        <Text style={styles.bookingId}>Booking #{booking.bookingId}</Text>
-        <Text style={styles.status}>{getTripBookingStatusText(booking.status)}</Text>
+        
+        <Text style={styles.status}>
+          {getTripBookingStatusText(booking.status)}
+        </Text>
       </View>
       <View style={styles.cardContent}>
         <View style={styles.locationContainer}>
           <Icon name="location-on" size={20} color="#666" />
           <Text style={styles.locationText} numberOfLines={2}>
-            From: {booking.startLocationAddress}
+            Đi từ: {booking.startLocationAddress}
           </Text>
         </View>
         <View style={styles.locationContainer}>
           <Icon name="location-on" size={20} color="#666" />
           <Text style={styles.locationText} numberOfLines={2}>
-            To: {booking.endLocationAddress}
+            Đến: {booking.endLocationAddress}
           </Text>
         </View>
         <View style={styles.infoRow}>
-          <Text style={styles.label}>Type: {booking.bookingType}</Text>
-          <Text style={styles.label}>Capacity: {booking.capacity}</Text>
+          <Text style={styles.label}>Loại: {booking.bookingType}</Text>
+          <Text style={styles.label}>Trọng tải: {booking.capacity}</Text>
         </View>
         <Text style={styles.date}>
-          Booking Date: {formatDate(booking.bookingDate)}
+          Ngày đặt: {formatDate(booking.bookingDate)}
         </Text>
       </View>
     </TouchableOpacity>
@@ -304,12 +308,9 @@ const Order = () => {
     </View>
   );
 
-  
-
   const renderDetailModal = () => {
     const navigation = useNavigation();
     if (!selectedBooking) return null;
-
 
     const handleChatPress = () => {
       setModalVisible(false); // First close the modal
@@ -322,7 +323,6 @@ const Order = () => {
         });
       }, 300); // Add a small delay to ensure smooth transition
     };
-
 
     return (
       <Modal
@@ -348,13 +348,10 @@ const Order = () => {
               <View style={styles.statusHeader}>
                 <Icon name="local-taxi" size={24} color="#00b5ec" />
                 <Text style={styles.statusTitle}>
-                  Status: {getTripBookingStatusText(selectedBooking.status)}
+                  Trạng thái: {getTripBookingStatusText(selectedBooking.status)}
                 </Text>
               </View>
               <View style={styles.bookingMeta}>
-                <Text style={styles.bookingId}>
-                  Booking #{selectedBooking.bookingId}
-                </Text>
                 <Text style={styles.bookingType}>
                   {selectedBooking.bookingType}
                 </Text>
@@ -362,14 +359,14 @@ const Order = () => {
             </View>
             {/* Location Card */}
             <View style={styles.detailCard}>
-              <Text style={styles.cardTitle}>Trip Details</Text>
+              <Text style={styles.cardTitle}>Vị trí</Text>
               <View style={styles.locationItem}>
                 <View style={styles.locationDot}>
                   <View style={[styles.dot, styles.startDot]} />
                   <View style={styles.verticalLine} />
                 </View>
                 <View style={styles.locationContent}>
-                  <Text style={styles.locationLabel}>Pickup Location</Text>
+                  <Text style={styles.locationLabel}>Điểm đón</Text>
                   <Text style={styles.locationAddress}>
                     {selectedBooking.startLocationAddress}
                   </Text>
@@ -380,7 +377,7 @@ const Order = () => {
                   <View style={[styles.dot, styles.endDot]} />
                 </View>
                 <View style={styles.locationContent}>
-                  <Text style={styles.locationLabel}>Dropoff Location</Text>
+                  <Text style={styles.locationLabel}>Điểm đến</Text>
                   <Text style={styles.locationAddress}>
                     {selectedBooking.endLocationAddress}
                   </Text>
@@ -390,7 +387,7 @@ const Order = () => {
             {/* Driver Card */}
             {selectedBooking.driver && (
               <View style={styles.detailCard}>
-                <Text style={styles.cardTitle}>Driver Information</Text>
+                <Text style={styles.cardTitle}>Thông tin tài xế</Text>
                 <View style={styles.driverInfo}>
                   <View style={styles.driverAvatar}>
                     <Icon name="account-circle" size={40} color="#00b5ec" />
@@ -414,14 +411,14 @@ const Order = () => {
 
                     {/* Thêm nút chat */}
                     <TouchableOpacity
-          style={styles.chatButton}
-          onPress={handleChatPress}
-        >
-          <Icon name="chat" size={20} color="#fff" />
-          <Text style={styles.chatButtonText}>
-            Chat with Driver
-          </Text>
-        </TouchableOpacity>
+                      style={styles.chatButton}
+                      onPress={handleChatPress}
+                    >
+                      <Icon name="chat" size={20} color="#fff" />
+                      <Text style={styles.chatButtonText}>
+                        Liên hệ tài xế
+                      </Text>
+                    </TouchableOpacity>
                   </View>
                 </View>
               </View>
@@ -429,20 +426,23 @@ const Order = () => {
             {/* Trip Agreement Card */}
             {selectedBooking.tripAgreement && (
               <View style={styles.detailCard}>
-                <Text style={styles.cardTitle}>Trip Agreement</Text>
                 <View style={styles.agreementGrid}>
                   <View style={styles.agreementItem}>
                     <Icon name="check-circle" size={20} color="#28a745" />
-                    <Text style={styles.agreementLabel}>Agreement Status</Text>
+                    <Text style={styles.agreementLabel}>Trạng thái đơn hàng</Text>
                     <Text style={styles.agreementValue}>
-                      {getAgreementStatusText(selectedBooking.tripAgreement.agreementStatus)}
+                      {getAgreementStatusText(
+                        selectedBooking.tripAgreement.agreementStatus
+                      )}
                     </Text>
                   </View>
                   <View style={styles.agreementItem}>
                     <Icon name="payment" size={20} color="#ffc107" />
-                    <Text style={styles.agreementLabel}>Payment Status</Text>
+                    <Text style={styles.agreementLabel}>Trạng thái thanh toán</Text>
                     <Text style={styles.agreementValue}>
-                      {getPaymentStatusText(selectedBooking.tripAgreement.paymentStatus)}
+                      {getPaymentStatusText(
+                        selectedBooking.tripAgreement.paymentStatus
+                      )}
                     </Text>
                   </View>
                   <View style={styles.agreementItem}>
@@ -457,25 +457,25 @@ const Order = () => {
             )}
             {/* Dates Card */}
             <View style={styles.detailCard}>
-              <Text style={styles.cardTitle}>Important Dates</Text>
+              <Text style={styles.cardTitle}>Thời gian </Text>
               <View style={styles.dateGrid}>
                 <View style={styles.dateItem}>
                   <Icon name="event" size={20} color="#666" />
-                  <Text style={styles.dateLabel}>Booking Date</Text>
+                  <Text style={styles.dateLabel}>Ngày đặt</Text>
                   <Text style={styles.dateValue}>
                     {formatDate(selectedBooking.bookingDate)}
                   </Text>
                 </View>
                 <View style={styles.dateItem}>
                   <Icon name="event-busy" size={20} color="#dc3545" />
-                  <Text style={styles.dateLabel}>Expiration</Text>
+                  <Text style={styles.dateLabel}>Ngày hết hạn</Text>
                   <Text style={styles.dateValue}>
                     {formatDate(selectedBooking.expirationDate)}
                   </Text>
                 </View>
                 <View style={styles.dateItem}>
                   <Icon name="update" size={20} color="#666" />
-                  <Text style={styles.dateLabel}>Last Updated</Text>
+                  <Text style={styles.dateLabel}>Cập nhật lần cuối</Text>
                   <Text style={styles.dateValue}>
                     {formatDate(selectedBooking.updateAt)}
                   </Text>
@@ -507,7 +507,7 @@ const Order = () => {
                     longitudeDelta: 0.01,
                   }}
                   showsUserLocation={true}
-                  followsUserLocation={true}
+                  
                 >
                   <Marker
                     coordinate={{
@@ -1031,23 +1031,23 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     padding: 16,
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: "#eee",
     elevation: 2,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#000',
+    fontWeight: "bold",
+    color: "#000",
   },
   backButton: {
     padding: 8,

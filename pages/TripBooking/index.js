@@ -31,6 +31,7 @@ import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Icon from "react-native-vector-icons/MaterialIcons";
+import { useNavigation } from "@react-navigation/native";
 
 import { Button } from "react-native";
 
@@ -58,7 +59,8 @@ const TripBooking = () => {
   const [searchText, setSearchText] = useState("");
   const [resultLocation, setResultLocation] = useState([]);
   const [totalPrice, setTotalPrice] = useState([]);
-
+  const [paymentMethod, setPaymentMethod] = useState(null);
+  const [OnlinePayment, setOnlinePayment] = useState();
   // Error states
   const [errors, setErrors] = useState({
     bookingDate: "",
@@ -68,9 +70,20 @@ const TripBooking = () => {
     capacity: "",
   });
 
+  const navigation = useNavigation();
+
   const data = [
-    { label: "Round-trip", value: "Round-trip" },
-    { label: "One-way", value: "One-way" },
+    { label: "1 chiều", value: "1 chiều" },
+    { label: "2 chiều", value: "2 chiều" },
+  ];
+
+  const paymentMethods = [
+    { label: "Thanh toán khi hoàn thành", value: "CASH", icon: "cash-outline" },
+    {
+      label: "Thanh toán trước",
+      value: "ONLINE_PAYMENT",
+      icon: "card-outline",
+    },
   ];
 
   const bottomSheetRef = useRef(null);
@@ -88,40 +101,40 @@ const TripBooking = () => {
 
     // Validate booking date
     if (!bookingDate) {
-      newErrors.bookingDate = "Booking date is required";
+      newErrors.bookingDate = "Ngày đặt xe là bắt buộc";
       isValid = false;
     } else if (bookingDate < new Date()) {
-      newErrors.bookingDate = "Booking date cannot be in the past";
+      newErrors.bookingDate = "Ngày đặt xe không thể là quá khứ";
       isValid = false;
     }
 
     // Validate expiration date
     if (!expirationDate) {
-      newErrors.expirationDate = "Expiration date is required";
+      newErrors.expirationDate = "Ngày hết hạn là bắt buộc";
       isValid = false;
     } else if (expirationDate <= bookingDate) {
-      newErrors.expirationDate = "Expiration date must be after booking date";
+      newErrors.expirationDate = "Ngày hết hạn phải sau ngày đặt xe";
       isValid = false;
     }
 
     // Validate pickup location
     if (!pickupLocation) {
-      newErrors.pickupLocation = "Pickup location is required";
+      newErrors.pickupLocation = "Điểm đón là bắt buộc";
       isValid = false;
     }
 
     // Validate dropoff location
     if (!dropoffLocation) {
-      newErrors.dropoffLocation = "Dropoff location is required";
+      newErrors.dropoffLocation = "Điểm trả là bắt buộc";
       isValid = false;
     }
 
     // Validate capacity
     if (!capacity) {
-      newErrors.capacity = "Capacity is required";
+      newErrors.capacity = "Sức chứa là bắt buộc";
       isValid = false;
     } else if (isNaN(capacity) || parseInt(capacity) <= 0) {
-      newErrors.capacity = "Capacity must be a positive number";
+      newErrors.capacity = "Sức chứa phải là số nguyên dương";
       isValid = false;
     }
 
@@ -282,7 +295,7 @@ const TripBooking = () => {
           pickupLocation: pickupLocationString,
           dropoffLocation: dropoffLocationString,
           capacity: parseInt(capacity),
-
+          paymentMethod,
           startLocationAddress,
           endLocationAddress,
         },
@@ -295,8 +308,13 @@ const TripBooking = () => {
       );
 
       if (res.data.code === 200) {
-        Alert.alert("Success", res.data.message);
-        // Reset form here if needed
+        setOnlinePayment(res.data.data.bookingId);
+        if (paymentMethod === "ONLINE_PAYMENT") {
+          navigation.navigate("Payment", {
+            bookingId: res.data.data.bookingId,
+          });
+          Alert.alert("Success", res.data.message);
+        }
       }
     } catch (error) {
       console.log(error);
@@ -497,11 +515,7 @@ const TripBooking = () => {
           <View style={styles.showPrice}>
             <View style={styles.priceRow}>
               <View style={styles.iconContainer}>
-                <Icon
-                  name="directions-car"
-                  size={24}
-                  color="#00b5ec"
-                />
+                <Icon name="directions-car" size={24} color="#00b5ec" />
               </View>
               <View style={styles.priceInfo}>
                 <Text style={styles.priceLabel}>Quãng đường</Text>
@@ -548,13 +562,13 @@ const TripBooking = () => {
           <View style={styles.formContainer}>
             {/* Booking Type */}
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Booking Type</Text>
+              <Text style={styles.label}>Loại chuyến xe</Text>
               <Dropdown
                 style={[styles.dropdown, styles.input]}
                 data={data}
                 labelField="label"
                 valueField="value"
-                placeholder="Select a type"
+                placeholder="Chọn loại"
                 value={bookingType}
                 onChange={(item) => setBookingType(item.value)}
               />
@@ -562,7 +576,7 @@ const TripBooking = () => {
 
             {/* Booking Date */}
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Booking Date</Text>
+              <Text style={styles.label}>Ngày đặt</Text>
               <TouchableOpacity
                 style={[styles.input, errors.bookingDate && styles.inputError]}
                 onPress={() => showDatePicker("booking")}
@@ -577,7 +591,7 @@ const TripBooking = () => {
 
             {/* Expiration Date */}
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Expiration Date</Text>
+              <Text style={styles.label}>Ngày hết hạn</Text>
               <TouchableOpacity
                 style={[
                   styles.input,
@@ -595,7 +609,7 @@ const TripBooking = () => {
 
             {/* Pickup Location */}
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Pickup Location</Text>
+              <Text style={styles.label}>Điểm đón</Text>
               <TouchableOpacity
                 style={[
                   styles.locationButton,
@@ -612,7 +626,7 @@ const TripBooking = () => {
 
             {/* Dropoff Location */}
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Dropoff Location</Text>
+              <Text style={styles.label}>Điểm giao</Text>
               <TouchableOpacity
                 style={[
                   styles.locationButton,
@@ -629,7 +643,7 @@ const TripBooking = () => {
 
             {/* Capacity */}
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Capacity</Text>
+              <Text style={styles.label}>Trọng tải ( kg ) </Text>
               <TextInput
                 style={[styles.input, errors.capacity && styles.inputError]}
                 value={capacity}
@@ -638,10 +652,42 @@ const TripBooking = () => {
                   setErrors((prev) => ({ ...prev, capacity: "" }));
                 }}
                 keyboardType="numeric"
-                placeholder="Enter capacity"
+                placeholder="Nhâp trọng tải"
               />
               {errors.capacity && (
                 <Text style={styles.errorText}>{errors.capacity}</Text>
+              )}
+            </View>
+
+            {/* Payment Method */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Phương thức thanh toán</Text>
+              <View style={styles.radioContainer}>
+                {paymentMethods.map((method) => (
+                  <TouchableOpacity
+                    key={method.value}
+                    style={styles.radioOption}
+                    onPress={() => setPaymentMethod(method.value)}
+                  >
+                    <View style={styles.radioButtonContainer}>
+                      <View style={styles.radioOuter}>
+                        {paymentMethod === method.value && (
+                          <View style={styles.radioInner} />
+                        )}
+                      </View>
+                      <Ionicons
+                        name={method.icon}
+                        size={24}
+                        color="#00b5ec"
+                        style={styles.radioIcon}
+                      />
+                      <Text style={styles.radioLabel}>{method.label}</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              {errors.paymentMethod && (
+                <Text style={styles.errorText}>{errors.paymentMethod}</Text>
               )}
             </View>
 
@@ -649,9 +695,16 @@ const TripBooking = () => {
 
             <TouchableOpacity
               style={styles.submitButton}
-              onPress={handleSubmit}
+              onPress={async () => {
+                const validationErrors = validateForm();
+                if (Object.keys(validationErrors).length > 0) {
+                  setErrors(validationErrors);
+                  return;
+                }
+                await handleSubmit();
+              }}
             >
-              <Text style={styles.submitButtonText}>Book Trip</Text>
+              <Text style={styles.submitButtonText}>Đặt xe</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -1114,6 +1167,65 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: "#EEEEEE",
     marginVertical: 12,
+  },
+  radioContainer: {
+    marginTop: 8,
+  },
+  radioOption: {
+    backgroundColor: "white",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#E8E8E8",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  radioButtonContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  radioOuter: {
+    height: 24,
+    width: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#00b5ec",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  radioInner: {
+    height: 12,
+    width: 12,
+    borderRadius: 6,
+    backgroundColor: "#00b5ec",
+  },
+  radioIcon: {
+    marginLeft: 12,
+    marginRight: 8,
+  },
+  radioLabel: {
+    fontSize: 16,
+    color: "#333",
+    flex: 1,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 8,
+  },
+  errorText: {
+    color: "#FF3B30",
+    fontSize: 14,
+    marginTop: 4,
+    marginLeft: 4,
   },
 });
 
