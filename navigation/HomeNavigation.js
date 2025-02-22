@@ -4,6 +4,7 @@ import Ionicons from "react-native-vector-icons/Ionicons";
 import React from "react";
 import HomeScreen from "../pages/Home/HomeScreen";
 import profileScreen from "../pages/Profile/profileScreen";
+import BalanceDriverScreen from "../pages/BalanceDriver/BalanceDriverScreen";
 
 const HomeNavigation = () => {
   const Tab = createBottomTabNavigator();
@@ -23,6 +24,11 @@ const HomeNavigation = () => {
             iconName = focused
               ? "person" // filled person icon when focused
               : "person-outline"; // outline person icon when not focused
+          }
+          else if (route.name === "Balance") {
+            iconName = focused
+              ? "wallet" // filled person icon when focused
+              : "wallet-outline"; // outline person icon when not focused; 
           }
 
           // You can return any component that you like here!
@@ -45,7 +51,13 @@ const HomeNavigation = () => {
         component={profileScreen}
         options={{ headerShown: false }}
       />
+      <Tab.Screen
+        name="Balance"
+        component={BalanceDriverScreen}
+        options={{ headerShown: false }}
+      />
     </Tab.Navigator>
+    
   );
 };
 
