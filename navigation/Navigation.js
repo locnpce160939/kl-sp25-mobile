@@ -25,6 +25,7 @@ import ChatDriver from "../pages/Chat/ChatDriver";
 import ChatDriverReal from "../pages/Chat/ChatDriverReal";
 import ProfileUserScreen from "../pages/Profile/profileUserScreen";
 import PaymentScreen from "../pages/Payment";
+import BalanceHistoryDetailScreen from "../pages/BalanceDriver/BalanceHistoryDetailScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -102,6 +103,11 @@ const Navigation = () => {
               name="ProfileUserScreen"
               component={ProfileUserScreen}
               options={{ headerShown: false }}
+            />
+             <Stack.Screen
+              name="BalanceHistoryDetail"
+              component={BalanceHistoryDetailScreen}
+              
             />
             <Stack.Screen name="Payment" component={PaymentScreen} />
           </>
