@@ -26,6 +26,7 @@ import ChatDriverReal from "../pages/Chat/ChatDriverReal";
 import ProfileUserScreen from "../pages/Profile/profileUserScreen";
 import PaymentScreen from "../pages/Payment";
 import BalanceHistoryDetailScreen from "../pages/BalanceDriver/BalanceHistoryDetailScreen";
+import Withdraw from "../pages/Withdraw";
 
 const Stack = createNativeStackNavigator();
 
@@ -110,6 +111,7 @@ const Navigation = () => {
               
             />
             <Stack.Screen name="Payment" component={PaymentScreen} />
+            <Stack.Screen name="Withdraw" component={Withdraw} />
           </>
         ) : (
           <>
