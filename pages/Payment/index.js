@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { use, useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BASE_URl } from "../../configUrl";
 
-const PaymentScreen = ({ route, navigation }) => {
+const PaymentScreen = ({ route, navigation, }) => {
   const [loading, setLoading] = useState(true);
   const [paymentData, setPaymentData] = useState(null);
   const [qrCode, setQrCode] = useState(null);
@@ -26,9 +26,8 @@ const PaymentScreen = ({ route, navigation }) => {
   const initiatePayment = async () => {
     try {
       let token = await AsyncStorage.getItem("token");
-      const paymentResponse = await axios.post(
-        `${BASE_URl}/api/payment/bookings/${bookingId}`,
-        {},
+      const paymentResponse = await axios.get(
+        `${BASE_URl}/api/payment/tripBooking/${bookingId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -36,23 +35,8 @@ const PaymentScreen = ({ route, navigation }) => {
           },
         }
       );
-
-      if (paymentResponse.data.code === 200) {
-        setPaymentData(paymentResponse.data.data);
-
-        const qrResponse = await axios.get(
-          `${BASE_URl}/api/payment/qr/${paymentResponse.data.data.paymentId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-        setQrCode(qrResponse.data?.data);
-      } else {
-        setError("Failed to initiate payment");
-      }
+      setPaymentData(paymentResponse.data.data);
+      setQrCode(paymentResponse.data?.data?.qrData);
     } catch (err) {
       setError("An error occurred while processing payment");
       console.log(err);
@@ -138,10 +122,6 @@ const styles = StyleSheet.create({
   amount: {
     fontSize: 18,
     marginBottom: 10,
-  },
-  status: {
-    fontSize: 16,
-    color: "#666",
   },
   qrContainer: {
     alignItems: "center",
