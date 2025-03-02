@@ -108,6 +108,7 @@ const Navigation = () => {
              <Stack.Screen
               name="BalanceHistoryDetail"
               component={BalanceHistoryDetailScreen}
+              options={{ headerShown: false }}
               
             />
             <Stack.Screen name="Payment" component={PaymentScreen} />
