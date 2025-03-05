@@ -12,7 +12,7 @@ import {
   Image,
   Modal,
   Dimensions,
-  Pressable
+  Pressable,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import DateTimePicker from "@react-native-community/datetimepicker";
@@ -24,13 +24,157 @@ import { BASE_URl } from "../../configUrl";
 
 import Ionicons from "react-native-vector-icons/Ionicons";
 
-import * as ImagePicker from 'expo-image-picker';
+import * as ImagePicker from "expo-image-picker";
 
+const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
+const ImageCameraField = ({
+  label,
+  image,
+  onImageSelect,
+  error,
+  onScanComplete,
+  scanEnabled = true,
+}) => {
+  const [isLoading, setIsLoading] = useState(false);
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+  // Kiểm tra và yêu cầu quyền camera
+  const requestPermissions = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert(
+        "Quyền truy cập bị từ chối",
+        "Cần quyền camera để sử dụng tính năng này",
+        [{ text: "OK" }]
+      );
+      return false;
+    }
+    return true;
+  };
 
-const ImageCameraField = ({ label, image, onImageSelect, error }) => {
+  const processImage = async (uri) => {
+    try {
+      setIsLoading(true);
+
+      // Nếu không bật scan, chỉ chọn ảnh
+      if (!scanEnabled) {
+        const imageData = {
+          uri,
+          type: "image/jpeg",
+          name: `photo_${Date.now()}.jpg`,
+        };
+        onImageSelect(imageData);
+        return;
+      }
+
+      // Chuẩn bị FormData cho OCR
+      const formData = new FormData();
+      formData.append("file", {
+        uri,
+        type: "image/jpeg",
+        name: `photo_${Date.now()}.jpg`,
+      });
+
+      console.log(`[${label}] Bắt đầu gửi request OCR...`, {
+        uri,
+        endpoint:
+          "https://aa81-2402-800-6349-e2ce-b5b7-9d49-e69e-6bb7.ngrok-free.app/uploader",
+      });
+
+      // Gọi API OCR
+      const response = await fetch(
+        "https://aa81-2402-800-6349-e2ce-b5b7-9d49-e69e-6bb7.ngrok-free.app/uploader",
+        {
+          method: "POST",
+          body: formData,
+          headers: {
+            "Content-Type": "multipart/form-data",
+            Accept: "application/json",
+          },
+          timeout: 30000, // Thêm timeout 30 giây
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const responseData = await response.json();
+      console.log(`[${label}] Nhận dữ liệu OCR:`, responseData);
+
+      // Định dạng dữ liệu nhận được
+      const scannedData = {
+        idNumber: responseData.id_number?.trim() || "",
+        fullName: responseData.full_name?.trim() || "",
+        birthday: responseData.dob ? formatDateForInput(responseData.dob) : "",
+        gender: responseData.gender?.trim() || "",
+        country: responseData.nationality?.trim() || "",
+        permanentStreetAddress: responseData.residence?.trim() || "",
+        expiryDate: responseData.expiry_date
+          ? formatDateForInput(responseData.expiry_date)
+          : "",
+      };
+
+      // Gọi callback với dữ liệu quét được
+      if (onScanComplete) {
+        console.log(`[${label}] Gọi onScanComplete với dữ liệu:`, scannedData);
+        onScanComplete(scannedData);
+      }
+
+      // Chọn ảnh sau khi scan thành công
+      const imageData = {
+        uri,
+        type: "image/jpeg",
+        name: `photo_${Date.now()}.jpg`,
+      };
+      onImageSelect(imageData);
+    } catch (error) {
+      console.error(`[${label}] Lỗi khi quét ảnh:`, {
+        message: error.message,
+        stack: error.stack,
+      });
+
+      let errorMessage = "Không thể quét thông tin từ ảnh. Vui lòng thử lại.";
+      if (error.message.includes("timeout")) {
+        errorMessage = "Kết nối quá thời gian. Vui lòng kiểm tra mạng.";
+      } else if (error.message.includes("Network")) {
+        errorMessage = "Lỗi kết nối mạng. Vui lòng thử lại.";
+      }
+
+      Alert.alert("Lỗi", errorMessage, [{ text: "OK" }]);
+
+      // Vẫn cho phép chọn ảnh dù scan thất bại
+      const imageData = {
+        uri,
+        type: "image/jpeg",
+        name: `photo_${Date.now()}.jpg`,
+      };
+      onImageSelect(imageData);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Hàm định dạng ngày
+  const formatDateForInput = (dateString) => {
+    if (!dateString) return "";
+    try {
+      // Xử lý các định dạng ngày khác nhau
+      if (dateString.includes("/")) {
+        const [day, month, year] = dateString.split("/");
+        return `${year}-${month.padStart(2, "0")}-${day.padStart(
+          2,
+          "0"
+        )}T00:00:00`;
+      }
+      // Nếu đã ở định dạng ISO
+      return new Date(dateString).toISOString().split(".")[0];
+    } catch (error) {
+      console.warn(`[${label}] Lỗi định dạng ngày:`, dateString);
+      return "";
+    }
+  };
+
   const selectImage = async () => {
     Alert.alert(
       "Chọn nguồn ảnh",
@@ -39,18 +183,18 @@ const ImageCameraField = ({ label, image, onImageSelect, error }) => {
         {
           text: "Camera",
           onPress: async () => {
+            const hasPermission = await requestPermissions();
+            if (!hasPermission) return;
+
             const result = await ImagePicker.launchCameraAsync({
               mediaTypes: ImagePicker.MediaTypeOptions.Images,
               allowsEditing: true,
               aspect: [4, 3],
               quality: 0.5,
             });
-            if (!result.canceled) {
-              onImageSelect({
-                uri: result.assets[0].uri,
-                type: 'image/jpeg',
-                name: 'photo.jpg'
-              });
+
+            if (!result.canceled && result.assets?.[0]?.uri) {
+              await processImage(result.assets[0].uri);
             }
           },
         },
@@ -63,12 +207,9 @@ const ImageCameraField = ({ label, image, onImageSelect, error }) => {
               aspect: [4, 3],
               quality: 0.5,
             });
-            if (!result.canceled) {
-              onImageSelect({
-                uri: result.assets[0].uri,
-                type: 'image/jpeg',
-                name: 'photo.jpg'
-              });
+
+            if (!result.canceled && result.assets?.[0]?.uri) {
+              await processImage(result.assets[0].uri);
             }
           },
         },
@@ -81,16 +222,12 @@ const ImageCameraField = ({ label, image, onImageSelect, error }) => {
   return (
     <View style={styles.imageContainer}>
       <Text style={styles.label}>{label}</Text>
-      {image ? (
+      {isLoading ? (
+        <ActivityIndicator size="large" color="#007AFF" />
+      ) : image ? (
         <View style={styles.imageWrapper}>
-          <Image
-            source={{ uri: image.uri }}
-            style={styles.idImage}
-          />
-          <TouchableOpacity
-            style={styles.retakeButton}
-            onPress={selectImage}
-          >
+          <Image source={{ uri: image.uri }} style={styles.idImage} />
+          <TouchableOpacity style={styles.retakeButton} onPress={selectImage}>
             <Text style={styles.retakeButtonText}>Chụp lại</Text>
           </TouchableOpacity>
         </View>
@@ -128,7 +265,13 @@ const InputField = ({
   </View>
 );
 
-const PickerField = ({ label, items, selectedValue, onValueChange, enabled = true }) => {
+const PickerField = ({
+  label,
+  items,
+  selectedValue,
+  onValueChange,
+  enabled = true,
+}) => {
   const [isVisible, setIsVisible] = useState(false);
   const [temporaryValue, setTemporaryValue] = useState(selectedValue);
 
@@ -150,11 +293,12 @@ const PickerField = ({ label, items, selectedValue, onValueChange, enabled = tru
 
   // Improved display text function with better null checks
   const getDisplayText = useCallback(() => {
-    if (!items || !Array.isArray(items) || items.length === 0) return "Chọn địa chỉ của bạn";
+    if (!items || !Array.isArray(items) || items.length === 0)
+      return "Chọn địa chỉ của bạn";
 
     // Ensure both values are strings for comparison
-    const selectedItem = items.find(item =>
-      String(item.id) === String(selectedValue)
+    const selectedItem = items.find(
+      (item) => String(item.id) === String(selectedValue)
     );
 
     return selectedItem?.fullName || "Chọn địa chỉ của bạn";
@@ -169,12 +313,12 @@ const PickerField = ({ label, items, selectedValue, onValueChange, enabled = tru
         {label} <Text style={styles.required}>*</Text>
       </Text>
 
-      {Platform.OS === 'ios' ? (
+      {Platform.OS === "ios" ? (
         <>
           <TouchableOpacity
             style={[
               styles.pickerButton,
-              !enabled && styles.pickerButtonDisabled
+              !enabled && styles.pickerButtonDisabled,
             ]}
             onPress={() => enabled && setIsVisible(true)}
             disabled={!enabled}
@@ -183,7 +327,7 @@ const PickerField = ({ label, items, selectedValue, onValueChange, enabled = tru
               style={[
                 styles.pickerButtonText,
                 !selectedValue && styles.placeholderText,
-                !enabled && styles.pickerButtonTextDisabled
+                !enabled && styles.pickerButtonTextDisabled,
               ]}
               numberOfLines={1}
             >
@@ -199,10 +343,7 @@ const PickerField = ({ label, items, selectedValue, onValueChange, enabled = tru
             onRequestClose={handleCancel}
           >
             <View style={styles.modalOverlay}>
-              <Pressable
-                style={styles.modalDismiss}
-                onPress={handleCancel}
-              />
+              <Pressable style={styles.modalDismiss} onPress={handleCancel} />
               <View style={styles.modalContent}>
                 <View style={styles.modalHeader}>
                   <TouchableOpacity onPress={handleCancel}>
@@ -225,14 +366,14 @@ const PickerField = ({ label, items, selectedValue, onValueChange, enabled = tru
                     <Picker.Item
                       label="Chọn địa chỉ của bạn"
                       value=""
-                      color={enabled ? '#000' : '#999'}
+                      color={enabled ? "#000" : "#999"}
                     />
                     {safeItems.map((item) => (
                       <Picker.Item
                         key={String(item.id)}
-                        label={item.fullName || ''}
+                        label={item.fullName || ""}
                         value={String(item.id)}
-                        color={enabled ? '#000' : '#999'}
+                        color={enabled ? "#000" : "#999"}
                       />
                     ))}
                   </Picker>
@@ -253,14 +394,14 @@ const PickerField = ({ label, items, selectedValue, onValueChange, enabled = tru
             <Picker.Item
               label="Chọn địa chỉ của bạn"
               value=""
-              color={enabled ? '#000' : '#999'}
+              color={enabled ? "#000" : "#999"}
             />
             {safeItems.map((item) => (
               <Picker.Item
                 key={String(item.id)}
-                label={item.fullName || ''}
+                label={item.fullName || ""}
                 value={String(item.id)}
-                color={enabled ? '#000' : '#999'}
+                color={enabled ? "#000" : "#999"}
               />
             ))}
           </Picker>
@@ -275,7 +416,7 @@ const DatePickerField = ({ label, value, onChange }) => {
   const [tempDate, setTempDate] = useState(new Date());
 
   const handleDateChange = (event, selectedDate) => {
-    if (Platform.OS === 'android') {
+    if (Platform.OS === "android") {
       setShow(false);
       if (selectedDate) {
         const formattedDate = selectedDate.toISOString().split(".")[0];
@@ -295,16 +436,13 @@ const DatePickerField = ({ label, value, onChange }) => {
   return (
     <View style={styles.inputContainer}>
       <Text style={styles.label}>{label}</Text>
-      <TouchableOpacity
-        style={styles.dateButton}
-        onPress={() => setShow(true)}
-      >
+      <TouchableOpacity style={styles.dateButton} onPress={() => setShow(true)}>
         <Text style={styles.dateButtonText}>
           {value ? value.split("T")[0] : "Vui lòng chọn ngày"}
         </Text>
       </TouchableOpacity>
 
-      {Platform.OS === 'ios' && show && (
+      {Platform.OS === "ios" && show && (
         <View style={styles.iosDatePickerContainer}>
           <View style={styles.iosDatePickerHeader}>
             <TouchableOpacity onPress={() => setShow(false)}>
@@ -324,7 +462,7 @@ const DatePickerField = ({ label, value, onChange }) => {
         </View>
       )}
 
-      {Platform.OS === 'android' && show && (
+      {Platform.OS === "android" && show && (
         <DateTimePicker
           value={value ? new Date(value) : new Date()}
           mode="date"
@@ -358,9 +496,14 @@ const DriverIdentificationScreen = ({ navigation }) => {
     expiryDate: "",
     issuedBy: "",
     frontFile: null,
-    backFile: null
+    backFile: null,
   });
-
+  const handleScanComplete = useCallback((scannedData) => {
+    setFormData((prev) => ({
+      ...prev,
+      ...scannedData,
+    }));
+  }, []);
   const [errors, setErrors] = useState({});
   const [provinces, setProvinces] = useState([]);
   const [permanentDistricts, setPermanentDistricts] = useState([]);
@@ -370,7 +513,6 @@ const DriverIdentificationScreen = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleInputChange = useCallback((field, value) => {
-
     if (field === "idNumber" && !value.trim()) {
       setIsEditMode(false);
     }
@@ -397,29 +539,40 @@ const DriverIdentificationScreen = ({ navigation }) => {
         setIsLoading(true);
         const data = await getDriverIdentificationById();
 
-        if (data && (data.idNumber || data.fullName || data.driverIdentificationId)) {
+        if (
+          data &&
+          (data.idNumber || data.fullName || data.driverIdentificationId)
+        ) {
           setIsEditMode(true);
 
           // Create a sequence of async operations
           const loadAddressData = async () => {
             // Load permanent address data
             if (data.permanentAddress?.province?.id) {
-              const permanentDistricts = await getDistricts(data.permanentAddress.province.id);
+              const permanentDistricts = await getDistricts(
+                data.permanentAddress.province.id
+              );
               setPermanentDistricts(permanentDistricts);
 
               if (data.permanentAddress?.district?.id) {
-                const permanentWards = await getWards(data.permanentAddress.district.id);
+                const permanentWards = await getWards(
+                  data.permanentAddress.district.id
+                );
                 setPermanentWards(permanentWards);
               }
             }
 
             // Load temporary address data
             if (data.temporaryAddress?.province?.id) {
-              const temporaryDistricts = await getDistricts(data.temporaryAddress.province.id);
+              const temporaryDistricts = await getDistricts(
+                data.temporaryAddress.province.id
+              );
               setTemporaryDistricts(temporaryDistricts);
 
               if (data.temporaryAddress?.district?.id) {
-                const temporaryWards = await getWards(data.temporaryAddress.district.id);
+                const temporaryWards = await getWards(
+                  data.temporaryAddress.district.id
+                );
                 setTemporaryWards(temporaryWards);
               }
             }
@@ -432,13 +585,25 @@ const DriverIdentificationScreen = ({ navigation }) => {
             gender: data.gender || "",
             birthday: data.birthday || "",
             country: data.country || "",
-            permanentAddressWard: data.permanentAddress?.ward?.id ? String(data.permanentAddress.ward.id) : "",
-            permanentAddressDistrict: data.permanentAddress?.district?.id ? String(data.permanentAddress.district.id) : "",
-            permanentAddressProvince: data.permanentAddress?.province?.id ? String(data.permanentAddress.province.id) : "",
+            permanentAddressWard: data.permanentAddress?.ward?.id
+              ? String(data.permanentAddress.ward.id)
+              : "",
+            permanentAddressDistrict: data.permanentAddress?.district?.id
+              ? String(data.permanentAddress.district.id)
+              : "",
+            permanentAddressProvince: data.permanentAddress?.province?.id
+              ? String(data.permanentAddress.province.id)
+              : "",
             permanentStreetAddress: data.permanentAddress?.streetAddress || "",
-            temporaryAddressWard: data.temporaryAddress?.ward?.id ? String(data.temporaryAddress.ward.id) : "",
-            temporaryAddressDistrict: data.temporaryAddress?.district?.id ? String(data.temporaryAddress.district.id) : "",
-            temporaryAddressProvince: data.temporaryAddress?.province?.id ? String(data.temporaryAddress.province.id) : "",
+            temporaryAddressWard: data.temporaryAddress?.ward?.id
+              ? String(data.temporaryAddress.ward.id)
+              : "",
+            temporaryAddressDistrict: data.temporaryAddress?.district?.id
+              ? String(data.temporaryAddress.district.id)
+              : "",
+            temporaryAddressProvince: data.temporaryAddress?.province?.id
+              ? String(data.temporaryAddress.province.id)
+              : "",
             temporaryStreetAddress: data.temporaryAddress?.streetAddress || "",
             issueDate: data.issueDate || "",
             expiryDate: data.expiryDate || "",
@@ -453,10 +618,9 @@ const DriverIdentificationScreen = ({ navigation }) => {
           setIsEditMode(false);
         }
       } catch (error) {
-        console.error('Error loading data:', error);
+        console.error("Error loading data:", error);
         setIsEditMode(false);
       } finally {
-
         setIsLoading(false);
       }
     };
@@ -494,7 +658,10 @@ const DriverIdentificationScreen = ({ navigation }) => {
         return res.data.data;
       } else {
         // Kiểm tra nếu lỗi là 400 với thông báo "Driver Identification not found"
-        if (res.data.code === 400 && res.data.message === "Driver Identification not found") {
+        if (
+          res.data.code === 400 &&
+          res.data.message === "Driver Identification not found"
+        ) {
           return null; // Không hiển thị thông báo lỗi, chỉ trả về null
         } else {
           // Nếu không phải lỗi 400 trên, không hiển thị thông báo lỗi
@@ -515,7 +682,6 @@ const DriverIdentificationScreen = ({ navigation }) => {
     }
   };
 
-
   const handleProvinceChange = async (value, addressType) => {
     if (!value) return;
 
@@ -524,7 +690,7 @@ const DriverIdentificationScreen = ({ navigation }) => {
 
       if (addressType === "permanent") {
         // Update state in a single batch
-        setFormData(prev => ({
+        setFormData((prev) => ({
           ...prev,
           permanentAddressProvince: value,
           permanentAddressDistrict: "",
@@ -534,7 +700,7 @@ const DriverIdentificationScreen = ({ navigation }) => {
         setPermanentWards([]);
       } else {
         // Update state in a single batch
-        setFormData(prev => ({
+        setFormData((prev) => ({
           ...prev,
           temporaryAddressProvince: value,
           temporaryAddressDistrict: "",
@@ -549,7 +715,6 @@ const DriverIdentificationScreen = ({ navigation }) => {
     }
   };
 
-
   const handleDistrictChange = async (value, addressType) => {
     if (!value) return;
 
@@ -558,7 +723,7 @@ const DriverIdentificationScreen = ({ navigation }) => {
 
       if (addressType === "permanent") {
         // Update state in a single batch
-        setFormData(prev => ({
+        setFormData((prev) => ({
           ...prev,
           permanentAddressDistrict: value,
           permanentAddressWard: "",
@@ -566,7 +731,7 @@ const DriverIdentificationScreen = ({ navigation }) => {
         setPermanentWards(wardsData);
       } else {
         // Update state in a single batch
-        setFormData(prev => ({
+        setFormData((prev) => ({
           ...prev,
           temporaryAddressDistrict: value,
           temporaryAddressWard: "",
@@ -579,7 +744,6 @@ const DriverIdentificationScreen = ({ navigation }) => {
     }
   };
 
-
   const handleGenderChange = (value) => {
     setFormData({ ...formData, gender: value });
     // Optional: Clear error if user selects a value
@@ -587,7 +751,6 @@ const DriverIdentificationScreen = ({ navigation }) => {
       setErrors({ ...errors, gender: "" });
     }
   };
-
 
   const validateForm = () => {
     const newErrors = {};
@@ -642,14 +805,13 @@ const DriverIdentificationScreen = ({ navigation }) => {
       }
     } catch (error) {
       console.error("Error during form submission:", error);
-      const errorMessage = error.response?.data?.message || "An error occurred during submission.";
+      const errorMessage =
+        error.response?.data?.message || "An error occurred during submission.";
       Alert.alert("Error", errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
-
-
 
   const updateDriverIdentification = async (updatedData) => {
     try {
@@ -673,7 +835,6 @@ const DriverIdentificationScreen = ({ navigation }) => {
       //   setIsLoading(false);
       //   return null;
       // }
-
 
       const requestDTO = {
         idNumber: updatedData.idNumber,
@@ -699,39 +860,47 @@ const DriverIdentificationScreen = ({ navigation }) => {
 
       if (updatedData.frontFile?.uri) {
         // Only append to FormData if it's a new image (not a URL)
-        if (!updatedData.frontFile.uri.startsWith('http')) {
-          formData.append('frontFile', updatedData.frontFile);
+        if (!updatedData.frontFile.uri.startsWith("http")) {
+          formData.append("frontFile", updatedData.frontFile);
         }
       }
 
       if (updatedData.backFile?.uri) {
         // Only append to FormData if it's a new image (not a URL)
-        if (!updatedData.backFile.uri.startsWith('http')) {
-          formData.append('backFile', updatedData.backFile);
+        if (!updatedData.backFile.uri.startsWith("http")) {
+          formData.append("backFile", updatedData.backFile);
         }
       }
 
       const response = await axios.put(
         `${BASE_URl}/api/registerDriver/identification`,
         formData,
-        { headers: { Authorization: `Bearer ${access_token}`, 'Content-Type': 'multipart/form-data' } }
+        {
+          headers: {
+            Authorization: `Bearer ${access_token}`,
+            "Content-Type": "multipart/form-data",
+          },
+        }
       );
 
       setIsLoading(false);
       if (response.status === 200) {
         Alert.alert("Success", "Driver identification updated successfully.");
       } else {
-        Alert.alert("Error", response.data.message || "Failed to update identification.");
+        Alert.alert(
+          "Error",
+          response.data.message || "Failed to update identification."
+        );
       }
     } catch (error) {
       console.error("Error updating driver identification:", error);
       setIsLoading(false);
-      Alert.alert("Error", error.response?.data.message || "An unknown error occurred.");
+      Alert.alert(
+        "Error",
+        error.response?.data.message || "An unknown error occurred."
+      );
     }
   };
-
-
-
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -741,7 +910,6 @@ const DriverIdentificationScreen = ({ navigation }) => {
             name="arrow-back"
             size={24}
             color="#000"
-
             style={styles.backIcon}
           />
           <Text style={styles.title}>Căn Cước Công Dân</Text>
@@ -755,7 +923,9 @@ const DriverIdentificationScreen = ({ navigation }) => {
         placeholder="Nhập số cccd của bạn"
         keyboardType="numeric"
       />
-      {errors.idNumber && <Text style={styles.errorText}>{errors.idNumber}</Text>}
+      {errors.idNumber && (
+        <Text style={styles.errorText}>{errors.idNumber}</Text>
+      )}
 
       <InputField
         label="Họ và Tên"
@@ -763,49 +933,60 @@ const DriverIdentificationScreen = ({ navigation }) => {
         onChangeText={(value) => handleInputChange("fullName", value)}
         placeholder="Nhập tên của bạn"
       />
-      {errors.fullName && <Text style={styles.errorText}>{errors.fullName}</Text>}
+      {errors.fullName && (
+        <Text style={styles.errorText}>{errors.fullName}</Text>
+      )}
 
-     
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Giới Tính <Text style={styles.required}>*</Text></Text>
-          <View style={styles.genderGroup}>
-            <TouchableOpacity
+      <View style={styles.inputContainer}>
+        <Text style={styles.label}>
+          Giới Tính <Text style={styles.required}>*</Text>
+        </Text>
+        <View style={styles.genderGroup}>
+          <TouchableOpacity
+            style={[
+              styles.genderOption,
+              formData.gender === "Nam" && styles.genderOptionSelected,
+            ]}
+            onPress={() => handleGenderChange("Nam")}
+          >
+            <Text
               style={[
-                styles.genderOption,
-                formData.gender === 'Nam' && styles.genderOptionSelected
-              ]}
-              onPress={() => handleGenderChange('Nam')}
-            >
-              <Text style={[
                 styles.genderText,
-                formData.gender === 'Nam' && styles.genderTextSelected
-              ]}>Nam</Text>
-            </TouchableOpacity>
+                formData.gender === "Nam" && styles.genderTextSelected,
+              ]}
+            >
+              Nam
+            </Text>
+          </TouchableOpacity>
 
-            <TouchableOpacity
+          <TouchableOpacity
+            style={[
+              styles.genderOption,
+              formData.gender === "Nữ" && styles.genderOptionSelected,
+            ]}
+            onPress={() => handleGenderChange("Nữ")}
+          >
+            <Text
               style={[
-                styles.genderOption,
-                formData.gender === 'Nữ' && styles.genderOptionSelected
-              ]}
-              onPress={() => handleGenderChange('Nữ')}
-            >
-              <Text style={[
                 styles.genderText,
-                formData.gender === 'Nữ' && styles.genderTextSelected
-              ]}>Nữ</Text>
-            </TouchableOpacity>
-          </View>
-          {errors.gender && <Text style={styles.errorText}>{errors.gender}</Text>}
+                formData.gender === "Nữ" && styles.genderTextSelected,
+              ]}
+            >
+              Nữ
+            </Text>
+          </TouchableOpacity>
         </View>
-        
-
+        {errors.gender && <Text style={styles.errorText}>{errors.gender}</Text>}
+      </View>
 
       <DatePickerField
         label="Ngày Sinh"
         value={formData.birthday}
         onChange={(value) => handleInputChange("birthday", value)}
       />
-      {errors.birthday && <Text style={styles.errorText}>{errors.birthday}</Text>}
+      {errors.birthday && (
+        <Text style={styles.errorText}>{errors.birthday}</Text>
+      )}
 
       <InputField
         label="Quốc Tịch"
@@ -840,7 +1021,9 @@ const DriverIdentificationScreen = ({ navigation }) => {
         label="Địa chỉ thường trú Phường/Xã"
         items={permanentWards}
         selectedValue={formData.permanentAddressWard}
-        onValueChange={(value) => handleInputChange("permanentAddressWard", value)}
+        onValueChange={(value) =>
+          handleInputChange("permanentAddressWard", value)
+        }
         enabled={!!formData.permanentAddressDistrict}
       />
       {errors.permanentAddressWard && (
@@ -850,7 +1033,9 @@ const DriverIdentificationScreen = ({ navigation }) => {
       <InputField
         label="Địa chỉ Đường thường trú "
         value={formData.permanentStreetAddress}
-        onChangeText={(value) => handleInputChange("permanentStreetAddress", value)}
+        onChangeText={(value) =>
+          handleInputChange("permanentStreetAddress", value)
+        }
         placeholder="Nhập tên đường của bạn, số nhà....."
       />
       {errors.permanentStreetAddress && (
@@ -882,7 +1067,9 @@ const DriverIdentificationScreen = ({ navigation }) => {
         label="Địa chỉ tạm trú Phường/Xã"
         items={temporaryWards}
         selectedValue={formData.temporaryAddressWard}
-        onValueChange={(value) => handleInputChange("temporaryAddressWard", value)}
+        onValueChange={(value) =>
+          handleInputChange("temporaryAddressWard", value)
+        }
         enabled={!!formData.temporaryAddressDistrict}
       />
       {errors.temporaryAddressWard && (
@@ -892,7 +1079,9 @@ const DriverIdentificationScreen = ({ navigation }) => {
       <InputField
         label="Địa chỉ Đường tạm trú"
         value={formData.temporaryStreetAddress}
-        onChangeText={(value) => handleInputChange("temporaryStreetAddress", value)}
+        onChangeText={(value) =>
+          handleInputChange("temporaryStreetAddress", value)
+        }
         placeholder="Nhập tên đường của bạn, số nhà....."
       />
       {errors.temporaryStreetAddress && (
@@ -904,14 +1093,18 @@ const DriverIdentificationScreen = ({ navigation }) => {
         value={formData.issueDate}
         onChange={(value) => handleInputChange("issueDate", value)}
       />
-      {errors.issueDate && <Text style={styles.errorText}>{errors.issueDate}</Text>}
+      {errors.issueDate && (
+        <Text style={styles.errorText}>{errors.issueDate}</Text>
+      )}
 
       <DatePickerField
         label="Ngày hết hạn"
         value={formData.expiryDate}
         onChange={(value) => handleInputChange("expiryDate", value)}
       />
-      {errors.expiryDate && <Text style={styles.errorText}>{errors.expiryDate}</Text>}
+      {errors.expiryDate && (
+        <Text style={styles.errorText}>{errors.expiryDate}</Text>
+      )}
 
       <InputField
         label="Được cấp bởi"
@@ -919,34 +1112,33 @@ const DriverIdentificationScreen = ({ navigation }) => {
         onChangeText={(value) => handleInputChange("issuedBy", value)}
         placeholder="Nhập nơi cấp cccd của bạn"
       />
-      {errors.issuedBy && <Text style={styles.errorText}>{errors.issuedBy}</Text>}
-
+      {errors.issuedBy && (
+        <Text style={styles.errorText}>{errors.issuedBy}</Text>
+      )}
 
       <ImageCameraField
         label="Ảnh mặt trước CCCD"
         image={formData.frontFile}
-        onImageSelect={(file) => handleInputChange('frontFile', file)}
+        onImageSelect={(file) => handleInputChange("frontFile", file)}
+        onScanComplete={handleScanComplete}
         error={errors.frontFile}
       />
 
       <ImageCameraField
         label="Ảnh mặt sau CCCD"
         image={formData.backFile}
-        onImageSelect={(file) => handleInputChange('backFile', file)}
+        onImageSelect={(file) => handleInputChange("backFile", file)}
+        onScanComplete={handleScanComplete}
         error={errors.backFile}
       />
 
-
       <TouchableOpacity
-        style={[
-          styles.submitButton,
-          isLoading && styles.disabledButton
-        ]}
+        style={[styles.submitButton, isLoading && styles.disabledButton]}
         onPress={handleSubmit}
         disabled={isLoading}
       >
         <Text style={styles.submitButtonText}>
-          {isLoading ? 'Processing...' : isEditMode ? 'Lưu' : 'Xong'}
+          {isLoading ? "Processing..." : isEditMode ? "Lưu" : "Xong"}
         </Text>
       </TouchableOpacity>
     </ScrollView>
@@ -954,7 +1146,6 @@ const DriverIdentificationScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-
   inputContainer: {
     marginBottom: 15,
   },
@@ -962,26 +1153,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 5,
     color: "#333",
-    fontWeight: '500',
+    fontWeight: "500",
   },
   required: {
     color: "red",
   },
   guideContainer: {
-    backgroundColor: '#f8f9fa',
+    backgroundColor: "#f8f9fa",
     padding: 12,
     borderRadius: 8,
     marginBottom: 10,
   },
   guideText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#495057',
+    fontWeight: "600",
+    color: "#495057",
     marginBottom: 8,
   },
   guideItem: {
     fontSize: 13,
-    color: '#6c757d',
+    color: "#6c757d",
     marginBottom: 4,
     lineHeight: 18,
   },
@@ -989,43 +1180,43 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   imageWrapper: {
-    position: 'relative',
+    position: "relative",
   },
   idImage: {
-    width: '100%',
+    width: "100%",
     height: 200,
     borderRadius: 8,
     marginBottom: 10,
   },
   uploadButton: {
-    backgroundColor: '#f0f0f0',
+    backgroundColor: "#f0f0f0",
     padding: 20,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderStyle: 'dashed',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
+    borderColor: "#ddd",
+    borderStyle: "dashed",
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
   },
   uploadButtonText: {
-    color: '#007AFF',
+    color: "#007AFF",
     fontSize: 16,
     marginLeft: 10,
   },
   retakeButton: {
-    position: 'absolute',
+    position: "absolute",
     right: 10,
     bottom: 10,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    backgroundColor: "rgba(0, 0, 0, 0.75)",
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 20,
   },
   retakeButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   errorText: {
     color: "red",
@@ -1048,7 +1239,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 20,
-
   },
   inputContainer: {
     marginBottom: 15,
@@ -1096,47 +1286,47 @@ const styles = StyleSheet.create({
   //-------------date---------
   dateButton: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: "#ddd",
     borderRadius: 8,
     padding: 10,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
   },
   dateButtonText: {
-    color: '#333',
+    color: "#333",
     fontSize: 14,
   },
   iosDatePickerContainer: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'white',
+    backgroundColor: "white",
     zIndex: 1000,
   },
   iosDatePickerHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     padding: 10,
-    backgroundColor: '#f8f8f8',
+    backgroundColor: "#f8f8f8",
     borderTopWidth: 1,
-    borderColor: '#ddd',
+    borderColor: "#ddd",
   },
   iosDatePicker: {
     height: 200,
   },
   iosDatePickerCancel: {
-    color: '#007AFF',
+    color: "#007AFF",
     fontSize: 16,
   },
   iosDatePickerDone: {
-    color: '#007AFF',
+    color: "#007AFF",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 
   //-----gender
   genderGroup: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 15,
     marginTop: 5,
   },
@@ -1145,61 +1335,61 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 25,
     borderWidth: 1,
-    borderColor: '#ddd',
-    alignItems: 'center',
-    backgroundColor: '#fff',
+    borderColor: "#ddd",
+    alignItems: "center",
+    backgroundColor: "#fff",
   },
   genderOptionSelected: {
-    backgroundColor: '#00b5ec',
-    borderColor: '#00b5ec',
+    backgroundColor: "#00b5ec",
+    borderColor: "#00b5ec",
   },
   genderText: {
     fontSize: 14,
-    color: '#333',
+    color: "#333",
   },
   genderTextSelected: {
-    color: '#fff',
-    fontWeight: '500',
+    color: "#fff",
+    fontWeight: "500",
   },
   //-------------address
   pickerButton: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: "#ddd",
     borderRadius: 8,
     padding: 12,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     minHeight: 45,
   },
   pickerButtonDisabled: {
-    backgroundColor: '#f5f5f5',
-    borderColor: '#e0e0e0',
+    backgroundColor: "#f5f5f5",
+    borderColor: "#e0e0e0",
   },
   pickerButtonText: {
     flex: 1,
     fontSize: 14,
-    color: '#333',
+    color: "#333",
   },
   pickerButtonTextDisabled: {
-    color: '#999',
+    color: "#999",
   },
   placeholderText: {
-    color: '#999',
+    color: "#999",
   },
   pickerArrow: {
     fontSize: 12,
-    color: '#666',
+    color: "#666",
     marginLeft: 8,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-    justifyContent: 'flex-end',
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
+    justifyContent: "flex-end",
   },
   modalDismiss: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     bottom: 0,
     left: 0,
@@ -1207,39 +1397,39 @@ const styles = StyleSheet.create({
   },
 
   modalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
-    maxHeight: '70%',
+    maxHeight: "70%",
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: "#eee",
   },
   modalTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: "600",
+    color: "#333",
   },
   modalCancel: {
     fontSize: 16,
-    color: '#007AFF',
+    color: "#007AFF",
   },
   modalDone: {
     fontSize: 16,
-    color: '#007AFF',
-    fontWeight: '600',
+    color: "#007AFF",
+    fontWeight: "600",
   },
   androidPickerContainer: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: "#ddd",
     borderRadius: 8,
-    backgroundColor: '#fff',
-    overflow: 'hidden',
+    backgroundColor: "#fff",
+    overflow: "hidden",
   },
   // picker: {
   //   height: 45,
@@ -1251,26 +1441,25 @@ const styles = StyleSheet.create({
   // }
 
   pickerWrapper: {
-    backgroundColor: '#fff',
-    width: '100%',
+    backgroundColor: "#fff",
+    width: "100%",
     height: 200, // Ensure enough height for the picker
   },
   pickerItem: {
     fontSize: 16,
     height: 180, // Adjust the height of items
-    color: '#000', // Ensure text is visible
+    color: "#000", // Ensure text is visible
   },
   modalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderTopLeftRadius: 12,
     borderTopRightRadius: 12,
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
     paddingBottom: 20, // Add padding to avoid safe area issues
   },
-
 });
 
 export default DriverIdentificationScreen;
