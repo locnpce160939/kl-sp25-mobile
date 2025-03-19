@@ -30,16 +30,16 @@ const TripBooking = () => {
   const [bookingType, setBookingType] = useState("Round-trip");
   const [bookingDate, setBookingDate] = useState(new Date());
   const [expirationDate, setExpirationDate] = useState(new Date());
-  const [pickupLocation, setPickupLocation] = useState(null); // Thay "" bằng null cho rõ ràng
-  const [dropoffLocation, setDropoffLocation] = useState(null); // Thay "" bằng null cho rõ ràng
+  const [pickupLocation, setPickupLocation] = useState(null);
+  const [dropoffLocation, setDropoffLocation] = useState(null);
   const [capacity, setCapacity] = useState("");
   const [startLocationAddress, setStartLocationAddress] = useState("");
   const [endLocationAddress, setEndLocationAddress] = useState("");
   const [locationState, setLocationState] = useState([]);
   const [initialRegion, setInitialRegion] = useState(null);
   const [isBottomSheetOpen, setIsBottomSheetOpen] = useState(false);
-  const [titlePickup, setTitlePickup] = useState(""); // Thay false bằng "" cho phù hợp
-  const [titleDropoff, setTitleDropoff] = useState(""); // Thay false bằng "" cho phù hợp
+  const [titlePickup, setTitlePickup] = useState("");
+  const [titleDropoff, setTitleDropoff] = useState("");
   const [showBookingDatePicker, setShowBookingDatePicker] = useState(false);
   const [showExpirationDatePicker, setShowExpirationDatePicker] = useState(false);
   const [showLocationPicker, setShowLocationPicker] = useState(false);
@@ -159,17 +159,12 @@ const TripBooking = () => {
   };
 
   const handleLocationSelect = async (coordinate) => {
+    console.log("Tọa độ từ bản đồ:", coordinate);
     if (activeLocationField === "pickup") {
-      setPickupLocation({
-        latitude: coordinate.latitude,
-        longitude: coordinate.longitude,
-      });
+      setPickupLocation(coordinate);
       await getNearLocation(coordinate);
     } else {
-      setDropoffLocation({
-        latitude: coordinate.latitude,
-        longitude: coordinate.longitude,
-      });
+      setDropoffLocation(coordinate);
       await getNearLocation(coordinate);
     }
     setIsBottomSheetOpen(true);
@@ -192,7 +187,7 @@ const TripBooking = () => {
       }));
       setLocationState(locationData);
     } catch (error) {
-      console.error("Error fetching near locations:", error);
+      console.error("Lỗi khi lấy địa điểm gần đó:", error.response?.data || error.message);
     }
   };
 
@@ -200,23 +195,54 @@ const TripBooking = () => {
     try {
       let token = await AsyncStorage.getItem("token");
       const res = await axios.get(
-        `${BASE_URl}/api/location/address-geocode?address=${searchText}`,
+        `${BASE_URl}/api/location/address-geocode?address=${encodeURIComponent(searchText)}`,
         {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         }
       );
-      setResultLocation(res.data.data.results);
+      const result = res.data.data.results;
+      console.log("Kết quả tìm kiếm từ API:", result);
+      if (!result || result.length === 0) {
+        Alert.alert("Thông báo", "Không tìm thấy địa điểm nào.");
+      }
+      setResultLocation(result || []);
     } catch (error) {
-      console.error("Error searching location:", error);
+      console.error("Lỗi khi tìm kiếm:", error.response?.data || error.message);
+      Alert.alert("Lỗi", "Không thể tìm kiếm địa điểm. Vui lòng thử lại.");
+      setResultLocation([]);
     }
+  };
+
+  const isValidCoordinate = (lat, lon) => {
+    return (
+      typeof lat === "number" &&
+      typeof lon === "number" &&
+      !isNaN(lat) &&
+      !isNaN(lon) &&
+      lat >= -90 &&
+      lat <= 90 &&
+      lon >= -180 &&
+      lon <= 180
+    );
   };
 
   const getPrice = async () => {
     try {
+      if (
+        !pickupLocation ||
+        !dropoffLocation ||
+        !isValidCoordinate(pickupLocation.latitude, pickupLocation.longitude) ||
+        !isValidCoordinate(dropoffLocation.latitude, dropoffLocation.longitude)
+      ) {
+        console.error("Tọa độ không hợp lệ:", { pickupLocation, dropoffLocation });
+        Alert.alert("Lỗi", "Tọa độ địa điểm không hợp lệ.");
+        return;
+      }
       let token = await AsyncStorage.getItem("token");
       const origin = `${pickupLocation.latitude},${pickupLocation.longitude}`;
       const destination = `${dropoffLocation.latitude},${dropoffLocation.longitude}`;
       const weight = parseInt(capacity);
+      console.log("Gửi yêu cầu getPrice:", { origin, destination, weight });
       const res = await axios.get(
         `${BASE_URl}/api/tripBookings/direction?origin=${origin}&destination=${destination}&weight=${weight}`,
         {
@@ -232,7 +258,8 @@ const TripBooking = () => {
       setFinalPrice(priceData.price || 0);
       setDiscountAmount(0);
     } catch (error) {
-      console.error("Error fetching price:", error);
+      console.error("Lỗi khi lấy giá:", error.response?.data || error.message);
+      Alert.alert("Lỗi", "Không thể tính giá. Vui lòng kiểm tra lại địa điểm.");
       setTotalPrice({ price: 0, expectedDistance: 0, isFirstOrder: false });
       setFinalPrice(0);
       setDiscountAmount(0);
@@ -242,9 +269,7 @@ const TripBooking = () => {
   const calculateDiscount = async (code) => {
     try {
       let token = await AsyncStorage.getItem("token");
-      if (!token) {
-        throw new Error("Token not found");
-      }
+      if (!token) throw new Error("Token not found");
 
       const userInfoString = await AsyncStorage.getItem("userInfo");
       const userId = JSON.parse(userInfoString)?.data?.userId || 1028;
@@ -261,10 +286,7 @@ const TripBooking = () => {
         `${BASE_URl}/api/tripBookings/calculate-discount?voucherCode=${code}`,
         discountRequestBody,
         {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         }
       );
 
@@ -276,8 +298,8 @@ const TripBooking = () => {
         throw new Error("Invalid voucher response");
       }
     } catch (error) {
-      console.error("Error calculating discount:", error);
-      Alert.alert("Lỗi", "Không thể áp dụng voucher này. Vui lòng thử lại hoặc chọn voucher khác.");
+      console.error("Lỗi khi tính giảm giá:", error);
+      Alert.alert("Lỗi", "Không thể áp dụng voucher này. Vui lòng thử lại.");
       setVoucherCode(null);
       setDiscountAmount(0);
       setFinalPrice(totalPrice.price || 0);
@@ -309,10 +331,7 @@ const TripBooking = () => {
           voucherCode: voucherCode || undefined,
         },
         {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         }
       );
 
@@ -341,51 +360,23 @@ const TripBooking = () => {
   };
 
   // Effects
-  useEffect(() => {
-    (async () => {
-      try {
-        const savedLocation = await AsyncStorage.getItem("currentLocation");
-        if (savedLocation) {
-          const { latitude, longitude } = JSON.parse(savedLocation);
-          setInitialRegion({
-            latitude,
-            longitude,
-            latitudeDelta: 0.005,
-            longitudeDelta: 0.005,
-          });
-          setPickupLocation({ latitude, longitude });
-          await getNearLocation({ latitude, longitude });
-        } else {
-          setInitialRegion({
-            latitude: 10.03,
-            longitude: 105.7469,
-            latitudeDelta: 0.005,
-            longitudeDelta: 0.005,
-          });
-        }
-      } catch (error) {
-        console.error("Error loading initial region:", error);
-      }
-    })();
-  }, []);
+ 
 
   useEffect(() => {
     if (pickupLocation && dropoffLocation && capacity) {
+      console.log("Kích hoạt getPrice với:", { pickupLocation, dropoffLocation, capacity });
       getPrice();
     }
   }, [pickupLocation, dropoffLocation, capacity]);
 
-  // Nhận voucherCode và khôi phục trạng thái form khi quay lại từ VoucherScreen
   useEffect(() => {
     const unsubscribe = navigation.addListener("focus", () => {
       const params = route.params || {};
+      console.log("Params khi quay lại từ VoucherScreen:", params);
       if (params.voucherCode) {
         setVoucherCode(params.voucherCode);
-        if (totalPrice.price > 0) {
-          calculateDiscount(params.voucherCode);
-        } 
+        if (totalPrice.price > 0) calculateDiscount(params.voucherCode);
       }
-      // Khôi phục trạng thái form
       if (params.pickupLocation) setPickupLocation(params.pickupLocation);
       if (params.dropoffLocation) setDropoffLocation(params.dropoffLocation);
       if (params.capacity) setCapacity(params.capacity);
@@ -398,11 +389,9 @@ const TripBooking = () => {
       if (params.titlePickup) setTitlePickup(params.titlePickup);
       if (params.titleDropoff) setTitleDropoff(params.titleDropoff);
     });
-
     return unsubscribe;
   }, [navigation, route.params, totalPrice.price]);
 
-  // Gọi lại calculateDiscount khi totalPrice thay đổi và có voucherCode
   useEffect(() => {
     if (voucherCode && totalPrice.price > 0) {
       calculateDiscount(voucherCode);
@@ -466,12 +455,22 @@ const TripBooking = () => {
     <TouchableOpacity
       style={styles.locationItem}
       onPress={() => {
+        if (!item.geometry || !item.geometry.location || !item.geometry.location.lat || !item.geometry.location.lng) {
+          console.error("Dữ liệu tọa độ không hợp lệ:", item);
+          Alert.alert("Lỗi", "Địa điểm này không có tọa độ hợp lệ.");
+          return;
+        }
+        const newLocation = {
+          latitude: item.geometry.location.lat,
+          longitude: item.geometry.location.lng,
+        };
+        console.log("Tọa độ đã chọn:", newLocation);
         if (activeLocationField === "pickup") {
-          setPickupLocation({ latitude: item.geometry.location.lat, longitude: item.geometry.location.lng });
+          setPickupLocation(newLocation);
           setTitlePickup(item.formatted_address);
           setStartLocationAddress(item.formatted_address);
         } else {
-          setDropoffLocation({ latitude: item.geometry.location.lat, longitude: item.geometry.location.lng });
+          setDropoffLocation(newLocation);
           setTitleDropoff(item.formatted_address);
           setEndLocationAddress(item.formatted_address);
         }
@@ -483,7 +482,7 @@ const TripBooking = () => {
     >
       <Ionicons name="location-outline" size={20} color="#00b5ec" />
       <View style={styles.locationDetails}>
-        <Text style={styles.locationMainText}>{item.name || item.address_components[0].long_name}</Text>
+        <Text style={styles.locationMainText}>{item.name || item.address_components?.[0]?.long_name || "Không có tên"}</Text>
         <Text style={styles.locationSubText} numberOfLines={2}>{item.formatted_address}</Text>
       </View>
     </TouchableOpacity>
@@ -503,8 +502,11 @@ const TripBooking = () => {
 
   const handleSearchChange = (text) => {
     setSearchText(text);
-    if (text.length >= 5) {
+    setIsSearching(true);
+    if (text.length >= 3) {
       findLocation();
+    } else {
+      setResultLocation([]);
     }
   };
 
@@ -515,14 +517,13 @@ const TripBooking = () => {
       paymentMethod: formattedPaymentMethod,
       distanceKm: totalPrice.expectedDistance,
       isFirstOrder: totalPrice.isFirstOrder,
-      // Truyền toàn bộ dữ liệu form để khôi phục khi quay lại
       pickupLocation,
       dropoffLocation,
       capacity,
       paymentMethod,
       bookingType,
-      bookingDate: bookingDate.toISOString(), // Chuyển Date thành chuỗi để truyền qua params
-      expirationDate: expirationDate.toISOString(), // Chuyển Date thành chuỗi để truyền qua params
+      bookingDate: bookingDate.toISOString(),
+      expirationDate: expirationDate.toISOString(),
       startLocationAddress,
       endLocationAddress,
       titlePickup,
@@ -613,10 +614,7 @@ const TripBooking = () => {
               {paymentMethods.map((method) => (
                 <TouchableOpacity
                   key={method.value}
-                  style={[
-                    styles.paymentOption,
-                    paymentMethod === method.value && styles.paymentOptionSelected,
-                  ]}
+                  style={[styles.paymentOption, paymentMethod === method.value && styles.paymentOptionSelected]}
                   onPress={() => setPaymentMethod(method.value)}
                 >
                   <Ionicons
@@ -625,10 +623,7 @@ const TripBooking = () => {
                     color={paymentMethod === method.value ? "#00b5ec" : "#666"}
                   />
                   <Text
-                    style={[
-                      styles.paymentText,
-                      paymentMethod === method.value && styles.paymentTextSelected,
-                    ]}
+                    style={[styles.paymentText, paymentMethod === method.value && styles.paymentTextSelected]}
                   >
                     {method.label}
                   </Text>
@@ -637,84 +632,72 @@ const TripBooking = () => {
             </View>
           </View>
 
-{/* Pricing and Voucher Section */}
-{totalPrice.price > 0 && (
-  <View style={styles.priceCard}>
-    <View style={styles.priceItem}>
-      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        <Ionicons name="car-outline" size={24} color="#2ecc71" />
-        <Text style={[styles.priceLabel, { marginLeft: 10 }]}>Quãng đường</Text>
-      </View>
-      <Text style={styles.priceValue}>{totalPrice.expectedDistance || 0} km</Text>
-    </View>
-    <View style={styles.priceItem}>
-      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        <Ionicons name="cash-outline" size={24} color="#2ecc71" />
-        <Text style={[styles.priceLabel, { marginLeft: 10 }]}>Giá ban đầu</Text>
-      </View>
-      <Text style={styles.priceValue}>
-        {totalPrice.price.toLocaleString("vi-VN", {
-          style: "currency",
-          currency: "VND",
-        })}
-      </Text>
-    </View>
-    {discountAmount > 0 && (
-      <>
-        <View style={styles.priceItem}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Ionicons name="pricetag-outline" size={24} color="#2ecc71" />
-            <Text style={[styles.priceLabel, { marginLeft: 10 }]}>Giảm giá</Text>
-          </View>
-          <Text style={[styles.priceValue, { color: "#ff6b6b" }]}>
-            - {discountAmount.toLocaleString("vi-VN", {
-              style: "currency",
-              currency: "VND",
-            })}
-          </Text>
-        </View>
-        <View style={styles.priceItem}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Ionicons name="wallet-outline" size={24} color="#2ecc71" />
-            <Text style={[styles.priceLabel, { marginLeft: 10 }]}>Tổng tiền sau giảm</Text>
-          </View>
-          <Text style={styles.priceValue}>
-            {finalPrice.toLocaleString("vi-VN", {
-              style: "currency",
-              currency: "VND",
-            })}
-          </Text>
-        </View>
-      </>
-    )}
-  </View>
-)}
+          {totalPrice.price > 0 && (
+            <View style={styles.priceCard}>
+              <View style={styles.priceItem}>
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <Ionicons name="car-outline" size={24} color="#2ecc71" />
+                  <Text style={[styles.priceLabel, { marginLeft: 10 }]}>Quãng đường</Text>
+                </View>
+                <Text style={styles.priceValue}>{totalPrice.expectedDistance || 0} km</Text>
+              </View>
+              <View style={styles.priceItem}>
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <Ionicons name="cash-outline" size={24} color="#2ecc71" />
+                  <Text style={[styles.priceLabel, { marginLeft: 10 }]}>Giá ban đầu</Text>
+                </View>
+                <Text style={styles.priceValue}>
+                  {totalPrice.price.toLocaleString("vi-VN", { style: "currency", currency: "VND" })}
+                </Text>
+              </View>
+              {discountAmount > 0 && (
+                <>
+                  <View style={styles.priceItem}>
+                    <View style={{ flexDirection: "row", alignItems: "center" }}>
+                      <Ionicons name="pricetag-outline" size={24} color="#2ecc71" />
+                      <Text style={[styles.priceLabel, { marginLeft: 10 }]}>Giảm giá</Text>
+                    </View>
+                    <Text style={[styles.priceValue, { color: "#ff6b6b" }]}>
+                      - {discountAmount.toLocaleString("vi-VN", { style: "currency", currency: "VND" })}
+                    </Text>
+                  </View>
+                  <View style={styles.priceItem}>
+                    <View style={{ flexDirection: "row", alignItems: "center" }}>
+                      <Ionicons name="wallet-outline" size={24} color="#2ecc71" />
+                      <Text style={[styles.priceLabel, { marginLeft: 10 }]}>Tổng tiền sau giảm</Text>
+                    </View>
+                    <Text style={styles.priceValue}>
+                      {finalPrice.toLocaleString("vi-VN", { style: "currency", currency: "VND" })}
+                    </Text>
+                  </View>
+                </>
+              )}
+            </View>
+          )}
 
-{voucherCode && (
-  <View style={styles.voucherSelected}>
-    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-      <Ionicons name="ticket-outline" size={20} color="#2ecc71" />
-      <Text style={[styles.voucherSelectedText, { marginLeft: 10 }]}>
-        Voucher: {voucherCode}
-      </Text>
-    </View>
-    <TouchableOpacity
-      onPress={() => {
-        setVoucherCode(null);
-        setDiscountAmount(0);
-        setFinalPrice(totalPrice.price || 0);
-      }}
-    >
-      <Ionicons name="close-circle" size={24} color="#ff6b6b" />
-    </TouchableOpacity>
-  </View>
-)}
+          {voucherCode && (
+            <View style={styles.voucherSelected}>
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <Ionicons name="ticket-outline" size={20} color="#2ecc71" />
+                <Text style={[styles.voucherSelectedText, { marginLeft: 10 }]}>Voucher: {voucherCode}</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => {
+                  setVoucherCode(null);
+                  setDiscountAmount(0);
+                  setFinalPrice(totalPrice.price || 0);
+                }}
+              >
+                <Ionicons name="close-circle" size={24} color="#ff6b6b" />
+              </TouchableOpacity>
+            </View>
+          )}
 
-<TouchableOpacity style={styles.voucherButton} onPress={handleVoucherPress}>
-  <Ionicons name="ticket-outline" size={24} color="#fff" />
-  <Text style={styles.voucherText}>Sử dụng Voucher</Text>
-  <Ionicons name="chevron-forward" size={24} color="#fff" />
-</TouchableOpacity>
+          <TouchableOpacity style={styles.voucherButton} onPress={handleVoucherPress}>
+            <Ionicons name="ticket-outline" size={24} color="#fff" />
+            <Text style={styles.voucherText}>Sử dụng Voucher</Text>
+            <Ionicons name="chevron-forward" size={24} color="#fff" />
+          </TouchableOpacity>
         </View>
 
         <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
@@ -731,31 +714,39 @@ const TripBooking = () => {
             <TouchableOpacity style={styles.closeButton} onPress={() => setShowLocationPicker(false)}>
               <Ionicons name="arrow-back" size={24} color="#333" />
             </TouchableOpacity>
+
             <View style={styles.searchContainer}>
               <TextInput
                 style={styles.searchInput}
                 placeholder="Tìm kiếm địa điểm..."
+                onFocus={() => setIsSearching(true)}
                 value={searchText}
                 onChangeText={handleSearchChange}
-                onFocus={() => setIsSearching(true)}
               />
-              {resultLocation.length > 0 && (
+              {isSearching && resultLocation.length > 0 && (
                 <FlatList
                   data={resultLocation}
                   renderItem={renderLocationItem}
                   keyExtractor={(item) => item.place_id}
                   style={styles.searchResults}
+                  keyboardShouldPersistTaps="handled"
                 />
               )}
             </View>
+
             <MapView
               style={styles.map}
               initialRegion={initialRegion}
               onPress={(e) => handleLocationSelect(e.nativeEvent.coordinate)}
             >
-              {pickupLocation && activeLocationField === "pickup" && <Marker coordinate={pickupLocation} title="Điểm đón" />}
-              {dropoffLocation && activeLocationField === "dropoff" && <Marker coordinate={dropoffLocation} title="Điểm giao" />}
+              {pickupLocation && activeLocationField === "pickup" && (
+                <Marker coordinate={pickupLocation} title="Điểm đón" />
+              )}
+              {dropoffLocation && activeLocationField === "dropoff" && (
+                <Marker coordinate={dropoffLocation} title="Điểm giao" />
+              )}
             </MapView>
+
             {!isSearching && (
               <BottomSheet ref={bottomSheetRef} index={0} snapPoints={["50%"]}>
                 <BottomSheetView>
@@ -783,27 +774,11 @@ const TripBooking = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f5f7fa",
-  },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 32,
-  },
-  header: {
-    marginBottom: 24,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#1a1a1a",
-  },
-  headerSubtitle: {
-    fontSize: 16,
-    color: "#666",
-    marginTop: 4,
-  },
+  container: { flex: 1, backgroundColor: "#f5f7fa" },
+  scrollContent: { padding: 16, paddingBottom: 32 },
+  header: { marginBottom: 24 },
+  headerTitle: { fontSize: 28, fontWeight: "bold", color: "#1a1a1a" },
+  headerSubtitle: { fontSize: 16, color: "#666", marginTop: 4 },
   formCard: {
     backgroundColor: "#fff",
     borderRadius: 16,
@@ -814,15 +789,8 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 5,
   },
-  inputGroup: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#333",
-    marginBottom: 8,
-  },
+  inputGroup: { marginBottom: 20 },
+  label: { fontSize: 14, fontWeight: "600", color: "#333", marginBottom: 8 },
   dropdown: {
     height: 50,
     backgroundColor: "#f9f9f9",
@@ -831,23 +799,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#e0e0e0",
   },
-  placeholderStyle: {
-    fontSize: 16,
-    color: "#999",
-  },
-  selectedTextStyle: {
-    fontSize: 16,
-    color: "#333",
-  },
-  dateRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 20,
-  },
-  dateInput: {
-    flex: 1,
-    marginRight: 12,
-  },
+  placeholderStyle: { fontSize: 16, color: "#999" },
+  selectedTextStyle: { fontSize: 16, color: "#333" },
+  dateRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 20 },
+  dateInput: { flex: 1, marginRight: 12 },
   dateButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -859,10 +814,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#e0e0e0",
   },
-  dateText: {
-    fontSize: 16,
-    color: "#333",
-  },
+  dateText: { fontSize: 16, color: "#333" },
   locationInput: {
     flexDirection: "row",
     alignItems: "center",
@@ -873,12 +825,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#e0e0e0",
   },
-  locationText: {
-    flex: 1,
-    marginLeft: 12,
-    fontSize: 16,
-    color: "#333",
-  },
+  locationText: { flex: 1, marginLeft: 12, fontSize: 16, color: "#333" },
   textInput: {
     height: 50,
     backgroundColor: "#f9f9f9",
@@ -889,10 +836,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#e0e0e0",
   },
-  paymentOptions: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
+  paymentOptions: { flexDirection: "row", justifyContent: "space-between" },
   paymentOption: {
     flex: 1,
     alignItems: "center",
@@ -903,73 +847,62 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#e0e0e0",
   },
-  paymentOptionSelected: {
-    borderColor: "#00b5ec",
-    backgroundColor: "#e6f3ff",
-  },
-  paymentText: {
-    marginTop: 8,
-    fontSize: 14,
-    color: "#666",
-    textAlign: "center",
-  },
-  paymentTextSelected: {
-    color: "#00b5ec",
-    fontWeight: "600",
-  },
+  paymentOptionSelected: { borderColor: "#00b5ec", backgroundColor: "#e6f3ff" },
+  paymentText: { marginTop: 8, fontSize: 14, color: "#666", textAlign: "center" },
+  paymentTextSelected: { color: "#00b5ec", fontWeight: "600" },
   priceCard: {
-    backgroundColor: "#f9f9f9",
-    borderRadius: 12,
+    backgroundColor: "#f0f4f8",
+    borderRadius: 16,
     padding: 16,
     marginTop: 12,
     marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "#e0e6ed",
   },
   priceItem: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: "#fff",
+    borderRadius: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  priceDetails: {
-    marginLeft: 12,
-  },
-  priceLabel: {
-    fontSize: 14,
-    color: "#666",
-  },
-  priceValue: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#333",
-  },
+  priceLabel: { fontSize: 14, color: "#6b7280", fontWeight: "500" },
+  priceValue: { fontSize: 16, fontWeight: "700", color: "#2ecc71" },
   voucherSelected: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 10,
-    backgroundColor: "#e0f7fa",
-    borderRadius: 5,
+    padding: 12,
+    backgroundColor: "#e8f5e9",
+    borderRadius: 10,
     marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "#2ecc71",
   },
-  voucherSelectedText: {
-    color: "#00b5ec",
-    fontSize: 16,
-  },
+  voucherSelectedText: { color: "#2ecc71", fontSize: 16, fontWeight: "600" },
   voucherButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "#4CAF50",
+    backgroundColor: "#2ecc71",
     borderRadius: 12,
     padding: 14,
     marginBottom: 20,
+    shadowColor: "#2ecc71",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
-  voucherText: {
-    flex: 1,
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-    marginHorizontal: 12,
-  },
+  voucherText: { flex: 1, color: "#fff", fontSize: 16, fontWeight: "700", marginHorizontal: 12, textAlign: "center" },
   submitButton: {
     backgroundColor: "#00b5ec",
     borderRadius: 12,
@@ -981,109 +914,54 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 5,
   },
-  submitButtonText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "bold",
-  },
-  errorText: {
-    color: "#ff4444",
-    fontSize: 12,
-    marginTop: 4,
-  },
-  modalContainer: {
-    flex: 1,
-  },
-  mapContainer: {
-    flex: 1,
-  },
-  map: {
-    flex: 1,
-  },
+  submitButtonText: { color: "#fff", fontSize: 18, fontWeight: "bold" },
+  errorText: { color: "#ff4444", fontSize: 12, marginTop: 4 },
+  modalContainer: { flex: 1, backgroundColor: "#fff" },
+  mapContainer: { flex: 1, position: "relative" },
+  map: { flex: 1 },
   closeButton: {
     position: "absolute",
-    top: 40,
+    top: 50,
     left: 16,
     backgroundColor: "#fff",
     borderRadius: 20,
     padding: 8,
+    zIndex: 20,
     elevation: 5,
   },
-  searchContainer: {
-    position: "absolute",
-    top: 40,
-    left: 60,
-    right: 16,
-  },
+  searchContainer: { position: "absolute", top: 50, left: 60, right: 16, zIndex: 10 },
   searchInput: {
     backgroundColor: "#fff",
     borderRadius: 12,
     padding: 12,
     fontSize: 16,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
     elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
   },
   searchResults: {
     backgroundColor: "#fff",
     borderRadius: 12,
     marginTop: 8,
-    maxHeight: 200,
+    maxHeight: 300,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
     elevation: 5,
   },
-  locationItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#e0e0e0",
-  },
-  locationDetails: {
-    marginLeft: 12,
-    flex: 1,
-  },
-  locationMainText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#333",
-  },
-  locationSubText: {
-    fontSize: 14,
-    color: "#666",
-  },
-  nearLocationItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#e0e0e0",
-  },
-  nearLocationText: {
-    marginLeft: 12,
-    fontSize: 16,
-    color: "#333",
-  },
-  confirmButton: {
-    backgroundColor: "#00b5ec",
-    borderRadius: 12,
-    padding: 14,
-    margin: 16,
-    alignItems: "center",
-  },
-  confirmButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "flex-end",
-  },
-  datePickerContainer: {
-    backgroundColor: "#fff",
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
-    paddingBottom: 20,
-  },
+  locationItem: { flexDirection: "row", alignItems: "center", padding: 12, borderBottomWidth: 1, borderBottomColor: "#e0e0e0" },
+  locationDetails: { marginLeft: 12, flex: 1 },
+  locationMainText: { fontSize: 16, fontWeight: "600", color: "#333" },
+  locationSubText: { fontSize: 14, color: "#666" },
+  nearLocationItem: { flexDirection: "row", alignItems: "center", padding: 12, borderBottomWidth: 1, borderBottomColor: "#e0e0e0" },
+  nearLocationText: { marginLeft: 12, fontSize: 16, color: "#333" },
+  confirmButton: { backgroundColor: "#00b5ec", borderRadius: 12, padding: 14, margin: 16, alignItems: "center" },
+  confirmButtonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0, 0, 0, 0.5)", justifyContent: "flex-end" },
+  datePickerContainer: { backgroundColor: "#fff", borderTopLeftRadius: 12, borderTopRightRadius: 12, paddingBottom: 20 },
   pickerHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -1092,93 +970,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#e0e0e0",
   },
-  pickerTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#333",
-  },
-  cancelText: {
-    fontSize: 16,
-    color: "#00b5ec",
-  },
-  doneText: {
-    fontSize: 16,
-    color: "#00b5ec",
-    fontWeight: "600",
-  },
-  voucherButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "#2ecc71", // More vibrant green
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 20,
-    shadowColor: "#2ecc71", // Add shadow for depth
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  voucherText: {
-    flex: 1,
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "700", // Slightly bolder
-    marginHorizontal: 12,
-    textAlign: "center",
-  },
-  voucherSelected: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 12,
-    backgroundColor: "#e8f5e9", // Light green background
-    borderRadius: 10,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: "#2ecc71",
-  },
-  voucherSelectedText: {
-    color: "#2ecc71",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  priceCard: {
-    backgroundColor: "#f0f4f8", // Softer background
-    borderRadius: 16,
-    padding: 16,
-    marginTop: 12,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: "#e0e6ed", // Subtle border
-  },
-  priceItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between", // Spread items
-    marginBottom: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    backgroundColor: "#fff", // White background for each item
-    borderRadius: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  priceLabel: {
-    fontSize: 14,
-    color: "#6b7280", // More muted color
-    fontWeight: "500",
-  },
-  priceValue: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#2ecc71", // Green color for prices
-  },
-
+  pickerTitle: { fontSize: 16, fontWeight: "600", color: "#333" },
+  cancelText: { fontSize: 16, color: "#00b5ec" },
+  doneText: { fontSize: 16, color: "#00b5ec", fontWeight: "600" },
 });
 
 export default TripBooking;
