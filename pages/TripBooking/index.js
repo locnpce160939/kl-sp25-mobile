@@ -24,6 +24,7 @@ import { Ionicons } from "@expo/vector-icons";
 import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useNavigation, useRoute } from "@react-navigation/native";
+import * as Location from "expo-location"; // Thêm import này
 
 const TripBooking = () => {
   // Form state
@@ -53,6 +54,76 @@ const TripBooking = () => {
   const [voucherCode, setVoucherCode] = useState(null);
   const [discountAmount, setDiscountAmount] = useState(0);
   const [finalPrice, setFinalPrice] = useState(0);
+
+
+
+
+  const getCurrentLocation = async () => {
+    try {
+      // Kiểm tra xem dịch vụ định vị có bật không
+      const isLocationAvailable = await Location.hasServicesEnabledAsync();
+      if (!isLocationAvailable) {
+        Alert.alert("Lỗi", "Dịch vụ định vị chưa được bật. Vui lòng bật GPS trong cài đặt thiết bị.");
+        return;
+      }
+  
+      // Yêu cầu quyền truy cập vị trí
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Lỗi", "Quyền truy cập vị trí bị từ chối! Vui lòng cấp quyền trong cài đặt.");
+        return;
+      }
+  
+      // Lấy vị trí hiện tại
+      let location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+      const currentCoords = {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      };
+  
+      // Gọi API để lấy thông tin địa chỉ
+      await getNearLocation(currentCoords);
+  
+      // Lấy địa chỉ cụ thể từ locationState (kết quả của getNearLocation)
+      if (locationState.length > 0) {
+        const address = locationState[0].formatted_address; // Lấy địa chỉ đầu tiên
+        if (activeLocationField === "pickup") {
+          setPickupLocation(currentCoords);
+          setTitlePickup(address); // Hiển thị địa chỉ cụ thể
+          setStartLocationAddress(address);
+        } else if (activeLocationField === "dropoff") {
+          setDropoffLocation(currentCoords);
+          setTitleDropoff(address); // Hiển thị địa chỉ cụ thể
+          setEndLocationAddress(address);
+        }
+      } else {
+        // Nếu không lấy được địa chỉ, fallback về "Vị trí hiện tại"
+        if (activeLocationField === "pickup") {
+          setPickupLocation(currentCoords);
+          setTitlePickup("Vị trí hiện tại");
+          setStartLocationAddress("Vị trí hiện tại");
+        } else if (activeLocationField === "dropoff") {
+          setDropoffLocation(currentCoords);
+          setTitleDropoff("Vị trí hiện tại");
+          setEndLocationAddress("Vị trí hiện tại");
+        }
+      }
+  
+      // Cập nhật vùng bản đồ
+      setInitialRegion({
+        latitude: currentCoords.latitude,
+        longitude: currentCoords.longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      });
+  
+    } catch (error) {
+      console.error("Lỗi khi lấy vị trí hiện tại:", error);
+      Alert.alert("Lỗi", "Không thể lấy vị trí hiện tại. Vui lòng kiểm tra cài đặt GPS và thử lại.");
+    }
+  };
 
   // Error states
   const [errors, setErrors] = useState({
@@ -151,11 +222,17 @@ const TripBooking = () => {
     }
   };
 
-  // Location picker handlers
   const openLocationPicker = (type) => {
     setActiveLocationField(type);
     setShowLocationPicker(true);
     setIsBottomSheetOpen(true);
+  
+    // Kiểm tra nếu chưa có vị trí cho field tương ứng thì lấy vị trí hiện tại
+    if (type === "pickup" && !pickupLocation) {
+      getCurrentLocation();
+    } else if (type === "dropoff" && !dropoffLocation) {
+      getCurrentLocation();
+    }
   };
 
   const handleLocationSelect = async (coordinate) => {
@@ -186,8 +263,10 @@ const TripBooking = () => {
         long: item.geometry.location.lng,
       }));
       setLocationState(locationData);
+      return locationData; // Trả về dữ liệu để sử dụng ngay
     } catch (error) {
       console.error("Lỗi khi lấy địa điểm gần đó:", error.response?.data || error.message);
+      return []; // Trả về mảng rỗng nếu có lỗi
     }
   };
 
@@ -709,66 +788,74 @@ const TripBooking = () => {
       {renderDatePicker("expiration")}
 
       <Modal visible={showLocationPicker} animationType="slide" onRequestClose={() => setShowLocationPicker(false)}>
-        <GestureHandlerRootView style={styles.modalContainer}>
-          <View style={styles.mapContainer}>
-            <TouchableOpacity style={styles.closeButton} onPress={() => setShowLocationPicker(false)}>
-              <Ionicons name="arrow-back" size={24} color="#333" />
+  <GestureHandlerRootView style={styles.modalContainer}>
+    <View style={styles.mapContainer}>
+      <TouchableOpacity style={styles.closeButton} onPress={() => setShowLocationPicker(false)}>
+        <Ionicons name="arrow-back" size={24} color="#333" />
+      </TouchableOpacity>
+
+      <View style={styles.searchContainer}>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Tìm kiếm địa điểm..."
+          onFocus={() => setIsSearching(true)}
+          value={searchText}
+          onChangeText={handleSearchChange}
+        />
+        {isSearching && resultLocation.length > 0 && (
+          <FlatList
+            data={resultLocation}
+            renderItem={renderLocationItem}
+            keyExtractor={(item) => item.place_id}
+            style={styles.searchResults}
+            keyboardShouldPersistTaps="handled"
+          />
+        )}
+      </View>
+
+      <MapView
+        style={styles.map}
+        initialRegion={initialRegion}
+        onPress={(e) => handleLocationSelect(e.nativeEvent.coordinate)}
+      >
+        {pickupLocation && activeLocationField === "pickup" && (
+          <Marker coordinate={pickupLocation} title="Điểm đón" />
+        )}
+        {dropoffLocation && activeLocationField === "dropoff" && (
+          <Marker coordinate={dropoffLocation} title="Điểm giao" />
+        )}
+      </MapView>
+
+      {/* Nút lấy vị trí hiện tại */}
+      <TouchableOpacity
+        style={styles.currentLocationButton}
+        onPress={getCurrentLocation}
+      >
+        <Ionicons name="locate-outline" size={24} color="#fff" />
+      </TouchableOpacity>
+
+      {!isSearching && (
+        <BottomSheet ref={bottomSheetRef} index={0} snapPoints={["50%"]}>
+          <BottomSheetView>
+            <FlatList
+              data={locationState}
+              keyExtractor={(item, index) => index.toString()}
+              renderItem={({ item }) => (
+                <TouchableOpacity style={styles.nearLocationItem} onPress={() => handleNearLocationPress(item)}>
+                  <Ionicons name="location-outline" size={20} color="#00b5ec" />
+                  <Text style={styles.nearLocationText}>{item.formatted_address}</Text>
+                </TouchableOpacity>
+              )}
+            />
+            <TouchableOpacity style={styles.confirmButton} onPress={() => setShowLocationPicker(false)}>
+              <Text style={styles.confirmButtonText}>Xác nhận</Text>
             </TouchableOpacity>
-
-            <View style={styles.searchContainer}>
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Tìm kiếm địa điểm..."
-                onFocus={() => setIsSearching(true)}
-                value={searchText}
-                onChangeText={handleSearchChange}
-              />
-              {isSearching && resultLocation.length > 0 && (
-                <FlatList
-                  data={resultLocation}
-                  renderItem={renderLocationItem}
-                  keyExtractor={(item) => item.place_id}
-                  style={styles.searchResults}
-                  keyboardShouldPersistTaps="handled"
-                />
-              )}
-            </View>
-
-            <MapView
-              style={styles.map}
-              initialRegion={initialRegion}
-              onPress={(e) => handleLocationSelect(e.nativeEvent.coordinate)}
-            >
-              {pickupLocation && activeLocationField === "pickup" && (
-                <Marker coordinate={pickupLocation} title="Điểm đón" />
-              )}
-              {dropoffLocation && activeLocationField === "dropoff" && (
-                <Marker coordinate={dropoffLocation} title="Điểm giao" />
-              )}
-            </MapView>
-
-            {!isSearching && (
-              <BottomSheet ref={bottomSheetRef} index={0} snapPoints={["50%"]}>
-                <BottomSheetView>
-                  <FlatList
-                    data={locationState}
-                    keyExtractor={(item, index) => index.toString()}
-                    renderItem={({ item }) => (
-                      <TouchableOpacity style={styles.nearLocationItem} onPress={() => handleNearLocationPress(item)}>
-                        <Ionicons name="location-outline" size={20} color="#00b5ec" />
-                        <Text style={styles.nearLocationText}>{item.formatted_address}</Text>
-                      </TouchableOpacity>
-                    )}
-                  />
-                  <TouchableOpacity style={styles.confirmButton} onPress={() => setShowLocationPicker(false)}>
-                    <Text style={styles.confirmButtonText}>Xác nhận</Text>
-                  </TouchableOpacity>
-                </BottomSheetView>
-              </BottomSheet>
-            )}
-          </View>
-        </GestureHandlerRootView>
-      </Modal>
+          </BottomSheetView>
+        </BottomSheet>
+      )}
+    </View>
+  </GestureHandlerRootView>
+</Modal>
     </KeyboardAvoidingView>
   );
 };
@@ -973,6 +1060,23 @@ const styles = StyleSheet.create({
   pickerTitle: { fontSize: 16, fontWeight: "600", color: "#333" },
   cancelText: { fontSize: 16, color: "#00b5ec" },
   doneText: { fontSize: 16, color: "#00b5ec", fontWeight: "600" },
+  currentLocationButton: {
+    position: "absolute",
+    bottom: 80, // Tăng giá trị bottom để nút nằm cao hơn (trước là 20)
+    right: 20,
+    backgroundColor: "#00b5ec",
+    borderRadius: 50,
+    width: 50,
+    height: 50,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+    zIndex: 10,
+  },
 });
 
 export default TripBooking;
