@@ -54,6 +54,7 @@ const TripBooking = () => {
   const [voucherCode, setVoucherCode] = useState(null);
   const [discountAmount, setDiscountAmount] = useState(0);
   const [finalPrice, setFinalPrice] = useState(0);
+  const [notes, setNotes] = useState("");
 
 
 
@@ -407,6 +408,7 @@ const TripBooking = () => {
           paymentMethod,
           startLocationAddress,
           endLocationAddress,
+          notes,
           voucherCode: voucherCode || undefined,
         },
         {
@@ -619,165 +621,183 @@ const TripBooking = () => {
         </View>
 
         <View style={styles.formCard}>
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Loại chuyến xe</Text>
-            <Dropdown
-              style={styles.dropdown}
-              data={data}
-              labelField="label"
-              valueField="value"
-              placeholder="Chọn loại chuyến"
-              value={bookingType}
-              onChange={(item) => setBookingType(item.value)}
-              placeholderStyle={styles.placeholderStyle}
-              selectedTextStyle={styles.selectedTextStyle}
-            />
-          </View>
+  <View style={styles.inputGroup}>
+    <Text style={styles.label}>Loại chuyến xe</Text>
+    <Dropdown
+      style={styles.dropdown}
+      data={data}
+      labelField="label"
+      valueField="value"
+      placeholder="Chọn loại chuyến"
+      value={bookingType}
+      onChange={(item) => setBookingType(item.value)}
+      placeholderStyle={styles.placeholderStyle}
+      selectedTextStyle={styles.selectedTextStyle}
+    />
+  </View>
 
-          <View style={styles.dateRow}>
-            <View style={[styles.inputGroup, styles.dateInput]}>
-              <Text style={styles.label}>Ngày đặt</Text>
-              <TouchableOpacity style={styles.dateButton} onPress={() => showDatePicker("booking")}>
-                <Text style={styles.dateText}>{bookingDate.toLocaleDateString("vi-VN")}</Text>
-                <Ionicons name="calendar-outline" size={20} color="#666" />
-              </TouchableOpacity>
-              {errors.bookingDate && <Text style={styles.errorText}>{errors.bookingDate}</Text>}
-            </View>
-            <View style={[styles.inputGroup, styles.dateInput]}>
-              <Text style={styles.label}>Ngày hết hạn</Text>
-              <TouchableOpacity style={styles.dateButton} onPress={() => showDatePicker("expiration")}>
-                <Text style={styles.dateText}>{expirationDate.toLocaleDateString("vi-VN")}</Text>
-                <Ionicons name="calendar-outline" size={20} color="#666" />
-              </TouchableOpacity>
-              {errors.expirationDate && <Text style={styles.errorText}>{errors.expirationDate}</Text>}
-            </View>
-          </View>
+  <View style={styles.dateRow}>
+    <View style={[styles.inputGroup, styles.dateInput]}>
+      <Text style={styles.label}>Ngày đặt</Text>
+      <TouchableOpacity style={styles.dateButton} onPress={() => showDatePicker("booking")}>
+        <Text style={styles.dateText}>{bookingDate.toLocaleDateString("vi-VN")}</Text>
+        <Ionicons name="calendar-outline" size={20} color="#666" />
+      </TouchableOpacity>
+      {errors.bookingDate && <Text style={styles.errorText}>{errors.bookingDate}</Text>}
+    </View>
+    <View style={[styles.inputGroup, styles.dateInput]}>
+      <Text style={styles.label}>Ngày hết hạn</Text>
+      <TouchableOpacity style={styles.dateButton} onPress={() => showDatePicker("expiration")}>
+        <Text style={styles.dateText}>{expirationDate.toLocaleDateString("vi-VN")}</Text>
+        <Ionicons name="calendar-outline" size={20} color="#666" />
+      </TouchableOpacity>
+      {errors.expirationDate && <Text style={styles.errorText}>{errors.expirationDate}</Text>}
+    </View>
+  </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Điểm đón</Text>
-            <TouchableOpacity style={styles.locationInput} onPress={() => openLocationPicker("pickup")}>
-              <Ionicons name="location-outline" size={20} color="#00b5ec" />
-              <Text style={styles.locationText}>{titlePickup || "Chọn điểm đón"}</Text>
-            </TouchableOpacity>
-            {errors.pickupLocation && <Text style={styles.errorText}>{errors.pickupLocation}</Text>}
-          </View>
+  <View style={styles.inputGroup}>
+    <Text style={styles.label}>Điểm đón</Text>
+    <TouchableOpacity style={styles.locationInput} onPress={() => openLocationPicker("pickup")}>
+      <Ionicons name="location-outline" size={20} color="#00b5ec" />
+      <Text style={styles.locationText}>{titlePickup || "Chọn điểm đón"}</Text>
+    </TouchableOpacity>
+    {errors.pickupLocation && <Text style={styles.errorText}>{errors.pickupLocation}</Text>}
+  </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Điểm giao</Text>
-            <TouchableOpacity style={styles.locationInput} onPress={() => openLocationPicker("dropoff")}>
-              <Ionicons name="location-outline" size={20} color="#00b5ec" />
-              <Text style={styles.locationText}>{titleDropoff || "Chọn điểm giao"}</Text>
-            </TouchableOpacity>
-            {errors.dropoffLocation && <Text style={styles.errorText}>{errors.dropoffLocation}</Text>}
-          </View>
+  <View style={styles.inputGroup}>
+    <Text style={styles.label}>Điểm giao</Text>
+    <TouchableOpacity style={styles.locationInput} onPress={() => openLocationPicker("dropoff")}>
+      <Ionicons name="location-outline" size={20} color="#00b5ec" />
+      <Text style={styles.locationText}>{titleDropoff || "Chọn điểm giao"}</Text>
+    </TouchableOpacity>
+    {errors.dropoffLocation && <Text style={styles.errorText}>{errors.dropoffLocation}</Text>}
+  </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Trọng tải (kg)</Text>
-            <TextInput
-              style={styles.textInput}
-              value={capacity}
-              onChangeText={(text) => {
-                setCapacity(text);
-                setErrors((prev) => ({ ...prev, capacity: "" }));
-              }}
-              keyboardType="numeric"
-              placeholder="Nhập trọng tải"
-              placeholderTextColor="#999"
-            />
-            {errors.capacity && <Text style={styles.errorText}>{errors.capacity}</Text>}
-          </View>
+  <View style={styles.inputGroup}>
+    <Text style={styles.label}>Trọng tải (kg)</Text>
+    <TextInput
+      style={styles.textInput}
+      value={capacity}
+      onChangeText={(text) => {
+        setCapacity(text);
+        setErrors((prev) => ({ ...prev, capacity: "" }));
+      }}
+      keyboardType="numeric"
+      placeholder="Nhập trọng tải"
+      placeholderTextColor="#999"
+    />
+    {errors.capacity && <Text style={styles.errorText}>{errors.capacity}</Text>}
+  </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Phương thức thanh toán</Text>
-            <View style={styles.paymentOptions}>
-              {paymentMethods.map((method) => (
-                <TouchableOpacity
-                  key={method.value}
-                  style={[styles.paymentOption, paymentMethod === method.value && styles.paymentOptionSelected]}
-                  onPress={() => setPaymentMethod(method.value)}
-                >
-                  <Ionicons
-                    name={method.icon}
-                    size={24}
-                    color={paymentMethod === method.value ? "#00b5ec" : "#666"}
-                  />
-                  <Text
-                    style={[styles.paymentText, paymentMethod === method.value && styles.paymentTextSelected]}
-                  >
-                    {method.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
+  {/* Thêm trường Ghi chú */}
+  <View style={styles.inputGroup}>
+    <Text style={styles.label}>Ghi chú</Text>
+    <TextInput
+      style={[styles.textInput, styles.notesInput]}
+      value={notes}
+      onChangeText={(text) => {
+        setNotes(text);
+        setErrors((prev) => ({ ...prev, notes: "" }));
+      }}
+      placeholder="Nhập ghi chú cho đơn hàng"
+      placeholderTextColor="#999"
+      multiline={true}
+      numberOfLines={3}
+    />
+    {errors.notes && <Text style={styles.errorText}>{errors.notes}</Text>}
+  </View>
 
-          {totalPrice.price > 0 && (
-            <View style={styles.priceCard}>
-              <View style={styles.priceItem}>
-                <View style={{ flexDirection: "row", alignItems: "center" }}>
-                  <Ionicons name="car-outline" size={24} color="#2ecc71" />
-                  <Text style={[styles.priceLabel, { marginLeft: 10 }]}>Quãng đường</Text>
-                </View>
-                <Text style={styles.priceValue}>{totalPrice.expectedDistance || 0} km</Text>
-              </View>
-              <View style={styles.priceItem}>
-                <View style={{ flexDirection: "row", alignItems: "center" }}>
-                  <Ionicons name="cash-outline" size={24} color="#2ecc71" />
-                  <Text style={[styles.priceLabel, { marginLeft: 10 }]}>Giá ban đầu</Text>
-                </View>
-                <Text style={styles.priceValue}>
-                  {totalPrice.price.toLocaleString("vi-VN", { style: "currency", currency: "VND" })}
-                </Text>
-              </View>
-              {discountAmount > 0 && (
-                <>
-                  <View style={styles.priceItem}>
-                    <View style={{ flexDirection: "row", alignItems: "center" }}>
-                      <Ionicons name="pricetag-outline" size={24} color="#2ecc71" />
-                      <Text style={[styles.priceLabel, { marginLeft: 10 }]}>Giảm giá</Text>
-                    </View>
-                    <Text style={[styles.priceValue, { color: "#ff6b6b" }]}>
-                      - {discountAmount.toLocaleString("vi-VN", { style: "currency", currency: "VND" })}
-                    </Text>
-                  </View>
-                  <View style={styles.priceItem}>
-                    <View style={{ flexDirection: "row", alignItems: "center" }}>
-                      <Ionicons name="wallet-outline" size={24} color="#2ecc71" />
-                      <Text style={[styles.priceLabel, { marginLeft: 10 }]}>Tổng tiền sau giảm</Text>
-                    </View>
-                    <Text style={styles.priceValue}>
-                      {finalPrice.toLocaleString("vi-VN", { style: "currency", currency: "VND" })}
-                    </Text>
-                  </View>
-                </>
-              )}
-            </View>
-          )}
+  <View style={styles.inputGroup}>
+    <Text style={styles.label}>Phương thức thanh toán</Text>
+    <View style={styles.paymentOptions}>
+      {paymentMethods.map((method) => (
+        <TouchableOpacity
+          key={method.value}
+          style={[styles.paymentOption, paymentMethod === method.value && styles.paymentOptionSelected]}
+          onPress={() => setPaymentMethod(method.value)}
+        >
+          <Ionicons
+            name={method.icon}
+            size={24}
+            color={paymentMethod === method.value ? "#00b5ec" : "#666"}
+          />
+          <Text
+            style={[styles.paymentText, paymentMethod === method.value && styles.paymentTextSelected]}
+          >
+            {method.label}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  </View>
 
-          {voucherCode && (
-            <View style={styles.voucherSelected}>
-              <View style={{ flexDirection: "row", alignItems: "center" }}>
-                <Ionicons name="ticket-outline" size={20} color="#2ecc71" />
-                <Text style={[styles.voucherSelectedText, { marginLeft: 10 }]}>Voucher: {voucherCode}</Text>
-              </View>
-              <TouchableOpacity
-                onPress={() => {
-                  setVoucherCode(null);
-                  setDiscountAmount(0);
-                  setFinalPrice(totalPrice.price || 0);
-                }}
-              >
-                <Ionicons name="close-circle" size={24} color="#ff6b6b" />
-              </TouchableOpacity>
-            </View>
-          )}
-
-          <TouchableOpacity style={styles.voucherButton} onPress={handleVoucherPress}>
-            <Ionicons name="ticket-outline" size={24} color="#fff" />
-            <Text style={styles.voucherText}>Sử dụng Voucher</Text>
-            <Ionicons name="chevron-forward" size={24} color="#fff" />
-          </TouchableOpacity>
+  {totalPrice.price > 0 && (
+    <View style={styles.priceCard}>
+      <View style={styles.priceItem}>
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
+          <Ionicons name="car-outline" size={24} color="#2ecc71" />
+          <Text style={[styles.priceLabel, { marginLeft: 10 }]}>Quãng đường</Text>
         </View>
+        <Text style={styles.priceValue}>{totalPrice.expectedDistance || 0} km</Text>
+      </View>
+      <View style={styles.priceItem}>
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
+          <Ionicons name="cash-outline" size={24} color="#2ecc71" />
+          <Text style={[styles.priceLabel, { marginLeft: 10 }]}>Giá ban đầu</Text>
+        </View>
+        <Text style={styles.priceValue}>
+          {totalPrice.price.toLocaleString("vi-VN", { style: "currency", currency: "VND" })}
+        </Text>
+      </View>
+      {discountAmount > 0 && (
+        <>
+          <View style={styles.priceItem}>
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <Ionicons name="pricetag-outline" size={24} color="#2ecc71" />
+              <Text style={[styles.priceLabel, { marginLeft: 10 }]}>Giảm giá</Text>
+            </View>
+            <Text style={[styles.priceValue, { color: "#ff6b6b" }]}>
+              - {discountAmount.toLocaleString("vi-VN", { style: "currency", currency: "VND" })}
+            </Text>
+          </View>
+          <View style={styles.priceItem}>
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <Ionicons name="wallet-outline" size={24} color="#2ecc71" />
+              <Text style={[styles.priceLabel, { marginLeft: 10 }]}>Tổng tiền sau giảm</Text>
+            </View>
+            <Text style={styles.priceValue}>
+              {finalPrice.toLocaleString("vi-VN", { style: "currency", currency: "VND" })}
+            </Text>
+          </View>
+        </>
+      )}
+    </View>
+  )}
+
+  {voucherCode && (
+    <View style={styles.voucherSelected}>
+      <View style={{ flexDirection: "row", alignItems: "center" }}>
+        <Ionicons name="ticket-outline" size={20} color="#2ecc71" />
+        <Text style={[styles.voucherSelectedText, { marginLeft: 10 }]}>Voucher: {voucherCode}</Text>
+      </View>
+      <TouchableOpacity
+        onPress={() => {
+          setVoucherCode(null);
+          setDiscountAmount(0);
+          setFinalPrice(totalPrice.price || 0);
+        }}
+      >
+        <Ionicons name="close-circle" size={24} color="#ff6b6b" />
+      </TouchableOpacity>
+    </View>
+  )}
+
+  <TouchableOpacity style={styles.voucherButton} onPress={handleVoucherPress}>
+    <Ionicons name="ticket-outline" size={24} color="#fff" />
+    <Text style={styles.voucherText}>Sử dụng Voucher</Text>
+    <Ionicons name="chevron-forward" size={24} color="#fff" />
+  </TouchableOpacity>
+</View>
 
         <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
           <Text style={styles.submitButtonText}>Đặt xe ngay</Text>
@@ -990,7 +1010,8 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   voucherText: { flex: 1, color: "#fff", fontSize: 16, fontWeight: "700", marginHorizontal: 12, textAlign: "center" },
-  submitButton: {
+    submitButton: {
+    marginTop: 20,
     backgroundColor: "#00b5ec",
     borderRadius: 12,
     padding: 16,
@@ -1076,6 +1097,12 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
     zIndex: 10,
+  },
+  notesInput: {
+    textAlignVertical: 'top',
+    minHeight: 80,
+    paddingTop: 10,
+    marginBottom: 20,
   },
 });
 
