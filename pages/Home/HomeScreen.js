@@ -117,10 +117,10 @@ const HomeScreen = () => {
     },
     {
       id: 4,
-      icon: "chatbubble-outline", // Đổi từ business-outline sang chatbubble-outline cho "Chat"
-      label: "Chat",
+      icon: "gift-outline", // Đổi từ business-outline sang chatbubble-outline cho "Chat"
+      label: "Bonus",
       color: "#eab308",
-      navigate: "ChatDriver",
+      navigate: "BonusScreen",
     },
   ];
   const renderBanner = () => (
