@@ -28,7 +28,7 @@ import PaymentScreen from "../pages/Payment";
 import BalanceHistoryDetailScreen from "../pages/BalanceDriver/BalanceHistoryDetailScreen";
 import VoucherScreen from "../pages/Voucher/VoucherScreen";
 import Withdraw from "../pages/Withdraw";
-
+import BonusScreen from "../pages/BonusDriver/Bonus";
 const Stack = createNativeStackNavigator();
 
 const Navigation = () => {
@@ -115,6 +115,12 @@ const Navigation = () => {
              <Stack.Screen
               name="VoucherScreen"
               component={VoucherScreen}
+              options={{ headerShown: false }}
+              
+            />
+             <Stack.Screen
+              name="BonusScreen"
+              component={BonusScreen}
               options={{ headerShown: false }}
               
             />
