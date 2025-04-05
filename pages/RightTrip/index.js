@@ -10,9 +10,9 @@ import {
 } from "react-native";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { BASE_URl } from "../../configUrl";
+import { BASE_URL } from "../../configUrl";
 import Icon from "react-native-vector-icons/MaterialIcons";
-import { getTripBookingStatusText } from '../../components/StatusMapper';
+import { getTripBookingStatusText } from "../../components/StatusMapper";
 
 const RightTrip = () => {
   const [tripData, setTripData] = useState(null);
@@ -28,7 +28,7 @@ const RightTrip = () => {
   const fetchTripData = async () => {
     try {
       const token = await AsyncStorage.getItem("token");
-      const response = await axios.get(`${BASE_URl}/api/trip-matching`, {
+      const response = await axios.get(`${BASE_URL}/api/trip-matching`, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
@@ -54,7 +54,7 @@ const RightTrip = () => {
     try {
       const token = await AsyncStorage.getItem("token");
       const response = await axios.get(
-        `${BASE_URl}/api/trip-matching/accept/${id}`,
+        `${BASE_URL}/api/trip-matching/accept/${id}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -206,7 +206,7 @@ const RightTrip = () => {
                 </View>
                 <View style={styles.timelineContent}>
                   <Text style={styles.timelineText}>
-                    {getTripBookingStatusText('ARRANGING_DRIVER')}
+                    {getTripBookingStatusText("ARRANGING_DRIVER")}
                   </Text>
                   <Text style={styles.timelineTime}>
                     {formatDateTime(selectedTrip.updateAt)}

@@ -9,9 +9,9 @@ import {
 } from "react-native";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { BASE_URl } from "../../configUrl";
+import { BASE_URL } from "../../configUrl";
 
-const PaymentScreen = ({ route, navigation, }) => {
+const PaymentScreen = ({ route, navigation }) => {
   const [loading, setLoading] = useState(true);
   const [paymentData, setPaymentData] = useState(null);
   const [qrCode, setQrCode] = useState(null);
@@ -27,7 +27,7 @@ const PaymentScreen = ({ route, navigation, }) => {
     try {
       let token = await AsyncStorage.getItem("token");
       const paymentResponse = await axios.get(
-        `${BASE_URl}/api/payment/tripBooking/${bookingId}`,
+        `${BASE_URL}/api/payment/tripBooking/${bookingId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,

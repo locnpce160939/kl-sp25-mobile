@@ -17,8 +17,8 @@ import {
 import Icon from "react-native-vector-icons/MaterialIcons";
 import io from "socket.io-client";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { BASE_URL } from "../../configUrl";
 
-const HOST = "https://api.ftcs.online";
 const SOCKET_URL = "wss://api.ftcs.online";
 
 const suggestedMessages = [
@@ -42,7 +42,7 @@ function getUserIdFromToken(token) {
 
 const ChatCustomer = ({ route, navigation }) => {
   const { driverId, driverName, driverPhone, bookingId } = route.params;
-  
+
   // State management
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState("");
@@ -52,7 +52,7 @@ const ChatCustomer = ({ route, navigation }) => {
   const [isConnected, setIsConnected] = useState(false);
   const [driverStatus, setDriverStatus] = useState("Đang hoạt động");
   const [showQuickMessages, setShowQuickMessages] = useState(true);
-  
+
   // Refs
   const socket = useRef(null);
   const flatListRef = useRef(null);
@@ -64,9 +64,9 @@ const ChatCustomer = ({ route, navigation }) => {
     if (!token || !currentUserId) return;
 
     socket.current = io(SOCKET_URL, {
-      query: { 
-        username: `customer_${currentUserId}`, 
-        room: currentUserId.toString() 
+      query: {
+        username: `customer_${currentUserId}`,
+        room: currentUserId.toString(),
       },
       transports: ["websocket"],
       upgrade: false,
@@ -97,8 +97,8 @@ const ChatCustomer = ({ route, navigation }) => {
         text: content.message,
         timestamp: new Date().toISOString(),
       };
-      
-      setMessages(prev => [...prev, newMessage]);
+
+      setMessages((prev) => [...prev, newMessage]);
       scrollToBottom();
     } catch (error) {
       console.error("Error parsing message:", error);
@@ -129,7 +129,7 @@ const ChatCustomer = ({ route, navigation }) => {
       timestamp: new Date().toISOString(),
     };
 
-    setMessages(prev => [...prev, newMessage]);
+    setMessages((prev) => [...prev, newMessage]);
 
     const payload = {
       messageType: "MESSAGE_SEND",
@@ -184,15 +184,18 @@ const ChatCustomer = ({ route, navigation }) => {
   // Data fetching
   const fetchMessages = async () => {
     if (!token) return;
-    
+
     try {
-      const response = await fetch(`${HOST}/api/chat-message/${bookingId}`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
+      const response = await fetch(
+        `${BASE_URL}/api/chat-message/${bookingId}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
       const result = await response.json();
 
@@ -208,11 +211,9 @@ const ChatCustomer = ({ route, navigation }) => {
       }
     } catch (error) {
       console.error("Error fetching messages:", error);
-      Alert.alert(
-        "Lỗi",
-        "Không thể tải tin nhắn. Vui lòng thử lại.",
-        [{ text: "OK" }]
-      );
+      Alert.alert("Lỗi", "Không thể tải tin nhắn. Vui lòng thử lại.", [
+        { text: "OK" },
+      ]);
     } finally {
       setIsLoading(false);
     }
@@ -225,18 +226,16 @@ const ChatCustomer = ({ route, navigation }) => {
         const userInfoString = await AsyncStorage.getItem("userInfo");
         const accessToken = JSON.parse(userInfoString)?.data?.access_token;
         setToken(accessToken);
-        
+
         if (accessToken) {
           const userId = getUserIdFromToken(accessToken);
           setCurrentUserId(userId);
         }
       } catch (error) {
         console.error("Error initializing:", error);
-        Alert.alert(
-          "Lỗi",
-          "Không thể khởi tạo ứng dụng. Vui lòng thử lại.",
-          [{ text: "OK" }]
-        );
+        Alert.alert("Lỗi", "Không thể khởi tạo ứng dụng. Vui lòng thử lại.", [
+          { text: "OK" },
+        ]);
       }
     };
 
@@ -259,57 +258,61 @@ const ChatCustomer = ({ route, navigation }) => {
   // Render functions
   const renderMessage = ({ item }) => {
     const isCustomer = item.sender === "customer";
-    
+
     return (
       <View
-      style={[
-        styles.messageContainer,
-        isCustomer ? styles.customerMessage : styles.driverMessage,
-      ]}
-    >
-      {!isCustomer && (
-        <View style={styles.avatarContainer}>
-          <Text style={styles.avatarText}>
-            {driverName.charAt(0).toUpperCase()}
-          </Text>
-        </View>
-      )}
-      
-      <View style={[
-        styles.messageContent,
-        isCustomer ? styles.customerContent : styles.driverContent,
-      ]}>
+        style={[
+          styles.messageContainer,
+          isCustomer ? styles.customerMessage : styles.driverMessage,
+        ]}
+      >
+        {!isCustomer && (
+          <View style={styles.avatarContainer}>
+            <Text style={styles.avatarText}>
+              {driverName.charAt(0).toUpperCase()}
+            </Text>
+          </View>
+        )}
+
         <View
           style={[
-            styles.messageBubble,
-            isCustomer ? styles.customerBubble : styles.driverBubble,
+            styles.messageContent,
+            isCustomer ? styles.customerContent : styles.driverContent,
           ]}
         >
-          <Text
+          <View
             style={[
-              styles.messageText,
-              isCustomer ? styles.customerMessageText : styles.driverMessageText,
+              styles.messageBubble,
+              isCustomer ? styles.customerBubble : styles.driverBubble,
             ]}
           >
-            {item.text}
+            <Text
+              style={[
+                styles.messageText,
+                isCustomer
+                  ? styles.customerMessageText
+                  : styles.driverMessageText,
+              ]}
+            >
+              {item.text}
+            </Text>
+          </View>
+
+          <Text
+            style={[
+              styles.timestamp,
+              isCustomer ? styles.customerTimestamp : styles.driverTimestamp,
+            ]}
+          >
+            {new Date(item.timestamp).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
           </Text>
         </View>
-        
-        <Text
-          style={[
-            styles.timestamp,
-            isCustomer ? styles.customerTimestamp : styles.driverTimestamp,
-          ]}
-        >
-          {new Date(item.timestamp).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
-        </Text>
       </View>
-    </View>
-  );
-};
+    );
+  };
 
   const renderQuickMessage = ({ item }) => (
     <TouchableOpacity
@@ -334,7 +337,7 @@ const ChatCustomer = ({ route, navigation }) => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
@@ -351,10 +354,7 @@ const ChatCustomer = ({ route, navigation }) => {
           </Text>
         </View>
 
-        <TouchableOpacity 
-          style={styles.headerButton}
-          onPress={handlePhoneCall}
-        >
+        <TouchableOpacity style={styles.headerButton} onPress={handlePhoneCall}>
           <Icon name="phone" size={24} color="#2B2D42" />
         </TouchableOpacity>
       </View>
@@ -371,7 +371,9 @@ const ChatCustomer = ({ route, navigation }) => {
       />
 
       {/* Quick Messages */}
-      <Animated.View style={[styles.quickMessages, { height: quickMessagesHeight }]}>
+      <Animated.View
+        style={[styles.quickMessages, { height: quickMessagesHeight }]}
+      >
         <FlatList
           data={suggestedMessages}
           renderItem={renderQuickMessage}
@@ -392,13 +394,15 @@ const ChatCustomer = ({ route, navigation }) => {
             onPress={toggleQuickMessages}
             style={styles.quickMessagesButton}
           >
-            <Icon 
-              name={showQuickMessages ? "keyboard-arrow-down" : "keyboard-arrow-up"} 
-              size={24} 
-              color="#2B2D42" 
+            <Icon
+              name={
+                showQuickMessages ? "keyboard-arrow-down" : "keyboard-arrow-up"
+              }
+              size={24}
+              color="#2B2D42"
             />
           </TouchableOpacity>
-          
+
           <TextInput
             ref={inputRef}
             style={styles.input}
@@ -409,12 +413,12 @@ const ChatCustomer = ({ route, navigation }) => {
             multiline
             maxHeight={100}
           />
-          
+
           <TouchableOpacity
             onPress={sendMessage}
             style={[
               styles.sendButton,
-              inputMessage.trim().length > 0 && styles.sendButtonActive
+              inputMessage.trim().length > 0 && styles.sendButtonActive,
             ]}
             disabled={inputMessage.trim().length === 0}
           >
@@ -441,7 +445,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#00b5ec",
   },
-  
+
   // Header styles
   header: {
     flexDirection: "row",
@@ -487,11 +491,11 @@ const styles = StyleSheet.create({
     width: "100%",
     justifyContent: "flex-start", // Default alignment for driver messages
   },
-  
+
   customerMessage: {
     justifyContent: "flex-end", // Align customer messages to the right
   },
-  
+
   driverMessage: {
     justifyContent: "flex-start", // Align driver messages to the left
   },
@@ -505,7 +509,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginRight: 8,
   },
-  
+
   messageContent: {
     maxWidth: "70%", // Limit the width of the message content
   },
@@ -526,7 +530,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#EDF2F4",
     borderTopLeftRadius: 4,
     alignSelf: "flex-start", // Align driver bubbles to the left
-  
   },
   messageText: {
     fontSize: 16,
@@ -642,8 +645,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 12,
   },
-  
-  
 });
 
 export default ChatCustomer;

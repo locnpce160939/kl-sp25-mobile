@@ -85,7 +85,7 @@ const ScheduleListScreen = () => {
 
     // Gọi hàm fetchSchedules
     fetchSchedules();
-  }, []); 
+  }, []);
 
   const renderItem = ({ item }) => (
     <TouchableOpacity
@@ -104,7 +104,9 @@ const ScheduleListScreen = () => {
               : styles.activeStatus,
           ]}
         >
-          <Text style={styles.statusText}>{getScheduleStatusText(item.status)}</Text>
+          <Text style={styles.statusText}>
+            {getScheduleStatusText(item.status)}
+          </Text>
         </View>
       </View>
 

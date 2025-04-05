@@ -15,11 +15,12 @@ import {
 import MapView, { Marker } from "react-native-maps";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import axios from "axios";
-import { BASE_URl } from "../../configUrl";
+import { BASE_URL } from "../../configUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { Ionicons } from "@expo/vector-icons";
+import { Picker } from "@react-native-picker/picker";
 
 const ScheduleScreen = () => {
   const [locations, setLocations] = useState({
@@ -39,6 +40,8 @@ const ScheduleScreen = () => {
   const [titleDropoff, setTitleDropoff] = useState("");
   const [startLocationAddress, setStartLocationAddress] = useState("");
   const [endLocationAddress, setEndLocationAddress] = useState("");
+  const [vehicles, setVehicles] = useState([]);
+  const [selectedVehicle, setSelectedVehicle] = useState(null);
 
   const [touched, setTouched] = useState({
     startLocation: false,
@@ -46,6 +49,7 @@ const ScheduleScreen = () => {
     startDay: false,
     endDay: false,
     capacity: false,
+    vehicle: false,
   });
 
   const [errors, setErrors] = useState({
@@ -112,6 +116,9 @@ const ScheduleScreen = () => {
     } else if (isNaN(availableCapacity) || parseInt(availableCapacity) <= 0) {
       newErrors.capacity = "Trọng tải phải là số dương";
     }
+    if (!selectedVehicle) {
+      newErrors.vehicle = "Vui lòng chọn phương tiện";
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -124,7 +131,7 @@ const ScheduleScreen = () => {
 
   const handleMapPress = async (event) => {
     const { coordinate } = event.nativeEvent;
-    console.log('Hellloooooooooo',coordinate)
+    console.log("Hellloooooooooo", coordinate);
     if (selectingPoint === "start") {
       setLocations((prev) => ({
         ...prev,
@@ -145,7 +152,7 @@ const ScheduleScreen = () => {
     try {
       let token = await AsyncStorage.getItem("token");
       const res = await axios.get(
-        `${BASE_URl}/api/location/reverse-geocode?latitude=${coordinate.latitude}&longitude=${coordinate.longitude}`,
+        `${BASE_URL}/api/location/reverse-geocode?latitude=${coordinate.latitude}&longitude=${coordinate.longitude}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -175,6 +182,7 @@ const ScheduleScreen = () => {
         startDay: true,
         endDay: true,
         capacity: true,
+        vehicle: true,
       });
       return;
     }
@@ -186,7 +194,7 @@ const ScheduleScreen = () => {
       const endLocationString = `${locations.endLocation.latitude},${locations.endLocation.longitude}`;
 
       const res = await axios.post(
-        `${BASE_URl}/api/schedule/create`,
+        `${BASE_URL}/api/schedule/create`,
         {
           startLocation: startLocationString,
           endLocation: endLocationString,
@@ -195,6 +203,7 @@ const ScheduleScreen = () => {
           availableCapacity: availableCapacity,
           startLocationAddress: startLocationAddress,
           endLocationAddress: endLocationAddress,
+          vehicleId: selectedVehicle,
         },
         {
           headers: {
@@ -220,7 +229,6 @@ const ScheduleScreen = () => {
     }
   };
 
-
   const formatDate = (date) => {
     return date.toLocaleDateString("vi-VN");
   };
@@ -229,6 +237,39 @@ const ScheduleScreen = () => {
     (async () => {
       try {
         const savedLocation = await AsyncStorage.getItem("currentLocation");
+        const token = await AsyncStorage.getItem("token");
+
+        // Fetch vehicles
+        const vehicleResponse = await axios.get(
+          `${BASE_URL}/api/registerDriver/vehicle`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+
+        // Kiểm tra và lọc dữ liệu
+        const approvedVehicles = Array.isArray(vehicleResponse.data.data)
+          ? vehicleResponse.data.data.filter(
+              (vehicle) =>
+                vehicle?.status === "APPROVED" &&
+                vehicle?.vehicleId > 0 && // Đảm bảo vehicleId hợp lệ
+                vehicle?.model // Đảm bảo có model
+            )
+          : [];
+
+        setVehicles(approvedVehicles);
+
+        if (approvedVehicles.length > 0) {
+          console.log(
+            "Load list Vehicle:",
+            JSON.stringify(approvedVehicles, null, 2)
+          );
+          // Gán vehicleId đầu tiên hợp lệ
+          setSelectedVehicle(approvedVehicles[0].vehicleId);
+        } else {
+          console.log("Không có phương tiện nào được phê duyệt");
+        }
+
         if (savedLocation) {
           const { latitude, longitude } = JSON.parse(savedLocation);
           setInitialRegion({
@@ -406,7 +447,42 @@ const ScheduleScreen = () => {
           {touched.capacity && errors.capacity && (
             <Text style={styles.errorText}>{errors.capacity}</Text>
           )}
-
+          <View>
+            <Text style={styles.label}>Phương tiện *</Text>
+            {vehicles.length > 0 ? (
+              <Picker
+                selectedValue={selectedVehicle}
+                style={[
+                  styles.picker,
+                  touched.vehicle && errors.vehicle && styles.errorInput,
+                ]}
+                onValueChange={(itemValue) => {
+                  setSelectedVehicle(itemValue);
+                  handleBlur("vehicle");
+                }}
+              >
+                <Picker.Item label="Chọn phương tiện" value={null} />
+                {vehicles
+                  .filter(
+                    (vehicle) => vehicle && vehicle.vehicleId && vehicle.model
+                  )
+                  .map((vehicle) => (
+                    <Picker.Item
+                      key={vehicle.vehicleId.toString()} // Add unique key here
+                      label={vehicle.model}
+                      value={vehicle.vehicleId}
+                    />
+                  ))}
+              </Picker>
+            ) : (
+              <Text style={styles.noVehiclesText}>
+                Không có phương tiện nào khả dụng
+              </Text>
+            )}
+            {touched.vehicle && errors.vehicle && (
+              <Text style={styles.errorText}>{errors.vehicle}</Text>
+            )}
+          </View>
           <TouchableOpacity
             style={styles.saveButton}
             onPress={handleCreateSchedule}
@@ -429,7 +505,7 @@ const ScheduleScreen = () => {
                   style={styles.map}
                   initialRegion={initialRegion}
                   onPress={handleMapPress}
-                  showsUserLocation	={true}
+                  showsUserLocation={true}
                 >
                   {locations.startLocation && selectingPoint === "start" && (
                     <Marker
@@ -517,6 +593,12 @@ const styles = StyleSheet.create({
   input: {
     backgroundColor: "#f5f5f5",
     padding: 15,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  vehicleInput: {
+    backgroundColor: "#f5f5f5",
+    padding: 22,
     borderRadius: 8,
     marginBottom: 8,
   },
@@ -674,7 +756,6 @@ const styles = StyleSheet.create({
     height: 200,
     width: "100%",
   },
-
   confirmLocation: {
     backgroundColor: "#00b5ec",
     height: 50,
@@ -692,6 +773,10 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     height: 50,
+  },
+  vehicleContainer: {
+    backgroundColor: "#f5f5f5",
+    borderRadius: 8,
   },
 });
 

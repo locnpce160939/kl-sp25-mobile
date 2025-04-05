@@ -17,7 +17,7 @@ import {
 import DateTimePicker from "@react-native-community/datetimepicker";
 import MapView, { Marker } from "react-native-maps";
 import { Dropdown } from "react-native-element-dropdown";
-import { BASE_URl } from "../../configUrl";
+import { BASE_URL } from "../../configUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import { Ionicons } from "@expo/vector-icons";
@@ -42,13 +42,18 @@ const TripBooking = () => {
   const [titlePickup, setTitlePickup] = useState("");
   const [titleDropoff, setTitleDropoff] = useState("");
   const [showBookingDatePicker, setShowBookingDatePicker] = useState(false);
-  const [showExpirationDatePicker, setShowExpirationDatePicker] = useState(false);
+  const [showExpirationDatePicker, setShowExpirationDatePicker] =
+    useState(false);
   const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [activeLocationField, setActiveLocationField] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [resultLocation, setResultLocation] = useState([]);
-  const [totalPrice, setTotalPrice] = useState({ price: 0, expectedDistance: 0, isFirstOrder: false });
+  const [totalPrice, setTotalPrice] = useState({
+    price: 0,
+    expectedDistance: 0,
+    isFirstOrder: false,
+  });
   const [paymentMethod, setPaymentMethod] = useState(null);
   const [OnlinePayment, setOnlinePayment] = useState();
   const [voucherCode, setVoucherCode] = useState(null);
@@ -56,25 +61,28 @@ const TripBooking = () => {
   const [finalPrice, setFinalPrice] = useState(0);
   const [notes, setNotes] = useState("");
 
-
-
-
   const getCurrentLocation = async () => {
     try {
       // Kiểm tra xem dịch vụ định vị có bật không
       const isLocationAvailable = await Location.hasServicesEnabledAsync();
       if (!isLocationAvailable) {
-        Alert.alert("Lỗi", "Dịch vụ định vị chưa được bật. Vui lòng bật GPS trong cài đặt thiết bị.");
+        Alert.alert(
+          "Lỗi",
+          "Dịch vụ định vị chưa được bật. Vui lòng bật GPS trong cài đặt thiết bị."
+        );
         return;
       }
-  
+
       // Yêu cầu quyền truy cập vị trí
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("Lỗi", "Quyền truy cập vị trí bị từ chối! Vui lòng cấp quyền trong cài đặt.");
+        Alert.alert(
+          "Lỗi",
+          "Quyền truy cập vị trí bị từ chối! Vui lòng cấp quyền trong cài đặt."
+        );
         return;
       }
-  
+
       // Lấy vị trí hiện tại
       let location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.High,
@@ -83,10 +91,10 @@ const TripBooking = () => {
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
       };
-  
+
       // Gọi API để lấy thông tin địa chỉ
       await getNearLocation(currentCoords);
-  
+
       // Lấy địa chỉ cụ thể từ locationState (kết quả của getNearLocation)
       if (locationState.length > 0) {
         const address = locationState[0].formatted_address; // Lấy địa chỉ đầu tiên
@@ -111,7 +119,7 @@ const TripBooking = () => {
           setEndLocationAddress("Vị trí hiện tại");
         }
       }
-  
+
       // Cập nhật vùng bản đồ
       setInitialRegion({
         latitude: currentCoords.latitude,
@@ -119,10 +127,12 @@ const TripBooking = () => {
         latitudeDelta: 0.01,
         longitudeDelta: 0.01,
       });
-  
     } catch (error) {
       console.error("Lỗi khi lấy vị trí hiện tại:", error);
-      Alert.alert("Lỗi", "Không thể lấy vị trí hiện tại. Vui lòng kiểm tra cài đặt GPS và thử lại.");
+      Alert.alert(
+        "Lỗi",
+        "Không thể lấy vị trí hiện tại. Vui lòng kiểm tra cài đặt GPS và thử lại."
+      );
     }
   };
 
@@ -146,7 +156,11 @@ const TripBooking = () => {
 
   const paymentMethods = [
     { label: "Thanh toán khi hoàn thành", value: "CASH", icon: "cash-outline" },
-    { label: "Thanh toán trước", value: "ONLINE_PAYMENT", icon: "card-outline" },
+    {
+      label: "Thanh toán trước",
+      value: "ONLINE_PAYMENT",
+      icon: "card-outline",
+    },
   ];
 
   // Validation functions
@@ -210,7 +224,9 @@ const TripBooking = () => {
   const onDateChange = (type) => (event, selectedDate) => {
     const isBooking = type === "booking";
     if (Platform.OS === "android") {
-      isBooking ? setShowBookingDatePicker(false) : setShowExpirationDatePicker(false);
+      isBooking
+        ? setShowBookingDatePicker(false)
+        : setShowExpirationDatePicker(false);
     }
     if (selectedDate) {
       if (isBooking) {
@@ -227,7 +243,7 @@ const TripBooking = () => {
     setActiveLocationField(type);
     setShowLocationPicker(true);
     setIsBottomSheetOpen(true);
-  
+
     // Kiểm tra nếu chưa có vị trí cho field tương ứng thì lấy vị trí hiện tại
     if (type === "pickup" && !pickupLocation) {
       getCurrentLocation();
@@ -253,7 +269,7 @@ const TripBooking = () => {
     try {
       let token = await AsyncStorage.getItem("token");
       const res = await axios.get(
-        `${BASE_URl}/api/location/reverse-geocode?latitude=${coordinate.latitude}&longitude=${coordinate.longitude}`,
+        `${BASE_URL}/api/location/reverse-geocode?latitude=${coordinate.latitude}&longitude=${coordinate.longitude}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -266,7 +282,10 @@ const TripBooking = () => {
       setLocationState(locationData);
       return locationData; // Trả về dữ liệu để sử dụng ngay
     } catch (error) {
-      console.error("Lỗi khi lấy địa điểm gần đó:", error.response?.data || error.message);
+      console.error(
+        "Lỗi khi lấy địa điểm gần đó:",
+        error.response?.data || error.message
+      );
       return []; // Trả về mảng rỗng nếu có lỗi
     }
   };
@@ -275,9 +294,14 @@ const TripBooking = () => {
     try {
       let token = await AsyncStorage.getItem("token");
       const res = await axios.get(
-        `${BASE_URl}/api/location/address-geocode?address=${encodeURIComponent(searchText)}`,
+        `${BASE_URL}/api/location/address-geocode?address=${encodeURIComponent(
+          searchText
+        )}`,
         {
-          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
         }
       );
       const result = res.data.data.results;
@@ -314,7 +338,10 @@ const TripBooking = () => {
         !isValidCoordinate(pickupLocation.latitude, pickupLocation.longitude) ||
         !isValidCoordinate(dropoffLocation.latitude, dropoffLocation.longitude)
       ) {
-        console.error("Tọa độ không hợp lệ:", { pickupLocation, dropoffLocation });
+        console.error("Tọa độ không hợp lệ:", {
+          pickupLocation,
+          dropoffLocation,
+        });
         Alert.alert("Lỗi", "Tọa độ địa điểm không hợp lệ.");
         return;
       }
@@ -324,7 +351,7 @@ const TripBooking = () => {
       const weight = parseInt(capacity);
       console.log("Gửi yêu cầu getPrice:", { origin, destination, weight });
       const res = await axios.get(
-        `${BASE_URl}/api/tripBookings/direction?origin=${origin}&destination=${destination}&weight=${weight}`,
+        `${BASE_URL}/api/tripBookings/direction?origin=${origin}&destination=${destination}&weight=${weight}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -363,10 +390,13 @@ const TripBooking = () => {
       };
 
       const res = await axios.post(
-        `${BASE_URl}/api/tripBookings/calculate-discount?voucherCode=${code}`,
+        `${BASE_URL}/api/tripBookings/calculate-discount?voucherCode=${code}`,
         discountRequestBody,
         {
-          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
         }
       );
 
@@ -397,7 +427,7 @@ const TripBooking = () => {
       const dropoffLocationString = `${dropoffLocation.latitude},${dropoffLocation.longitude}`;
       const pickupLocationString = `${pickupLocation.latitude},${pickupLocation.longitude}`;
       const res = await axios.post(
-        `${BASE_URl}/api/tripBookings/create`,
+        `${BASE_URL}/api/tripBookings/create`,
         {
           bookingType,
           bookingDate,
@@ -412,14 +442,19 @@ const TripBooking = () => {
           voucherCode: voucherCode || undefined,
         },
         {
-          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
         }
       );
 
       if (res.data.code === 200) {
         setOnlinePayment(res.data.data.bookingId);
         if (paymentMethod === "ONLINE_PAYMENT") {
-          navigation.navigate("Payment", { bookingId: res.data.data.bookingId });
+          navigation.navigate("Payment", {
+            bookingId: res.data.data.bookingId,
+          });
         }
         Alert.alert("Thành công", res.data.message);
         setVoucherCode(null);
@@ -429,7 +464,10 @@ const TripBooking = () => {
     } catch (error) {
       console.log(error);
       const responseData = error.response?.data;
-      if (responseData?.code === 200 && responseData?.message === "Validation failed") {
+      if (
+        responseData?.code === 200 &&
+        responseData?.message === "Validation failed"
+      ) {
         const validationMessages = Object.values(responseData.data).join("\n");
         Alert.alert("Lỗi xác thực", validationMessages);
       } else if (error.response?.status === 401) {
@@ -441,11 +479,14 @@ const TripBooking = () => {
   };
 
   // Effects
- 
 
   useEffect(() => {
     if (pickupLocation && dropoffLocation && capacity) {
-      console.log("Kích hoạt getPrice với:", { pickupLocation, dropoffLocation, capacity });
+      console.log("Kích hoạt getPrice với:", {
+        pickupLocation,
+        dropoffLocation,
+        capacity,
+      });
       getPrice();
     }
   }, [pickupLocation, dropoffLocation, capacity]);
@@ -464,9 +505,12 @@ const TripBooking = () => {
       if (params.paymentMethod) setPaymentMethod(params.paymentMethod);
       if (params.bookingType) setBookingType(params.bookingType);
       if (params.bookingDate) setBookingDate(new Date(params.bookingDate));
-      if (params.expirationDate) setExpirationDate(new Date(params.expirationDate));
-      if (params.startLocationAddress) setStartLocationAddress(params.startLocationAddress);
-      if (params.endLocationAddress) setEndLocationAddress(params.endLocationAddress);
+      if (params.expirationDate)
+        setExpirationDate(new Date(params.expirationDate));
+      if (params.startLocationAddress)
+        setStartLocationAddress(params.startLocationAddress);
+      if (params.endLocationAddress)
+        setEndLocationAddress(params.endLocationAddress);
       if (params.titlePickup) setTitlePickup(params.titlePickup);
       if (params.titleDropoff) setTitleDropoff(params.titleDropoff);
     });
@@ -493,16 +537,36 @@ const TripBooking = () => {
     if (Platform.OS === "ios") {
       return (
         <Modal visible={show} transparent animationType="slide">
-          <TouchableWithoutFeedback onPress={() => (isBooking ? setShowBookingDatePicker(false) : setShowExpirationDatePicker(false))}>
+          <TouchableWithoutFeedback
+            onPress={() =>
+              isBooking
+                ? setShowBookingDatePicker(false)
+                : setShowExpirationDatePicker(false)
+            }
+          >
             <View style={styles.modalOverlay}>
               <TouchableWithoutFeedback>
                 <View style={styles.datePickerContainer}>
                   <View style={styles.pickerHeader}>
-                    <TouchableOpacity onPress={() => (isBooking ? setShowBookingDatePicker(false) : setShowExpirationDatePicker(false))}>
+                    <TouchableOpacity
+                      onPress={() =>
+                        isBooking
+                          ? setShowBookingDatePicker(false)
+                          : setShowExpirationDatePicker(false)
+                      }
+                    >
                       <Text style={styles.cancelText}>Hủy</Text>
                     </TouchableOpacity>
-                    <Text style={styles.pickerTitle}>{isBooking ? "Chọn ngày đặt" : "Chọn ngày hết hạn"}</Text>
-                    <TouchableOpacity onPress={() => (isBooking ? setShowBookingDatePicker(false) : setShowExpirationDatePicker(false))}>
+                    <Text style={styles.pickerTitle}>
+                      {isBooking ? "Chọn ngày đặt" : "Chọn ngày hết hạn"}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() =>
+                        isBooking
+                          ? setShowBookingDatePicker(false)
+                          : setShowExpirationDatePicker(false)
+                      }
+                    >
                       <Text style={styles.doneText}>Xong</Text>
                     </TouchableOpacity>
                   </View>
@@ -536,7 +600,12 @@ const TripBooking = () => {
     <TouchableOpacity
       style={styles.locationItem}
       onPress={() => {
-        if (!item.geometry || !item.geometry.location || !item.geometry.location.lat || !item.geometry.location.lng) {
+        if (
+          !item.geometry ||
+          !item.geometry.location ||
+          !item.geometry.location.lat ||
+          !item.geometry.location.lng
+        ) {
           console.error("Dữ liệu tọa độ không hợp lệ:", item);
           Alert.alert("Lỗi", "Địa điểm này không có tọa độ hợp lệ.");
           return;
@@ -563,8 +632,14 @@ const TripBooking = () => {
     >
       <Ionicons name="location-outline" size={20} color="#00b5ec" />
       <View style={styles.locationDetails}>
-        <Text style={styles.locationMainText}>{item.name || item.address_components?.[0]?.long_name || "Không có tên"}</Text>
-        <Text style={styles.locationSubText} numberOfLines={2}>{item.formatted_address}</Text>
+        <Text style={styles.locationMainText}>
+          {item.name ||
+            item.address_components?.[0]?.long_name ||
+            "Không có tên"}
+        </Text>
+        <Text style={styles.locationSubText} numberOfLines={2}>
+          {item.formatted_address}
+        </Text>
       </View>
     </TouchableOpacity>
   );
@@ -613,191 +688,274 @@ const TripBooking = () => {
   };
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === "ios" ? "padding" : "height"}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Đặt chuyến xe</Text>
           <Text style={styles.headerSubtitle}>Nhanh chóng và tiện lợi</Text>
         </View>
 
         <View style={styles.formCard}>
-  <View style={styles.inputGroup}>
-    <Text style={styles.label}>Loại chuyến xe</Text>
-    <Dropdown
-      style={styles.dropdown}
-      data={data}
-      labelField="label"
-      valueField="value"
-      placeholder="Chọn loại chuyến"
-      value={bookingType}
-      onChange={(item) => setBookingType(item.value)}
-      placeholderStyle={styles.placeholderStyle}
-      selectedTextStyle={styles.selectedTextStyle}
-    />
-  </View>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Loại chuyến xe</Text>
+            <Dropdown
+              style={styles.dropdown}
+              data={data}
+              labelField="label"
+              valueField="value"
+              placeholder="Chọn loại chuyến"
+              value={bookingType}
+              onChange={(item) => setBookingType(item.value)}
+              placeholderStyle={styles.placeholderStyle}
+              selectedTextStyle={styles.selectedTextStyle}
+            />
+          </View>
 
-  <View style={styles.dateRow}>
-    <View style={[styles.inputGroup, styles.dateInput]}>
-      <Text style={styles.label}>Ngày đặt</Text>
-      <TouchableOpacity style={styles.dateButton} onPress={() => showDatePicker("booking")}>
-        <Text style={styles.dateText}>{bookingDate.toLocaleDateString("vi-VN")}</Text>
-        <Ionicons name="calendar-outline" size={20} color="#666" />
-      </TouchableOpacity>
-      {errors.bookingDate && <Text style={styles.errorText}>{errors.bookingDate}</Text>}
-    </View>
-    <View style={[styles.inputGroup, styles.dateInput]}>
-      <Text style={styles.label}>Ngày hết hạn</Text>
-      <TouchableOpacity style={styles.dateButton} onPress={() => showDatePicker("expiration")}>
-        <Text style={styles.dateText}>{expirationDate.toLocaleDateString("vi-VN")}</Text>
-        <Ionicons name="calendar-outline" size={20} color="#666" />
-      </TouchableOpacity>
-      {errors.expirationDate && <Text style={styles.errorText}>{errors.expirationDate}</Text>}
-    </View>
-  </View>
+          <View style={styles.dateRow}>
+            <View style={[styles.inputGroup, styles.dateInput]}>
+              <Text style={styles.label}>Ngày đặt</Text>
+              <TouchableOpacity
+                style={styles.dateButton}
+                onPress={() => showDatePicker("booking")}
+              >
+                <Text style={styles.dateText}>
+                  {bookingDate.toLocaleDateString("vi-VN")}
+                </Text>
+                <Ionicons name="calendar-outline" size={20} color="#666" />
+              </TouchableOpacity>
+              {errors.bookingDate && (
+                <Text style={styles.errorText}>{errors.bookingDate}</Text>
+              )}
+            </View>
+            <View style={[styles.inputGroup, styles.dateInput]}>
+              <Text style={styles.label}>Ngày hết hạn</Text>
+              <TouchableOpacity
+                style={styles.dateButton}
+                onPress={() => showDatePicker("expiration")}
+              >
+                <Text style={styles.dateText}>
+                  {expirationDate.toLocaleDateString("vi-VN")}
+                </Text>
+                <Ionicons name="calendar-outline" size={20} color="#666" />
+              </TouchableOpacity>
+              {errors.expirationDate && (
+                <Text style={styles.errorText}>{errors.expirationDate}</Text>
+              )}
+            </View>
+          </View>
 
-  <View style={styles.inputGroup}>
-    <Text style={styles.label}>Điểm đón</Text>
-    <TouchableOpacity style={styles.locationInput} onPress={() => openLocationPicker("pickup")}>
-      <Ionicons name="location-outline" size={20} color="#00b5ec" />
-      <Text style={styles.locationText}>{titlePickup || "Chọn điểm đón"}</Text>
-    </TouchableOpacity>
-    {errors.pickupLocation && <Text style={styles.errorText}>{errors.pickupLocation}</Text>}
-  </View>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Điểm đón</Text>
+            <TouchableOpacity
+              style={styles.locationInput}
+              onPress={() => openLocationPicker("pickup")}
+            >
+              <Ionicons name="location-outline" size={20} color="#00b5ec" />
+              <Text style={styles.locationText}>
+                {titlePickup || "Chọn điểm đón"}
+              </Text>
+            </TouchableOpacity>
+            {errors.pickupLocation && (
+              <Text style={styles.errorText}>{errors.pickupLocation}</Text>
+            )}
+          </View>
 
-  <View style={styles.inputGroup}>
-    <Text style={styles.label}>Điểm giao</Text>
-    <TouchableOpacity style={styles.locationInput} onPress={() => openLocationPicker("dropoff")}>
-      <Ionicons name="location-outline" size={20} color="#00b5ec" />
-      <Text style={styles.locationText}>{titleDropoff || "Chọn điểm giao"}</Text>
-    </TouchableOpacity>
-    {errors.dropoffLocation && <Text style={styles.errorText}>{errors.dropoffLocation}</Text>}
-  </View>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Điểm giao</Text>
+            <TouchableOpacity
+              style={styles.locationInput}
+              onPress={() => openLocationPicker("dropoff")}
+            >
+              <Ionicons name="location-outline" size={20} color="#00b5ec" />
+              <Text style={styles.locationText}>
+                {titleDropoff || "Chọn điểm giao"}
+              </Text>
+            </TouchableOpacity>
+            {errors.dropoffLocation && (
+              <Text style={styles.errorText}>{errors.dropoffLocation}</Text>
+            )}
+          </View>
 
-  <View style={styles.inputGroup}>
-    <Text style={styles.label}>Trọng tải (kg)</Text>
-    <TextInput
-      style={styles.textInput}
-      value={capacity}
-      onChangeText={(text) => {
-        setCapacity(text);
-        setErrors((prev) => ({ ...prev, capacity: "" }));
-      }}
-      keyboardType="numeric"
-      placeholder="Nhập trọng tải"
-      placeholderTextColor="#999"
-    />
-    {errors.capacity && <Text style={styles.errorText}>{errors.capacity}</Text>}
-  </View>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Trọng tải (kg)</Text>
+            <TextInput
+              style={styles.textInput}
+              value={capacity}
+              onChangeText={(text) => {
+                setCapacity(text);
+                setErrors((prev) => ({ ...prev, capacity: "" }));
+              }}
+              keyboardType="numeric"
+              placeholder="Nhập trọng tải"
+              placeholderTextColor="#999"
+            />
+            {errors.capacity && (
+              <Text style={styles.errorText}>{errors.capacity}</Text>
+            )}
+          </View>
 
-  {/* Thêm trường Ghi chú */}
-  <View style={styles.inputGroup}>
-    <Text style={styles.label}>Ghi chú</Text>
-    <TextInput
-      style={[styles.textInput, styles.notesInput]}
-      value={notes}
-      onChangeText={(text) => {
-        setNotes(text);
-        setErrors((prev) => ({ ...prev, notes: "" }));
-      }}
-      placeholder="Nhập ghi chú cho đơn hàng"
-      placeholderTextColor="#999"
-      multiline={true}
-      numberOfLines={3}
-    />
-    {errors.notes && <Text style={styles.errorText}>{errors.notes}</Text>}
-  </View>
+          {/* Thêm trường Ghi chú */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Ghi chú</Text>
+            <TextInput
+              style={[styles.textInput, styles.notesInput]}
+              value={notes}
+              onChangeText={(text) => {
+                setNotes(text);
+                setErrors((prev) => ({ ...prev, notes: "" }));
+              }}
+              placeholder="Nhập ghi chú cho đơn hàng"
+              placeholderTextColor="#999"
+              multiline={true}
+              numberOfLines={3}
+            />
+            {errors.notes && (
+              <Text style={styles.errorText}>{errors.notes}</Text>
+            )}
+          </View>
 
-  <View style={styles.inputGroup}>
-    <Text style={styles.label}>Phương thức thanh toán</Text>
-    <View style={styles.paymentOptions}>
-      {paymentMethods.map((method) => (
-        <TouchableOpacity
-          key={method.value}
-          style={[styles.paymentOption, paymentMethod === method.value && styles.paymentOptionSelected]}
-          onPress={() => setPaymentMethod(method.value)}
-        >
-          <Ionicons
-            name={method.icon}
-            size={24}
-            color={paymentMethod === method.value ? "#00b5ec" : "#666"}
-          />
-          <Text
-            style={[styles.paymentText, paymentMethod === method.value && styles.paymentTextSelected]}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Phương thức thanh toán</Text>
+            <View style={styles.paymentOptions}>
+              {paymentMethods.map((method) => (
+                <TouchableOpacity
+                  key={method.value}
+                  style={[
+                    styles.paymentOption,
+                    paymentMethod === method.value &&
+                      styles.paymentOptionSelected,
+                  ]}
+                  onPress={() => setPaymentMethod(method.value)}
+                >
+                  <Ionicons
+                    name={method.icon}
+                    size={24}
+                    color={paymentMethod === method.value ? "#00b5ec" : "#666"}
+                  />
+                  <Text
+                    style={[
+                      styles.paymentText,
+                      paymentMethod === method.value &&
+                        styles.paymentTextSelected,
+                    ]}
+                  >
+                    {method.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {totalPrice.price > 0 && (
+            <View style={styles.priceCard}>
+              <View style={styles.priceItem}>
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <Ionicons name="car-outline" size={24} color="#2ecc71" />
+                  <Text style={[styles.priceLabel, { marginLeft: 10 }]}>
+                    Quãng đường
+                  </Text>
+                </View>
+                <Text style={styles.priceValue}>
+                  {totalPrice.expectedDistance || 0} km
+                </Text>
+              </View>
+              <View style={styles.priceItem}>
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <Ionicons name="cash-outline" size={24} color="#2ecc71" />
+                  <Text style={[styles.priceLabel, { marginLeft: 10 }]}>
+                    Giá ban đầu
+                  </Text>
+                </View>
+                <Text style={styles.priceValue}>
+                  {totalPrice.price.toLocaleString("vi-VN", {
+                    style: "currency",
+                    currency: "VND",
+                  })}
+                </Text>
+              </View>
+              {discountAmount > 0 && (
+                <>
+                  <View style={styles.priceItem}>
+                    <View
+                      style={{ flexDirection: "row", alignItems: "center" }}
+                    >
+                      <Ionicons
+                        name="pricetag-outline"
+                        size={24}
+                        color="#2ecc71"
+                      />
+                      <Text style={[styles.priceLabel, { marginLeft: 10 }]}>
+                        Giảm giá
+                      </Text>
+                    </View>
+                    <Text style={[styles.priceValue, { color: "#ff6b6b" }]}>
+                      -{" "}
+                      {discountAmount.toLocaleString("vi-VN", {
+                        style: "currency",
+                        currency: "VND",
+                      })}
+                    </Text>
+                  </View>
+                  <View style={styles.priceItem}>
+                    <View
+                      style={{ flexDirection: "row", alignItems: "center" }}
+                    >
+                      <Ionicons
+                        name="wallet-outline"
+                        size={24}
+                        color="#2ecc71"
+                      />
+                      <Text style={[styles.priceLabel, { marginLeft: 10 }]}>
+                        Tổng tiền sau giảm
+                      </Text>
+                    </View>
+                    <Text style={styles.priceValue}>
+                      {finalPrice.toLocaleString("vi-VN", {
+                        style: "currency",
+                        currency: "VND",
+                      })}
+                    </Text>
+                  </View>
+                </>
+              )}
+            </View>
+          )}
+
+          {voucherCode && (
+            <View style={styles.voucherSelected}>
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <Ionicons name="ticket-outline" size={20} color="#2ecc71" />
+                <Text style={[styles.voucherSelectedText, { marginLeft: 10 }]}>
+                  Voucher: {voucherCode}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => {
+                  setVoucherCode(null);
+                  setDiscountAmount(0);
+                  setFinalPrice(totalPrice.price || 0);
+                }}
+              >
+                <Ionicons name="close-circle" size={24} color="#ff6b6b" />
+              </TouchableOpacity>
+            </View>
+          )}
+
+          <TouchableOpacity
+            style={styles.voucherButton}
+            onPress={handleVoucherPress}
           >
-            {method.label}
-          </Text>
-        </TouchableOpacity>
-      ))}
-    </View>
-  </View>
-
-  {totalPrice.price > 0 && (
-    <View style={styles.priceCard}>
-      <View style={styles.priceItem}>
-        <View style={{ flexDirection: "row", alignItems: "center" }}>
-          <Ionicons name="car-outline" size={24} color="#2ecc71" />
-          <Text style={[styles.priceLabel, { marginLeft: 10 }]}>Quãng đường</Text>
+            <Ionicons name="ticket-outline" size={24} color="#fff" />
+            <Text style={styles.voucherText}>Sử dụng Voucher</Text>
+            <Ionicons name="chevron-forward" size={24} color="#fff" />
+          </TouchableOpacity>
         </View>
-        <Text style={styles.priceValue}>{totalPrice.expectedDistance || 0} km</Text>
-      </View>
-      <View style={styles.priceItem}>
-        <View style={{ flexDirection: "row", alignItems: "center" }}>
-          <Ionicons name="cash-outline" size={24} color="#2ecc71" />
-          <Text style={[styles.priceLabel, { marginLeft: 10 }]}>Giá ban đầu</Text>
-        </View>
-        <Text style={styles.priceValue}>
-          {totalPrice.price.toLocaleString("vi-VN", { style: "currency", currency: "VND" })}
-        </Text>
-      </View>
-      {discountAmount > 0 && (
-        <>
-          <View style={styles.priceItem}>
-            <View style={{ flexDirection: "row", alignItems: "center" }}>
-              <Ionicons name="pricetag-outline" size={24} color="#2ecc71" />
-              <Text style={[styles.priceLabel, { marginLeft: 10 }]}>Giảm giá</Text>
-            </View>
-            <Text style={[styles.priceValue, { color: "#ff6b6b" }]}>
-              - {discountAmount.toLocaleString("vi-VN", { style: "currency", currency: "VND" })}
-            </Text>
-          </View>
-          <View style={styles.priceItem}>
-            <View style={{ flexDirection: "row", alignItems: "center" }}>
-              <Ionicons name="wallet-outline" size={24} color="#2ecc71" />
-              <Text style={[styles.priceLabel, { marginLeft: 10 }]}>Tổng tiền sau giảm</Text>
-            </View>
-            <Text style={styles.priceValue}>
-              {finalPrice.toLocaleString("vi-VN", { style: "currency", currency: "VND" })}
-            </Text>
-          </View>
-        </>
-      )}
-    </View>
-  )}
-
-  {voucherCode && (
-    <View style={styles.voucherSelected}>
-      <View style={{ flexDirection: "row", alignItems: "center" }}>
-        <Ionicons name="ticket-outline" size={20} color="#2ecc71" />
-        <Text style={[styles.voucherSelectedText, { marginLeft: 10 }]}>Voucher: {voucherCode}</Text>
-      </View>
-      <TouchableOpacity
-        onPress={() => {
-          setVoucherCode(null);
-          setDiscountAmount(0);
-          setFinalPrice(totalPrice.price || 0);
-        }}
-      >
-        <Ionicons name="close-circle" size={24} color="#ff6b6b" />
-      </TouchableOpacity>
-    </View>
-  )}
-
-  <TouchableOpacity style={styles.voucherButton} onPress={handleVoucherPress}>
-    <Ionicons name="ticket-outline" size={24} color="#fff" />
-    <Text style={styles.voucherText}>Sử dụng Voucher</Text>
-    <Ionicons name="chevron-forward" size={24} color="#fff" />
-  </TouchableOpacity>
-</View>
 
         <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
           <Text style={styles.submitButtonText}>Đặt xe ngay</Text>
@@ -807,75 +965,94 @@ const TripBooking = () => {
       {renderDatePicker("booking")}
       {renderDatePicker("expiration")}
 
-      <Modal visible={showLocationPicker} animationType="slide" onRequestClose={() => setShowLocationPicker(false)}>
-  <GestureHandlerRootView style={styles.modalContainer}>
-    <View style={styles.mapContainer}>
-      <TouchableOpacity style={styles.closeButton} onPress={() => setShowLocationPicker(false)}>
-        <Ionicons name="arrow-back" size={24} color="#333" />
-      </TouchableOpacity>
-
-      <View style={styles.searchContainer}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Tìm kiếm địa điểm..."
-          onFocus={() => setIsSearching(true)}
-          value={searchText}
-          onChangeText={handleSearchChange}
-        />
-        {isSearching && resultLocation.length > 0 && (
-          <FlatList
-            data={resultLocation}
-            renderItem={renderLocationItem}
-            keyExtractor={(item) => item.place_id}
-            style={styles.searchResults}
-            keyboardShouldPersistTaps="handled"
-          />
-        )}
-      </View>
-
-      <MapView
-        style={styles.map}
-        initialRegion={initialRegion}
-        onPress={(e) => handleLocationSelect(e.nativeEvent.coordinate)}
+      <Modal
+        visible={showLocationPicker}
+        animationType="slide"
+        onRequestClose={() => setShowLocationPicker(false)}
       >
-        {pickupLocation && activeLocationField === "pickup" && (
-          <Marker coordinate={pickupLocation} title="Điểm đón" />
-        )}
-        {dropoffLocation && activeLocationField === "dropoff" && (
-          <Marker coordinate={dropoffLocation} title="Điểm giao" />
-        )}
-      </MapView>
-
-      {/* Nút lấy vị trí hiện tại */}
-      <TouchableOpacity
-        style={styles.currentLocationButton}
-        onPress={getCurrentLocation}
-      >
-        <Ionicons name="locate-outline" size={24} color="#fff" />
-      </TouchableOpacity>
-
-      {!isSearching && (
-        <BottomSheet ref={bottomSheetRef} index={0} snapPoints={["50%"]}>
-          <BottomSheetView>
-            <FlatList
-              data={locationState}
-              keyExtractor={(item, index) => index.toString()}
-              renderItem={({ item }) => (
-                <TouchableOpacity style={styles.nearLocationItem} onPress={() => handleNearLocationPress(item)}>
-                  <Ionicons name="location-outline" size={20} color="#00b5ec" />
-                  <Text style={styles.nearLocationText}>{item.formatted_address}</Text>
-                </TouchableOpacity>
-              )}
-            />
-            <TouchableOpacity style={styles.confirmButton} onPress={() => setShowLocationPicker(false)}>
-              <Text style={styles.confirmButtonText}>Xác nhận</Text>
+        <GestureHandlerRootView style={styles.modalContainer}>
+          <View style={styles.mapContainer}>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setShowLocationPicker(false)}
+            >
+              <Ionicons name="arrow-back" size={24} color="#333" />
             </TouchableOpacity>
-          </BottomSheetView>
-        </BottomSheet>
-      )}
-    </View>
-  </GestureHandlerRootView>
-</Modal>
+
+            <View style={styles.searchContainer}>
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Tìm kiếm địa điểm..."
+                onFocus={() => setIsSearching(true)}
+                value={searchText}
+                onChangeText={handleSearchChange}
+              />
+              {isSearching && resultLocation.length > 0 && (
+                <FlatList
+                  data={resultLocation}
+                  renderItem={renderLocationItem}
+                  keyExtractor={(item) => item.place_id}
+                  style={styles.searchResults}
+                  keyboardShouldPersistTaps="handled"
+                />
+              )}
+            </View>
+
+            <MapView
+              style={styles.map}
+              initialRegion={initialRegion}
+              onPress={(e) => handleLocationSelect(e.nativeEvent.coordinate)}
+            >
+              {pickupLocation && activeLocationField === "pickup" && (
+                <Marker coordinate={pickupLocation} title="Điểm đón" />
+              )}
+              {dropoffLocation && activeLocationField === "dropoff" && (
+                <Marker coordinate={dropoffLocation} title="Điểm giao" />
+              )}
+            </MapView>
+
+            {/* Nút lấy vị trí hiện tại */}
+            <TouchableOpacity
+              style={styles.currentLocationButton}
+              onPress={getCurrentLocation}
+            >
+              <Ionicons name="locate-outline" size={24} color="#fff" />
+            </TouchableOpacity>
+
+            {!isSearching && (
+              <BottomSheet ref={bottomSheetRef} index={0} snapPoints={["50%"]}>
+                <BottomSheetView>
+                  <FlatList
+                    data={locationState}
+                    keyExtractor={(item, index) => index.toString()}
+                    renderItem={({ item }) => (
+                      <TouchableOpacity
+                        style={styles.nearLocationItem}
+                        onPress={() => handleNearLocationPress(item)}
+                      >
+                        <Ionicons
+                          name="location-outline"
+                          size={20}
+                          color="#00b5ec"
+                        />
+                        <Text style={styles.nearLocationText}>
+                          {item.formatted_address}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  />
+                  <TouchableOpacity
+                    style={styles.confirmButton}
+                    onPress={() => setShowLocationPicker(false)}
+                  >
+                    <Text style={styles.confirmButtonText}>Xác nhận</Text>
+                  </TouchableOpacity>
+                </BottomSheetView>
+              </BottomSheet>
+            )}
+          </View>
+        </GestureHandlerRootView>
+      </Modal>
     </KeyboardAvoidingView>
   );
 };
@@ -908,7 +1085,11 @@ const styles = StyleSheet.create({
   },
   placeholderStyle: { fontSize: 16, color: "#999" },
   selectedTextStyle: { fontSize: 16, color: "#333" },
-  dateRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 20 },
+  dateRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 20,
+  },
   dateInput: { flex: 1, marginRight: 12 },
   dateButton: {
     flexDirection: "row",
@@ -955,7 +1136,12 @@ const styles = StyleSheet.create({
     borderColor: "#e0e0e0",
   },
   paymentOptionSelected: { borderColor: "#00b5ec", backgroundColor: "#e6f3ff" },
-  paymentText: { marginTop: 8, fontSize: 14, color: "#666", textAlign: "center" },
+  paymentText: {
+    marginTop: 8,
+    fontSize: 14,
+    color: "#666",
+    textAlign: "center",
+  },
   paymentTextSelected: { color: "#00b5ec", fontWeight: "600" },
   priceCard: {
     backgroundColor: "#f0f4f8",
@@ -1009,8 +1195,15 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 5,
   },
-  voucherText: { flex: 1, color: "#fff", fontSize: 16, fontWeight: "700", marginHorizontal: 12, textAlign: "center" },
-    submitButton: {
+  voucherText: {
+    flex: 1,
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
+    marginHorizontal: 12,
+    textAlign: "center",
+  },
+  submitButton: {
     marginTop: 20,
     backgroundColor: "#00b5ec",
     borderRadius: 12,
@@ -1037,7 +1230,13 @@ const styles = StyleSheet.create({
     zIndex: 20,
     elevation: 5,
   },
-  searchContainer: { position: "absolute", top: 50, left: 60, right: 16, zIndex: 10 },
+  searchContainer: {
+    position: "absolute",
+    top: 50,
+    left: 60,
+    right: 16,
+    zIndex: 10,
+  },
   searchInput: {
     backgroundColor: "#fff",
     borderRadius: 12,
@@ -1060,16 +1259,43 @@ const styles = StyleSheet.create({
     borderColor: "#e0e0e0",
     elevation: 5,
   },
-  locationItem: { flexDirection: "row", alignItems: "center", padding: 12, borderBottomWidth: 1, borderBottomColor: "#e0e0e0" },
+  locationItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e0e0e0",
+  },
   locationDetails: { marginLeft: 12, flex: 1 },
   locationMainText: { fontSize: 16, fontWeight: "600", color: "#333" },
   locationSubText: { fontSize: 14, color: "#666" },
-  nearLocationItem: { flexDirection: "row", alignItems: "center", padding: 12, borderBottomWidth: 1, borderBottomColor: "#e0e0e0" },
+  nearLocationItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e0e0e0",
+  },
   nearLocationText: { marginLeft: 12, fontSize: 16, color: "#333" },
-  confirmButton: { backgroundColor: "#00b5ec", borderRadius: 12, padding: 14, margin: 16, alignItems: "center" },
+  confirmButton: {
+    backgroundColor: "#00b5ec",
+    borderRadius: 12,
+    padding: 14,
+    margin: 16,
+    alignItems: "center",
+  },
   confirmButtonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0, 0, 0, 0.5)", justifyContent: "flex-end" },
-  datePickerContainer: { backgroundColor: "#fff", borderTopLeftRadius: 12, borderTopRightRadius: 12, paddingBottom: 20 },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
+  },
+  datePickerContainer: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    paddingBottom: 20,
+  },
   pickerHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -1099,7 +1325,7 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   notesInput: {
-    textAlignVertical: 'top',
+    textAlignVertical: "top",
     minHeight: 80,
     paddingTop: 10,
     marginBottom: 20,

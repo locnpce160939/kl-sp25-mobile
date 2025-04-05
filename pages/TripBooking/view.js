@@ -8,9 +8,9 @@ import {
   ActivityIndicator,
 } from "react-native";
 import axios from "axios";
-import { BASE_URl } from "../../configUrl";
+import { BASE_URL } from "../../configUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { getTripBookingStatusText } from '../../components/StatusMapper';
+import { getTripBookingStatusText } from "../../components/StatusMapper";
 
 const TripCard = ({ booking }) => {
   const formatDate = (dateString) => {
@@ -30,7 +30,9 @@ const TripCard = ({ booking }) => {
             },
           ]}
         >
-          <Text style={styles.statusText}>{getTripBookingStatusText(booking?.status)}</Text>
+          <Text style={styles.statusText}>
+            {getTripBookingStatusText(booking?.status)}
+          </Text>
         </View>
       </View>
 
@@ -85,7 +87,7 @@ const ViewTrip = () => {
     try {
       let token = await AsyncStorage.getItem("token");
       const response = await axios.get(
-        `${BASE_URl}/api/tripBookings/getByAccountId`,
+        `${BASE_URL}/api/tripBookings/getByAccountId`,
         {
           headers: {
             Authorization: `Bearer ${token}`,

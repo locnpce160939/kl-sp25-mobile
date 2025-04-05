@@ -15,10 +15,9 @@ import {
 import Icon from "react-native-vector-icons/MaterialIcons";
 import io from "socket.io-client";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { BASE_URL } from "../../configUrl";
 
-const HOST = "https://api.ftcs.online";
 const SOCKET_URL = "wss://api.ftcs.online";
-
 
 const QUICK_MESSAGES = [
   "Tôi đang trên đường tới điểm hẹn",
@@ -38,8 +37,13 @@ function getUserIdFromToken(token) {
 }
 
 const ChatDriverReal = ({ route, navigation }) => {
-  const { driverId, customerName, bookingId, scheduleId = null } = route.params || {};
-  
+  const {
+    driverId,
+    customerName,
+    bookingId,
+    scheduleId = null,
+  } = route.params || {};
+
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState("");
   const [token, setToken] = useState(null);
@@ -48,7 +52,7 @@ const ChatDriverReal = ({ route, navigation }) => {
   const flatListRef = useRef(null);
   const quickMessagesHeight = useRef(new Animated.Value(1)).current;
   const [showQuickMessages, setShowQuickMessages] = useState(true);
-  
+
   useEffect(() => {
     if (!driverId || !customerName || !bookingId) {
       console.error("Missing required parameters");
@@ -131,13 +135,16 @@ const ChatDriverReal = ({ route, navigation }) => {
   const fetchMessages = async () => {
     if (!token) return;
     try {
-      const response = await fetch(`${HOST}/api/chat-message/${bookingId}`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
+      const response = await fetch(
+        `${BASE_URL}/api/chat-message/${bookingId}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
       const result = await response.json();
 
       if (result.code === 200) {
@@ -192,7 +199,6 @@ const ChatDriverReal = ({ route, navigation }) => {
     }).start();
   };
 
-
   const renderMessage = ({ item }) => {
     const isCustomer = item.sender === "customer";
     return (
@@ -207,10 +213,14 @@ const ChatDriverReal = ({ route, navigation }) => {
             <Text style={styles.avatarText}>N</Text>
           </View>
         )}
-        <View style={[
-          styles.messageContent,
-          isCustomer ? styles.customerMessageContent : styles.driverMessageContent
-        ]}>
+        <View
+          style={[
+            styles.messageContent,
+            isCustomer
+              ? styles.customerMessageContent
+              : styles.driverMessageContent,
+          ]}
+        >
           <Text style={[styles.messageText, !isCustomer && { color: "#000" }]}>
             {item.text}
           </Text>
@@ -231,18 +241,20 @@ const ChatDriverReal = ({ route, navigation }) => {
   };
 
   const renderQuickMessages = () => (
-    <Animated.View style={[
-      styles.quickMessagesWrapper,
-      {
-        maxHeight: quickMessagesHeight.interpolate({
-          inputRange: [0, 1],
-          outputRange: [0, 100]
-        }),
-        opacity: quickMessagesHeight
-      }
-    ]}>
-      <ScrollView 
-        horizontal 
+    <Animated.View
+      style={[
+        styles.quickMessagesWrapper,
+        {
+          maxHeight: quickMessagesHeight.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0, 100],
+          }),
+          opacity: quickMessagesHeight,
+        },
+      ]}
+    >
+      <ScrollView
+        horizontal
         showsHorizontalScrollIndicator={false}
         style={styles.quickMessagesContainer}
       >
@@ -301,9 +313,11 @@ const ChatDriverReal = ({ route, navigation }) => {
           onPress={toggleQuickMessages}
           style={styles.toggleButton}
         >
-          <Icon 
-            name={showQuickMessages ? "keyboard-arrow-down" : "keyboard-arrow-up"} 
-            size={24} 
+          <Icon
+            name={
+              showQuickMessages ? "keyboard-arrow-down" : "keyboard-arrow-up"
+            }
+            size={24}
             color="#666"
           />
         </TouchableOpacity>
@@ -407,7 +421,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   quickMessagesWrapper: {
-    overflow: 'hidden',
+    overflow: "hidden",
     borderTopWidth: 1,
     borderTopColor: "#eee",
   },
