@@ -5,7 +5,6 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    Alert,
     ScrollView,
     SafeAreaView,
     ActivityIndicator,
@@ -20,9 +19,11 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AuthContext } from "../../contexts/AuthContext";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import * as ImagePicker from "expo-image-picker";
+import { useAlert } from "../../components/CustomAlert"; // Import hook useAlert
 
 const ProfileUserScreen = () => {
     const navigation = useNavigation();
+    const { showAlert } = useAlert(); // Sử dụng hook useAlert
     const [userDetails, setUserDetails] = useState({
         username: "",
         fullName: "",
@@ -63,23 +64,24 @@ const ProfileUserScreen = () => {
 
     const handleUserError = async (error) => {
         if (error.response?.status === 401) {
-            Alert.alert(
-                "Phiên đăng nhập đã hết hạn",
-                "Vui lòng đăng nhập lại.",
-                [
-                    {
-                        text: "OK",
-                        onPress: async () => {
-                            await logout();
-                        },
-                    },
-                ],
-                { cancelable: false }
-            );
+            // Thay Alert.alert bằng showAlert
+            showAlert({
+                title: "Phiên đăng nhập đã hết hạn",
+                message: "Vui lòng đăng nhập lại.",
+                type: "error",
+                confirmText: "OK",
+                onClose: async () => {
+                    await logout();
+                }
+            });
         } else {
             // Only alert if userDetails is empty
             if (!userDetails || !userDetails.username) {
-                Alert.alert("Lỗi", "Không thể tải thông tin người dùng.");
+                showAlert({
+                    title: "Lỗi",
+                    message: "Không thể tải thông tin người dùng.",
+                    type: "error"
+                });
             }
         }
     };
@@ -112,9 +114,18 @@ const ProfileUserScreen = () => {
             );
 
             if (status === 200) {
-                Alert.alert("Thành công", "Cập nhật thông tin thành công.");
+                showAlert({
+                    title: "Thành công",
+                    message: "Cập nhật thông tin thành công.",
+                    type: "success",
+                    autoClose: true
+                });
             } else {
-                Alert.alert("Lỗi", "Không thể cập nhật thông tin.");
+                showAlert({
+                    title: "Lỗi",
+                    message: "Không thể cập nhật thông tin.",
+                    type: "error"
+                });
             }
         } catch (error) {
             handleUserError(error);
@@ -126,7 +137,11 @@ const ProfileUserScreen = () => {
     const selectProfilePicture = async () => {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== "granted") {
-            Alert.alert("Lỗi", "Cần cho phép truy cập thư viện ảnh để sử dụng tính năng này!");
+            showAlert({
+                title: "Lỗi",
+                message: "Cần cho phép truy cập thư viện ảnh để sử dụng tính năng này!",
+                type: "warning"
+            });
             return;
         }
 
@@ -172,7 +187,7 @@ const ProfileUserScreen = () => {
                     style={styles.backButton}
                     onPress={() => navigation.goBack()}
                 >
-                    <Ionicons name="chevron-back" size={28} color="#007AFF" />
+                    <Ionicons name="chevron-back" size={28} color="#00b5ec" />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Thông tin cá nhân</Text>
                 <View style={styles.headerRight} />
@@ -292,7 +307,7 @@ const styles = StyleSheet.create({
         width: 120,
         height: 120,
         borderRadius: 60,
-        backgroundColor: "#007AFF",
+        backgroundColor: "#00b5ec",
         justifyContent: "center",
         alignItems: "center",
         borderWidth: 3,
@@ -302,7 +317,7 @@ const styles = StyleSheet.create({
         position: "absolute",
         bottom: 0,
         right: 0,
-        backgroundColor: "#007AFF",
+        backgroundColor: "#00b5ec",
         width: 36,
         height: 36,
         borderRadius: 18,
@@ -357,7 +372,7 @@ const styles = StyleSheet.create({
         borderStyle: "dotted",
     },
     saveButton: {
-        backgroundColor: "#007AFF",
+        backgroundColor: "#00b5ec",
         paddingVertical: 16,
         borderRadius: 12,
         alignItems: "center",

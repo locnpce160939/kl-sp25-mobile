@@ -21,13 +21,14 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import { BASE_URl } from "../../configUrl";
 //import { launchCamera } from 'react-native-image-picker';
+import { useAlert } from "../../components/CustomAlert"; // Import hook useAlert
 
 import Ionicons from "react-native-vector-icons/Ionicons";
 
 import * as ImagePicker from "expo-image-picker";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
-
+ 
 const ImageCameraField = ({
   label,
   image,
@@ -477,6 +478,7 @@ const DatePickerField = ({ label, value, onChange }) => {
 const DriverIdentificationScreen = ({ navigation }) => {
   const { createDriverIdentification, getProvinces, getDistricts, getWards } =
     useContext(AuthContext);
+    const { showAlert } = useAlert(); // Sử dụng hook useAlert
 
   const [formData, setFormData] = useState({
     idNumber: "",
@@ -797,11 +799,23 @@ const DriverIdentificationScreen = ({ navigation }) => {
       if (isEditMode) {
         // Update existing record
         await updateDriverIdentification(formData);
-        Alert.alert("Success", "Driver identification updated successfully.");
+        // Alert.alert("Success", "Driver identification updated successfully.");
+        showAlert({
+          title: "Thành công",
+          message: "Cập nhật CCCD thành công.",
+          type: "success",
+          autoClose: true
+      });
       } else {
         // Create new record
         await createDriverIdentification(formData, navigation);
-        Alert.alert("Success", "Driver identification created successfully.");
+        // Alert.alert("Success", "Driver identification created successfully.");
+        showAlert({
+          title: "Thành công",
+          message: "Đăng kí CCCD thành công.",
+          type: "success",
+          autoClose: true
+      });
       }
     } catch (error) {
       console.error("Error during form submission:", error);
@@ -885,7 +899,7 @@ const DriverIdentificationScreen = ({ navigation }) => {
 
       setIsLoading(false);
       if (response.status === 200) {
-        Alert.alert("Success", "Driver identification updated successfully.");
+       
       } else {
         Alert.alert(
           "Error",

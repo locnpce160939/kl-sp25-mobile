@@ -4,14 +4,16 @@ import { AuthProvider } from "./contexts/AuthContext";
 import HomeNavigation from "./navigation/HomeNavigation";
 import SocketNotification from "./components/SocketNotification";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { SafeAreaView } from "react-native";
+import { AlertProvider } from "./components/CustomAlert";
 
 export default function App() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <SocketNotification />
-        <Navigation />
+        <AlertProvider>
+          <SocketNotification />
+          <Navigation />
+        </AlertProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );
