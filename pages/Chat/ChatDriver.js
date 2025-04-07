@@ -12,8 +12,8 @@ import {
 import Ionicons from "react-native-vector-icons/Ionicons";
 import io from "socket.io-client";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { BASE_URL } from "../../configUrl";
 
-const HOST = "https://api.ftcs.online";
 const SOCKET_URL = "wss://api.ftcs.online";
 const TRIP_BOOKING_ID = 4;
 
@@ -98,7 +98,7 @@ const ChatDriver = () => {
   const fetchMessageHistory = async (accessToken, userId) => {
     try {
       const response = await fetch(
-        `${HOST}/api/chat-message/${TRIP_BOOKING_ID}`,
+        `${BASE_URL}/api/chat-message/${TRIP_BOOKING_ID}`,
         {
           method: "GET",
           headers: {

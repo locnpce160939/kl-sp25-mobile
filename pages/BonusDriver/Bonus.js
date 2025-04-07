@@ -13,7 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/native";
-import { BASE_URl} from "../../configUrl";
+import { BASE_URL } from "../../configUrl";
 
 const BonusScreen = () => {
   const [bonusTask, setBonusTask] = useState(null);
@@ -26,7 +26,8 @@ const BonusScreen = () => {
   const fetchBonusTask = useCallback(async () => {
     try {
       const userInfoString = await AsyncStorage.getItem("userInfo");
-      if (!userInfoString) throw new Error("Vui lòng đăng nhập lại. Phiên hết hạn.");
+      if (!userInfoString)
+        throw new Error("Vui lòng đăng nhập lại. Phiên hết hạn.");
 
       const parsedUserInfo = JSON.parse(userInfoString);
       const accessToken = parsedUserInfo?.data?.access_token;
@@ -35,16 +36,13 @@ const BonusScreen = () => {
         throw new Error("Token không hợp lệ. Vui lòng đăng nhập lại.");
       }
 
-      const response = await axios.get(
-        `${BASE_URl}/api/driverBonusProgress`,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
-          },
-          timeout: 10000,
-        }
-      );
+      const response = await axios.get(`${BASE_URL}/api/driverBonusProgress`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        timeout: 10000,
+      });
 
       const taskData = response.data.data || null;
       setBonusTask(taskData);
@@ -67,7 +65,7 @@ const BonusScreen = () => {
       console.log("Driver Bonus Progress ID:", driverBonusProgressId);
 
       const response = await axios.put(
-        `${BASE_URl}/api/driverBonusProgress/approvedReward/${driverBonusProgressId}`,
+        `${BASE_URL}/api/driverBonusProgress/approvedReward/${driverBonusProgressId}`,
         {},
         {
           headers: {
@@ -87,8 +85,14 @@ const BonusScreen = () => {
       // Xóa thông báo sau 3 giây
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
-      console.error("Lỗi chi tiết khi nhận thưởng:", err.response ? err.response.data : err.message);
-      setError(err.response?.data?.message || "Không thể nhận thưởng. Vui lòng thử lại.");
+      console.error(
+        "Lỗi chi tiết khi nhận thưởng:",
+        err.response ? err.response.data : err.message
+      );
+      setError(
+        err.response?.data?.message ||
+          "Không thể nhận thưởng. Vui lòng thử lại."
+      );
       setIsClaiming(false);
 
       // Xóa lỗi sau 3 giây
@@ -102,9 +106,12 @@ const BonusScreen = () => {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case "Đã nhận thưởng": return "#28a745";
-      case "Đã đạt": return "#007bff";
-      default: return "#FF6B6B";
+      case "Đã nhận thưởng":
+        return "#28a745";
+      case "Đã đạt":
+        return "#007bff";
+      default:
+        return "#FF6B6B";
     }
   };
 
@@ -125,7 +132,11 @@ const BonusScreen = () => {
   const renderBonusItem = ({ item }) => {
     const bonusConfig = item.bonusConfiguration;
     const progressPercentage = Math.min(item.progressPercentage, 100);
-    const status = item.isRewarded ? "Đã nhận thưởng" : item.isAchieved ? "Đã đạt" : "Đang thực hiện";
+    const status = item.isRewarded
+      ? "Đã nhận thưởng"
+      : item.isAchieved
+      ? "Đã đạt"
+      : "Đang thực hiện";
 
     return (
       <View style={styles.taskContainer}>
@@ -155,7 +166,8 @@ const BonusScreen = () => {
           <View style={styles.detailRow}>
             <Ionicons name="cash-outline" size={16} color="#666" />
             <Text style={styles.detailText}>
-              Doanh thu: {formatCurrency(item.currentRevenue)}/{formatCurrency(bonusConfig.revenueTarget)}
+              Doanh thu: {formatCurrency(item.currentRevenue)}/
+              {formatCurrency(bonusConfig.revenueTarget)}
             </Text>
           </View>
           <View style={styles.detailRow}>
@@ -180,11 +192,13 @@ const BonusScreen = () => {
 
         <View style={styles.dateContainer}>
           <Text style={styles.dateText}>
-            Kết thúc: {new Date(bonusConfig.endDate).toLocaleDateString("vi-VN")}
+            Kết thúc:{" "}
+            {new Date(bonusConfig.endDate).toLocaleDateString("vi-VN")}
           </Text>
           {item.isRewarded && (
             <Text style={styles.dateText}>
-              Nhận thưởng: {new Date(item.rewardedDate).toLocaleDateString("vi-VN")}
+              Nhận thưởng:{" "}
+              {new Date(item.rewardedDate).toLocaleDateString("vi-VN")}
             </Text>
           )}
         </View>
@@ -396,7 +410,7 @@ const styles = StyleSheet.create({
   },
   errorMessage: {
     padding: 10,
-    backgroundColor: '#FF6B6B',
+    backgroundColor: "#FF6B6B",
     borderRadius: 8,
     marginHorizontal: 16,
     marginTop: 10,
@@ -441,14 +455,14 @@ const styles = StyleSheet.create({
   },
   successMessage: {
     padding: 10,
-    backgroundColor: '#28a745',
+    backgroundColor: "#28a745",
     borderRadius: 8,
     marginHorizontal: 16,
     marginTop: 10,
   },
   successText: {
-    color: '#fff',
-    textAlign: 'center',
+    color: "#fff",
+    textAlign: "center",
     fontSize: 14,
   },
 });

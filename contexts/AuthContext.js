@@ -1,6 +1,6 @@
 import axios from "axios";
 import React, { createContext, useEffect, useState } from "react";
-import { BASE_URl } from "../configUrl";
+import { BASE_URL } from "../configUrl";
 import { useNavigation } from "@react-navigation/native";
 import { Alert } from "react-native";
 import Navigation from "../navigation/Navigation";
@@ -24,7 +24,7 @@ export const AuthProvider = ({ children }) => {
     try {
       setIsLoading(true);
 
-      const res = await axios.post(`${BASE_URl}/api/account/register/send`, {
+      const res = await axios.post(`${BASE_URL}/api/account/register/send`, {
         username,
         password,
         email,
@@ -77,7 +77,7 @@ export const AuthProvider = ({ children }) => {
       }
 
       const response = await axios.get(
-        `${BASE_URl}/api/location/wards/${districtId}`,
+        `${BASE_URL}/api/location/wards/${districtId}`,
         {
           headers: { Authorization: `Bearer ${accessToken}` },
         }
@@ -129,7 +129,7 @@ export const AuthProvider = ({ children }) => {
       }
 
       const response = await axios.get(
-        `${BASE_URl}/api/location/districts/${provinceId}`,
+        `${BASE_URL}/api/location/districts/${provinceId}`,
         {
           headers: { Authorization: `Bearer ${accessToken}` },
         }
@@ -171,7 +171,7 @@ export const AuthProvider = ({ children }) => {
         return [];
       }
 
-      const response = await axios.get(`${BASE_URl}/api/location/provinces`, {
+      const response = await axios.get(`${BASE_URL}/api/location/provinces`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
 
@@ -227,7 +227,7 @@ export const AuthProvider = ({ children }) => {
 
       // Gọi API với accountId
       const res = await axios.get(
-        `${BASE_URl}/api/registerDriver/identification/getByAccountId`,
+        `${BASE_URL}/api/registerDriver/identification/getByAccountId`,
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -262,10 +262,9 @@ export const AuthProvider = ({ children }) => {
 
   // ================================== Create Driver Identification ========================================
 
-  
   const createDriverIdentification = async (formData, navigation) => {
     if (isLoading) return;
-  
+
     setIsLoading(true);
     try {
       // const checkFileSize = (file) => {
@@ -275,47 +274,50 @@ export const AuthProvider = ({ children }) => {
       //     throw new Error("Kích thước file quá lớn. Tối đa 5MB");
       //   }
       // };
-  
+
       const userInfoString = await AsyncStorage.getItem("userInfo");
       if (!userInfoString) {
-        Alert.alert("Lỗi", "Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại.");
+        Alert.alert(
+          "Lỗi",
+          "Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại."
+        );
         return;
       }
-  
+
       const parsedUserInfo = JSON.parse(userInfoString);
       const accessToken = parsedUserInfo?.data?.access_token;
-  
-      if (!accessToken || typeof accessToken !== 'string') {
+
+      if (!accessToken || typeof accessToken !== "string") {
         Alert.alert("Lỗi", "Token không hợp lệ. Vui lòng đăng nhập lại.");
         return;
       }
-  
+
       console.log("Access Token:", accessToken);
-  
+
       const formDataToSend = new FormData();
-  
+
       if (formData.frontFile) {
         //checkFileSize(formData.frontFile);
         formDataToSend.append("frontFile", {
           uri: formData.frontFile.uri,
-          type: 'image/jpeg',
-          name: 'front.jpeg',
+          type: "image/jpeg",
+          name: "front.jpeg",
         });
       } else {
         throw new Error("Thiếu ảnh mặt trước CCCD/CMND");
       }
-  
+
       if (formData.backFile) {
-      //  checkFileSize(formData.backFile);
+        //  checkFileSize(formData.backFile);
         formDataToSend.append("backFile", {
           uri: formData.backFile.uri,
-          type: 'image/jpeg',
-          name: 'back.jpeg',
+          type: "image/jpeg",
+          name: "back.jpeg",
         });
       } else {
         throw new Error("Thiếu ảnh mặt sau CCCD/CMND");
       }
-  
+
       const requestDTO = {
         idNumber: formData.idNumber,
         fullName: formData.fullName,
@@ -334,59 +336,55 @@ export const AuthProvider = ({ children }) => {
         expiryDate: formData.expiryDate,
         issuedBy: formData.issuedBy,
       };
-  
+
       formDataToSend.append("requestDTO", JSON.stringify(requestDTO));
-  
+
       console.log("Data to send:");
       for (let pair of formDataToSend.entries()) {
-          console.log(pair[0], pair[1]);
+        console.log(pair[0], pair[1]);
       }
-      
+
       const response = await axios.post(
-        `${BASE_URl}/api/registerDriver/identification`,
+        `${BASE_URL}/api/registerDriver/identification`,
         formDataToSend,
         {
           headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'multipart/form-data',
-            'Accept': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "multipart/form-data",
+            Accept: "application/json",
           },
-          timeout: 300000 // 5 phút
+          timeout: 300000, // 5 phút
         }
       );
-  
+
       console.log("Response from server:", response.data);
-  
+
       if (response.status === 200 || response.status === 201) {
         Alert.alert("Thành công", "Đã tạo thông tin CCCD/CMND thành công");
         navigation.goBack();
       }
-  
     } catch (error) {
       console.error("Error details:", {
         message: error.message,
         status: error.response?.status,
         statusText: error.response?.statusText,
         data: error.response?.data,
-        headers: error.response?.headers
+        headers: error.response?.headers,
       });
-  
+
       let errorMessage = "Đã xảy ra lỗi khi tạo thông tin CCCD/CMND";
-  
+
       if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
       } else if (error.message) {
         errorMessage = error.message;
       }
-  
+
       Alert.alert("Lỗi", errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
-  
-  
-  
 
   // ================================== ConfirmOTP ========================================
   const confirmOtp = (
@@ -400,7 +398,7 @@ export const AuthProvider = ({ children }) => {
   ) => {
     setIsLoading(true);
     return axios
-      .post(`${BASE_URl}/api/account/register/confirm`, {
+      .post(`${BASE_URL}/api/account/register/confirm`, {
         username,
         password,
         email,
@@ -432,7 +430,7 @@ export const AuthProvider = ({ children }) => {
   const login = async (username, password) => {
     try {
       setIsLoading(true);
-      const res = await axios.post(`${BASE_URl}/api/auth`, {
+      const res = await axios.post(`${BASE_URL}/api/auth`, {
         username,
         password,
       });
@@ -494,7 +492,7 @@ export const AuthProvider = ({ children }) => {
   const forgotPass = (email, navigation) => {
     setIsLoading(true);
     return axios
-      .post(`${BASE_URl}/api/account/forgotSend`, {
+      .post(`${BASE_URL}/api/account/forgotSend`, {
         email,
       })
       .then((res) => {
@@ -521,7 +519,7 @@ export const AuthProvider = ({ children }) => {
     console.log(typeof otp);
     setIsLoading(true);
     return axios
-      .post(`${BASE_URl}/api/account/forgotConfirm`, {
+      .post(`${BASE_URL}/api/account/forgotConfirm`, {
         email,
         otp,
         newPassword,

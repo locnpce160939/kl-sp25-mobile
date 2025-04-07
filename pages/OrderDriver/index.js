@@ -16,7 +16,7 @@ import Icon from "react-native-vector-icons/MaterialIcons";
 import MapView, { Marker } from "react-native-maps";
 import io from "socket.io-client";
 import { useNavigation } from "@react-navigation/native";
-import { BASE_URl } from "../../configUrl";
+import { BASE_URL } from "../../configUrl";
 
 const OrderDriver = ({ route }) => {
   const [userId, setUserId] = useState(null);
@@ -47,7 +47,7 @@ const OrderDriver = ({ route }) => {
     try {
       const token = await AsyncStorage.getItem("token");
       const response = await axios.get(
-        "https://api.ftcs.online/api/tripBookings/schedule/" + scheduleId,
+        BASE_URL + "/api/tripBookings/schedule/" + scheduleId,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -68,7 +68,7 @@ const OrderDriver = ({ route }) => {
     try {
       const token = await AsyncStorage.getItem("token");
       const response = await axios.get(
-        `https://api.ftcs.online/api/tripBookings/${bookingId}`,
+        BASE_URL + `/api/tripBookings/${bookingId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -107,7 +107,7 @@ const OrderDriver = ({ route }) => {
     try {
       const token = await AsyncStorage.getItem("token");
       const response = await axios.put(
-        `${BASE_URl}/api/tripBookings/updateStatus/${selectedBooking.bookingId}`,
+        `${BASE_URL}/api/tripBookings/updateStatus/${selectedBooking.bookingId}`,
         {
           status: StatusEnum.ORDER_COMPLETE,
         },
@@ -189,60 +189,6 @@ const OrderDriver = ({ route }) => {
       newSocket.disconnect();
     };
   }, []);
-  // useEffect(() => {
-  //   // Kết nối với Socket.IO server
-  //   socketRef.current = io("wss://api.ftcs.online", {
-  //     query: {
-  //       username: "testDriver",
-  //       room: "1029",
-  //     },
-  //     transports: ["websocket"],
-  //     upgrade: false,
-  //     forceNew: true,
-  //   });
-  //   socketRef.current.on("connect", () => {
-  //     console.log("Socket.IO connected");
-  //   });
-  //   socketRef.current.on("LOCATION_SEND", (data) => {
-  //     console.log("Received LOCATION_SEND event:", data);
-  //     try {
-  //       let locationData =
-  //         typeof data.content === "string"
-  //           ? JSON.parse(data.content)
-  //           : data.content;
-  //       if (locationData && locationData.locationDriver) {
-  //         const [lat, lng] = locationData.locationDriver.split(",");
-  //         setLocation({
-  //           latitude: parseFloat(lat),
-  //           longitude: parseFloat(lng),
-  //         });
-  //       }
-  //     } catch (error) {
-  //       console.error("Error processing location data:", error);
-  //     }
-  //   });
-  //   socketRef.current.on("disconnect", () => {
-  //     console.log("Socket.IO disconnected");
-  //   });
-  //   return () => {
-  //     socketRef.current.disconnect();
-  //   };
-  // }, []);
-  // const sendLocation = (latLng) => {
-  //   const now = Date.now();
-  //   if (now - lastSendTime.current >= sendInterval) {
-  //     const payload = {
-  //       messageType: "LOCATION_SEND",
-  //       content: JSON.stringify({
-  //         id: 1,
-  //         locationDriver: `${latLng.latitude},${latLng.longitude}`,
-  //       }),
-  //     };
-  //     console.log("Sending location:", payload);
-  //     socketRef.current.emit("LOCATION_SEND", payload);
-  //     lastSendTime.current = now;
-  //   }
-  // };
   const renderBookingCard = (booking) => (
     <TouchableOpacity
       key={booking.bookingId}

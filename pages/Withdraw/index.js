@@ -19,7 +19,7 @@ import {
   MaterialCommunityIcons,
 } from "@expo/vector-icons";
 import axios from "axios";
-import { BASE_URl } from "../../configUrl";
+import { BASE_URL } from "../../configUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const BANKS = [
@@ -133,7 +133,7 @@ const Withdraw = () => {
       let token = await AsyncStorage.getItem("token");
 
       const response = await axios.post(
-        `${BASE_URl}/api/withdraw`,
+        `${BASE_URL}/api/withdraw`,
         {
           amount: numericAmount,
           bankName,

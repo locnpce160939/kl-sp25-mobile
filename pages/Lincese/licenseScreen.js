@@ -14,12 +14,12 @@ import {
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import axios from "axios";
-import { BASE_URl } from "../../configUrl";
+import { BASE_URL } from "../../configUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AuthContext } from "../../contexts/AuthContext";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import * as ImagePicker from "expo-image-picker";
-import DatePickerField from '../../components/DatePickerField';
+import DatePickerField from "../../components/DatePickerField";
 
 const LicenseScreen = () => {
   const navigation = useNavigation();
@@ -41,7 +41,10 @@ const LicenseScreen = () => {
     (async () => {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("Lỗi", "Cần cho phép truy cập máy ảnh để sử dụng tính năng này!");
+        Alert.alert(
+          "Lỗi",
+          "Cần cho phép truy cập máy ảnh để sử dụng tính năng này!"
+        );
       }
     })();
     fetchLicenseDetails();
@@ -56,7 +59,7 @@ const LicenseScreen = () => {
 
       const {
         data: { data: licenseData },
-      } = await axios.get(`${BASE_URl}/api/registerDriver/license`, {
+      } = await axios.get(`${BASE_URL}/api/registerDriver/license`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -64,8 +67,12 @@ const LicenseScreen = () => {
         setLicenseId(licenseData.licenseId);
         setLicenseDetails({
           ...licenseData,
-          issuedDate: licenseData.issuedDate ? new Date(licenseData.issuedDate).toISOString().split('T')[0] : "",
-          expiryDate: licenseData.expiryDate ? new Date(licenseData.expiryDate).toISOString().split('T')[0] : "",
+          issuedDate: licenseData.issuedDate
+            ? new Date(licenseData.issuedDate).toISOString().split("T")[0]
+            : "",
+          expiryDate: licenseData.expiryDate
+            ? new Date(licenseData.expiryDate).toISOString().split("T")[0]
+            : "",
           frontView: licenseData.frontView,
           backView: licenseData.backView,
         });
@@ -249,7 +256,7 @@ const LicenseScreen = () => {
       console.log("Token:", token);
 
       const { data, status } = await axios.put(
-        `${BASE_URl}/api/registerDriver/license`,
+        `${BASE_URL}/api/registerDriver/license`,
         formData,
         {
           headers: {
@@ -325,7 +332,7 @@ const LicenseScreen = () => {
 
       // Gửi request
       const { data, status } = await axios.post(
-        `${BASE_URl}/api/registerDriver/license`,
+        `${BASE_URL}/api/registerDriver/license`,
         formData,
         {
           headers: {
@@ -584,35 +591,35 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   datePickerContainer: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
     zIndex: 1000,
-    height: '100%',
-    justifyContent: 'flex-end',
+    height: "100%",
+    justifyContent: "flex-end",
   },
   datePickerWrapper: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderTopLeftRadius: 10,
     borderTopRightRadius: 10,
   },
   datePickerHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: "#e0e0e0",
   },
   datePickerButtonText: {
-    color: '#007AFF',
+    color: "#007AFF",
     fontSize: 16,
   },
   datePickerIOS: {
     height: 200,
-    width: '100%',
+    width: "100%",
   },
 });
 

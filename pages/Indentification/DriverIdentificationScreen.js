@@ -19,7 +19,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { AuthContext } from "../../contexts/AuthContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
-import { BASE_URl } from "../../configUrl";
+import { BASE_URL } from "../../configUrl";
 //import { launchCamera } from 'react-native-image-picker';
 import { useAlert } from "../../components/CustomAlert"; // Import hook useAlert
 
@@ -28,7 +28,7 @@ import Ionicons from "react-native-vector-icons/Ionicons";
 import * as ImagePicker from "expo-image-picker";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
- 
+
 const ImageCameraField = ({
   label,
   image,
@@ -478,7 +478,7 @@ const DatePickerField = ({ label, value, onChange }) => {
 const DriverIdentificationScreen = ({ navigation }) => {
   const { createDriverIdentification, getProvinces, getDistricts, getWards } =
     useContext(AuthContext);
-    const { showAlert } = useAlert(); // Sử dụng hook useAlert
+  const { showAlert } = useAlert(); // Sử dụng hook useAlert
 
   const [formData, setFormData] = useState({
     idNumber: "",
@@ -648,7 +648,7 @@ const DriverIdentificationScreen = ({ navigation }) => {
       }
 
       const res = await axios.get(
-        `${BASE_URl}/api/registerDriver/identification`,
+        `${BASE_URL}/api/registerDriver/identification`,
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -804,8 +804,8 @@ const DriverIdentificationScreen = ({ navigation }) => {
           title: "Thành công",
           message: "Cập nhật CCCD thành công.",
           type: "success",
-          autoClose: true
-      });
+          autoClose: true,
+        });
       } else {
         // Create new record
         await createDriverIdentification(formData, navigation);
@@ -814,8 +814,8 @@ const DriverIdentificationScreen = ({ navigation }) => {
           title: "Thành công",
           message: "Đăng kí CCCD thành công.",
           type: "success",
-          autoClose: true
-      });
+          autoClose: true,
+        });
       }
     } catch (error) {
       console.error("Error during form submission:", error);
@@ -887,7 +887,7 @@ const DriverIdentificationScreen = ({ navigation }) => {
       }
 
       const response = await axios.put(
-        `${BASE_URl}/api/registerDriver/identification`,
+        `${BASE_URL}/api/registerDriver/identification`,
         formData,
         {
           headers: {
@@ -899,7 +899,6 @@ const DriverIdentificationScreen = ({ navigation }) => {
 
       setIsLoading(false);
       if (response.status === 200) {
-       
       } else {
         Alert.alert(
           "Error",

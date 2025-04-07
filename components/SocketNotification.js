@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -25,15 +25,25 @@ import { Audio } from "expo-av";
 import MapView, { Marker } from "react-native-maps";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
+import { BASE_URL } from "../configUrl";
+import * as Location from "expo-location";
 
 const { width } = Dimensions.get("window");
 const BRAND_COLOR = "#00b5ec";
-const BASE_URL = "https://api.ftcs.online";
 
 function getUserIdFromToken(token) {
   try {
     const payload = JSON.parse(atob(token.split(".")[1]));
     return payload.account.id;
+  } catch (error) {
+    console.error("Error decoding token:", error);
+    return null;
+  }
+}
+function getRoleFromToken(token) {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return payload.account.role;
   } catch (error) {
     console.error("Error decoding token:", error);
     return null;
@@ -66,8 +76,58 @@ const SocketNotification = () => {
   const slideAnim = useState(new Animated.Value(0))[0];
   const [sound, setSound] = useState(null);
   const [currentUserId, setCurrentUserId] = useState(null);
+  const [role, setRole] = useState(null);
   const [socket, setSocket] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [location, setLocation] = useState(null);
+
+  const lastSendTime = useRef(0);
+  const sendInterval = 10000;
+
+  const sendLocation = async () => {
+    if (socket && socket.connected) {
+      try {
+        // Request permission first
+        const { status } = await Location.requestForegroundPermissionsAsync();
+
+        if (status !== "granted") {
+          console.error("Permission to access location was denied");
+          return;
+        }
+
+        // Get current location
+        const location = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High,
+        });
+
+        const { latitude, longitude } = location.coords;
+
+        const payload = {
+          messageType: "LOCATION_SEND",
+          content: JSON.stringify({
+            id: currentUserId.toString(),
+            locationDriver: `${latitude},${longitude}`,
+          }),
+          room: currentUserId.toString(),
+          username: `user_${currentUserId}`,
+        };
+
+        // Emit the location if socket is connected
+        socket.emit("LOCATION_SEND", payload);
+        console.log("Location sent:", payload);
+
+        // Optionally, update UI with the location
+        setLocation({
+          latitude,
+          longitude,
+        });
+      } catch (error) {
+        //console.error("Error getting location:", error);
+      }
+    } else {
+      //console.error("Socket is not connected.");
+    }
+  };
 
   useEffect(() => {
     const fetchTokenAndConnectSocket = async () => {
@@ -79,6 +139,8 @@ const SocketNotification = () => {
         if (accessToken) {
           const accountId = getUserIdFromToken(accessToken);
           setCurrentUserId(accountId);
+          const role = getRoleFromToken(accessToken);
+          setRole(role);
 
           if (accountId) {
             console.log("Connecting to room:", accountId.toString());
@@ -114,6 +176,23 @@ const SocketNotification = () => {
             });
 
             setSocket(newSocket);
+
+            // Example of sending location every time the socket connects
+            const sendIntervalId = setInterval(() => {
+              // Only send location if the role is DRIVER
+              if (role === "DRIVER") {
+                console.log("Sending location as role is DRIVER");
+                sendLocation();
+              }
+            }, sendInterval);
+
+            // Cleanup the interval on component unmount
+            return () => {
+              clearInterval(sendIntervalId);
+              if (newSocket) {
+                newSocket.disconnect();
+              }
+            };
           }
         }
       } catch (error) {
@@ -123,13 +202,68 @@ const SocketNotification = () => {
 
     fetchTokenAndConnectSocket();
 
+    // Clean up function for socket disconnection
     return () => {
       if (socket) {
         socket.disconnect();
       }
     };
-  }, []);
+  }, [role]); // Dependency on role to ensure the role value is considered in the effect
 
+  // useEffect(() => {
+  //   // Kết nối với Socket.IO server
+  //   socketRef.current = io("wss://api.ftcs.online", {
+  //     query: {
+  //       username: "testDriver",
+  //       room: "1029",
+  //     },
+  //     transports: ["websocket"],
+  //     upgrade: false,
+  //     forceNew: true,
+  //   });
+  //   socketRef.current.on("connect", () => {
+  //     console.log("Socket.IO connected");
+  //   });
+  //   socketRef.current.on("LOCATION_SEND", (data) => {
+  //     console.log("Received LOCATION_SEND event:", data);
+  //     try {
+  //       let locationData =
+  //         typeof data.content === "string"
+  //           ? JSON.parse(data.content)
+  //           : data.content;
+  //       if (locationData && locationData.locationDriver) {
+  //         const [lat, lng] = locationData.locationDriver.split(",");
+  //         setLocation({
+  //           latitude: parseFloat(lat),
+  //           longitude: parseFloat(lng),
+  //         });
+  //       }
+  //     } catch (error) {
+  //       console.error("Error processing location data:", error);
+  //     }
+  //   });
+  //   socketRef.current.on("disconnect", () => {
+  //     console.log("Socket.IO disconnected");
+  //   });
+  //   return () => {
+  //     socketRef.current.disconnect();
+  //   };
+  // }, []);
+  // const sendLocation = (latLng) => {
+  //   const now = Date.now();
+  //   if (now - lastSendTime.current >= sendInterval) {
+  //     const payload = {
+  //       messageType: "LOCATION_SEND",
+  //       content: JSON.stringify({
+  //         id: 1,
+  //         locationDriver: `${latLng.latitude},${latLng.longitude}`,
+  //       }),
+  //     };
+  //     console.log("Sending location:", payload);
+  //     socketRef.current.emit("LOCATION_SEND", payload);
+  //     lastSendTime.current = now;
+  //   }
+  // };
   async function playNotificationSound() {
     try {
       const { sound } = await Audio.Sound.createAsync(
@@ -161,10 +295,10 @@ const SocketNotification = () => {
 
   const acceptOrder = async () => {
     if (loading) return;
-    
+
     try {
       setLoading(true);
-      
+
       if (!notification?.id) {
         Alert.alert("Error", "No trip ID found in notification");
         return;
@@ -210,7 +344,10 @@ const SocketNotification = () => {
   };
 
   const toggleMapView = () => {
-    if (notification?.customerStartLocation && notification?.customerEndLocation) {
+    if (
+      notification?.customerStartLocation &&
+      notification?.customerEndLocation
+    ) {
       setShowMap(!showMap);
     }
   };

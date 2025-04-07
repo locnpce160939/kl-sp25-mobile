@@ -13,7 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { BASE_URl } from "../../configUrl";
+import { BASE_URL } from "../../configUrl";
 import { LinearGradient } from "expo-linear-gradient";
 
 const VoucherScreen = () => {
@@ -64,7 +64,7 @@ const VoucherScreen = () => {
       }
 
       const response = await axios.post(
-        `${BASE_URl}/api/tripBookings/applicable`,
+        `${BASE_URL}/api/tripBookings/applicable`,
         {
           orderValue,
           paymentMethod,
@@ -164,18 +164,26 @@ const VoucherScreen = () => {
           </View>
         </View>
 
-        <Text style={styles.voucherTitle}>{item.title || "Không có tiêu đề"}</Text>
+        <Text style={styles.voucherTitle}>
+          {item.title || "Không có tiêu đề"}
+        </Text>
         <Text style={styles.voucherDescription} numberOfLines={2}>
           {item.description || "Không có mô tả"}
         </Text>
 
         <View style={styles.voucherFooter}>
           <View style={styles.conditionContainer}>
-            <Ionicons name="information-circle-outline" size={12} color="#888" />
+            <Ionicons
+              name="information-circle-outline"
+              size={12}
+              color="#888"
+            />
             <Text style={styles.conditionText}>
               Đơn tối thiểu: {(item.minOrderValue / 1000).toFixed(0)}K
               {item.minKm ? ` • ${item.minKm}km` : ""}
-              {item.maxDiscountAmount ? ` • Tối đa ${(item.maxDiscountAmount / 1000).toFixed(0)}K` : ""}
+              {item.maxDiscountAmount
+                ? ` • Tối đa ${(item.maxDiscountAmount / 1000).toFixed(0)}K`
+                : ""}
             </Text>
           </View>
           <TouchableOpacity
@@ -225,8 +233,12 @@ const VoucherScreen = () => {
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Ionicons name="ticket-outline" size={64} color="#ddd" />
-              <Text style={styles.emptyText}>Không có voucher nào khả dụng</Text>
-              <Text style={styles.emptySubtext}>Hãy quay lại sau để nhận thêm ưu đãi</Text>
+              <Text style={styles.emptyText}>
+                Không có voucher nào khả dụng
+              </Text>
+              <Text style={styles.emptySubtext}>
+                Hãy quay lại sau để nhận thêm ưu đãi
+              </Text>
             </View>
           }
         />

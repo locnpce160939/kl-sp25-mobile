@@ -20,7 +20,7 @@ import MapView, { Marker } from "react-native-maps";
 import io from "socket.io-client";
 import { useNavigation } from "@react-navigation/native";
 import { CloudCog } from "lucide-react-native";
-import { BASE_URl } from "../../configUrl";
+import { BASE_URL } from "../../configUrl";
 import { FlatList, GestureHandlerRootView } from "react-native-gesture-handler";
 import HomeNavigation from "../../navigation/HomeNavigation";
 import {
@@ -55,7 +55,7 @@ const Order = () => {
     try {
       const token = await AsyncStorage.getItem("token");
       const response = await axios.get(
-        "https://api.ftcs.online/api/tripBookings/getByAccountId",
+        BASE_URL + "/api/tripBookings/getByAccountId",
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -64,7 +64,7 @@ const Order = () => {
         }
       );
       if (response.data.code === 200) {
-        setBookings(response.data.data);
+        setBookings(response.data.data.content);
       }
     } catch (err) {
       setError(err.message);
@@ -76,7 +76,7 @@ const Order = () => {
     try {
       const token = await AsyncStorage.getItem("token");
       const response = await axios.get(
-        `${BASE_URl}/api/tripBookings/${bookingId}`,
+        `${BASE_URL}/api/tripBookings/${bookingId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -186,7 +186,6 @@ const Order = () => {
       onPress={() => fetchBookingDetails(booking.bookingId)}
     >
       <View style={styles.cardHeader}>
-        
         <Text style={styles.status}>
           {getTripBookingStatusText(booking.status)}
         </Text>
@@ -235,7 +234,7 @@ const Order = () => {
     try {
       const token = await AsyncStorage.getItem("token");
       const response = await axios.post(
-        `${BASE_URl}/api/review/create/${selectedBooking.bookingId}`,
+        `${BASE_URL}/api/review/create/${selectedBooking.bookingId}`,
         {
           rating: rating,
           reviewText: comment,
@@ -264,7 +263,7 @@ const Order = () => {
     try {
       const token = await AsyncStorage.getItem("token");
       const response = await axios.get(
-        `${BASE_URl}/api/review/driver/${driverId}`,
+        `${BASE_URL}/api/review/driver/${driverId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -415,9 +414,7 @@ const Order = () => {
                       onPress={handleChatPress}
                     >
                       <Icon name="chat" size={20} color="#fff" />
-                      <Text style={styles.chatButtonText}>
-                        Liên hệ tài xế
-                      </Text>
+                      <Text style={styles.chatButtonText}>Liên hệ tài xế</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -429,7 +426,9 @@ const Order = () => {
                 <View style={styles.agreementGrid}>
                   <View style={styles.agreementItem}>
                     <Icon name="check-circle" size={20} color="#28a745" />
-                    <Text style={styles.agreementLabel}>Trạng thái đơn hàng</Text>
+                    <Text style={styles.agreementLabel}>
+                      Trạng thái đơn hàng
+                    </Text>
                     <Text style={styles.agreementValue}>
                       {getAgreementStatusText(
                         selectedBooking.tripAgreement.agreementStatus
@@ -438,7 +437,9 @@ const Order = () => {
                   </View>
                   <View style={styles.agreementItem}>
                     <Icon name="payment" size={20} color="#ffc107" />
-                    <Text style={styles.agreementLabel}>Trạng thái thanh toán</Text>
+                    <Text style={styles.agreementLabel}>
+                      Trạng thái thanh toán
+                    </Text>
                     <Text style={styles.agreementValue}>
                       {getPaymentStatusText(
                         selectedBooking.tripAgreement.paymentStatus
@@ -507,7 +508,6 @@ const Order = () => {
                     longitudeDelta: 0.01,
                   }}
                   showsUserLocation={true}
-                  
                 >
                   <Marker
                     coordinate={{
