@@ -33,7 +33,6 @@
         "NSCameraUsageDescription": "Ứng dụng cần quyền truy cập camera để chụp ảnh.",
         "NSPhotoLibraryUsageDescription": "Ứng dụng cần quyền truy cập vào thư viện ảnh để chọn ảnh.",
         "NSPhotoLibraryAddUsageDescription": "Ứng dụng cần quyền để lưu ảnh vào thư viện."
-     
       }
     },
     "android": {
@@ -48,12 +47,19 @@
         }
       },
       "permissions": [
-        "ACCESS_COARSE_LOCATION",
-        "ACCESS_FINE_LOCATION"
-      ]
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.RECORD_AUDIO"
+      ],
+      "package": "com.locnpce160939.klsp25app"
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "a2e953dc-8353-41a3-85e4-e25427c86dfb"
+      }
     }
   }
 }
