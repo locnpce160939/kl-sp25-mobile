@@ -502,6 +502,7 @@ const TripBooking = () => {
       if (params.pickupLocation) setPickupLocation(params.pickupLocation);
       if (params.dropoffLocation) setDropoffLocation(params.dropoffLocation);
       if (params.capacity) setCapacity(params.capacity);
+      if (params.notes) setNotes(params.notes);
       if (params.paymentMethod) setPaymentMethod(params.paymentMethod);
       if (params.bookingType) setBookingType(params.bookingType);
       if (params.bookingDate) setBookingDate(new Date(params.bookingDate));
@@ -683,6 +684,7 @@ const TripBooking = () => {
       startLocationAddress,
       endLocationAddress,
       titlePickup,
+      notes,
       titleDropoff,
     });
   };

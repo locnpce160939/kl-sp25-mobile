@@ -41,7 +41,7 @@ const CustomAlert = ({
   
   // Các màu sắc theo từng loại thông báo
   const alertColors = {
-    success: '#10B981',
+    success: '#00b5ec',
     error: '#EF4444',
     warning: '#F59E0B',
     info: '#3B82F6'
