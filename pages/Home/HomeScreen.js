@@ -86,10 +86,10 @@ const HomeScreen = () => {
     },
     {
       id: 4,
-      icon: "chatbubble-outline",
-      label: "Chat",
+      icon: "ticket-outline",
+      label: "Đổi Voucher",
       color: "#eab308",
-      navigate: "ChatDriver",
+      navigate: "RedeemableVoucher",
     },
   ];
 

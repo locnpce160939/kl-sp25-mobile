@@ -8,49 +8,26 @@ import {
   SafeAreaView,
   ActivityIndicator,
   StatusBar,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation, useRoute } from "@react-navigation/native";
+import { useNavigation } from "@react-navigation/native";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BASE_URL } from "../../configUrl";
 import { LinearGradient } from "expo-linear-gradient";
 
-const VoucherScreen = () => {
+const RedeemableVoucher = () => {
   const [vouchers, setVouchers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigation = useNavigation();
-  const route = useRoute();
-
-  const {
-    orderValue = 0,
-    paymentMethod = "",
-    distanceKm = 0,
-    isFirstOrder = false,
-    pickupLocation,
-    dropoffLocation,
-    capacity,
-    notes,
-    bookingType,
-    bookingDate,
-    expirationDate,
-    startLocationAddress,
-    endLocationAddress,
-    titlePickup,
-    titleDropoff,
-  } = route.params || {};
-
-  console.log("orderValue", orderValue);
-  console.log("paymentMethod", paymentMethod);
-  console.log("distanceKm", distanceKm);
-  console.log("isFirstOrder", isFirstOrder);
 
   useEffect(() => {
-    fetchVouchers();
+    fetchRedeemableVouchers();
   }, []);
 
-  const fetchVouchers = async () => {
+  const fetchRedeemableVouchers = async () => {
     try {
       const userInfoString = await AsyncStorage.getItem("userInfo");
       if (!userInfoString) {
@@ -64,14 +41,8 @@ const VoucherScreen = () => {
         throw new Error("Token không hợp lệ. Vui lòng đăng nhập lại.");
       }
 
-      const response = await axios.post(
-        `${BASE_URL}/api/tripBookings/applicable`,
-        {
-          orderValue,
-          paymentMethod,
-          distanceKm,
-          isFirstOrder,
-        },
+      const response = await axios.get(
+        `${BASE_URL}/api/voucher/canRedemption`,
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -84,35 +55,56 @@ const VoucherScreen = () => {
       setVouchers(voucherData);
       setLoading(false);
     } catch (err) {
-      console.error("Error fetching vouchers:", err);
-      setError(err.message);
+      console.error("Error fetching redeemable vouchers:", err);
+      setError(err.message || "Đã xảy ra lỗi khi tải danh sách voucher");
       setLoading(false);
     }
   };
 
-  const handleApplyVoucher = (voucher) => {
-    const voucherCode = voucher.code;
-    console.log("Voucher Code (data.code):", voucherCode);
+  const handleRedeemVoucher = (voucher) => {
+    Alert.alert(
+      "Xác nhận đổi voucher",
+      `Bạn có muốn dùng ${voucher.pointsRequired} điểm để đổi ${voucher.title}?`,
+      [
+        {
+          text: "Hủy",
+          style: "cancel",
+        },
+        {
+          text: "Đổi",
+          onPress: () => performRedeem(voucher.voucherId),
+        },
+      ]
+    );
+  };
 
-    // Truyền voucherCode và tất cả dữ liệu form ngược lại TripBooking
-    navigation.navigate("Booking", {
-      voucherCode,
-      orderValue,
-      paymentMethod,
-      distanceKm,
-      isFirstOrder,
-      pickupLocation,
-      dropoffLocation,
-      capacity,
-      notes,
-      bookingType,
-      bookingDate,
-      expirationDate,
-      startLocationAddress,
-      endLocationAddress,
-      titlePickup,
-      titleDropoff,
-    });
+  const performRedeem = async (voucherId) => {
+    try {
+      const userInfoString = await AsyncStorage.getItem("userInfo");
+      const parsedUserInfo = JSON.parse(userInfoString);
+      const accessToken = parsedUserInfo?.data?.access_token;
+
+      const response = await axios.put(
+        `${BASE_URL}/api/voucher/redeem/${voucherId}`,
+        {}, // Body trống vì API dùng POST với param trong URL
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.data.code === 200) {
+        Alert.alert("Thành công", "Voucher đã được đổi thành công!");
+        fetchRedeemableVouchers(); // Refresh danh sách sau khi đổi
+      }
+    } catch (err) {
+      Alert.alert(
+        "Lỗi",
+        err.response?.data?.message || "Không thể đổi voucher lúc này"
+      );
+    }
   };
 
   const getDiscountText = (item) => {
@@ -134,12 +126,9 @@ const VoucherScreen = () => {
   };
 
   const renderVoucherItem = ({ item }) => (
-    <TouchableOpacity
-      style={styles.voucherContainer}
-      onPress={() => handleApplyVoucher(item)}
-    >
+    <View style={styles.voucherContainer}>
       <LinearGradient
-        colors={["#FF6B6B", "#FFa06B"]}
+        colors={["#4CAF50", "#81C784"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
         style={styles.voucherLeftSection}
@@ -155,7 +144,7 @@ const VoucherScreen = () => {
       <View style={styles.voucherRightSection}>
         <View style={styles.voucherHeader}>
           <View style={styles.codeContainer}>
-            <Ionicons name="ticket-outline" size={16} color="#FF6B6B" />
+            <Ionicons name="gift-outline" size={16} color="#4CAF50" />
             <Text style={styles.voucherCode}>{item.code || "N/A"}</Text>
           </View>
           <View style={styles.expiryContainer}>
@@ -175,28 +164,20 @@ const VoucherScreen = () => {
 
         <View style={styles.voucherFooter}>
           <View style={styles.conditionContainer}>
-            <Ionicons
-              name="information-circle-outline"
-              size={12}
-              color="#888"
-            />
+            <Ionicons name="star-outline" size={12} color="#888" />
             <Text style={styles.conditionText}>
-              Đơn tối thiểu: {(item.minOrderValue / 1000).toFixed(0)}K
-              {item.minKm ? ` • ${item.minKm}km` : ""}
-              {item.maxDiscountAmount
-                ? ` • Tối đa ${(item.maxDiscountAmount / 1000).toFixed(0)}K`
-                : ""}
+              Cần {item.pointsRequired} điểm • Rank {item.minimumRank}
             </Text>
           </View>
           <TouchableOpacity
-            style={styles.applyButton}
-            onPress={() => handleApplyVoucher(item)}
+            style={styles.redeemButton}
+            onPress={() => handleRedeemVoucher(item)}
           >
-            <Text style={styles.applyButtonText}>Áp dụng</Text>
+            <Text style={styles.redeemButtonText}>Đổi</Text>
           </TouchableOpacity>
         </View>
       </View>
-    </TouchableOpacity>
+    </View>
   );
 
   return (
@@ -207,21 +188,24 @@ const VoucherScreen = () => {
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="arrow-back" size={24} color="#333" />
+          <Ionicons name="arrow-back" size={24} color="#00b5ec" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Voucher của bạn</Text>
+        <Text style={styles.headerTitle}>Đổi Voucher</Text>
       </View>
 
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#FF6B6B" />
+          <ActivityIndicator size="large" color="#4CAF50" />
           <Text style={styles.loadingText}>Đang tải voucher...</Text>
         </View>
       ) : error ? (
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle-outline" size={64} color="#FF6B6B" />
           <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={fetchVouchers}>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={fetchRedeemableVouchers}
+          >
             <Text style={styles.retryButtonText}>Thử lại</Text>
           </TouchableOpacity>
         </View>
@@ -234,12 +218,12 @@ const VoucherScreen = () => {
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Ionicons name="ticket-outline" size={64} color="#ddd" />
+              <Ionicons name="gift-outline" size={64} color="#ddd" />
               <Text style={styles.emptyText}>
-                Không có voucher nào khả dụng
+                Không có voucher nào để đổi
               </Text>
               <Text style={styles.emptySubtext}>
-                Hãy quay lại sau để nhận thêm ưu đãi
+                Kiếm thêm điểm để đổi voucher nhé!
               </Text>
             </View>
           }
@@ -249,6 +233,7 @@ const VoucherScreen = () => {
   );
 };
 
+// Styles giữ nguyên như trước
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -271,7 +256,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     marginLeft: 16,
-    color: "#333",
+    color: "#00b5ec",
   },
   listContainer: {
     padding: 16,
@@ -377,13 +362,13 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     flex: 1,
   },
-  applyButton: {
-    backgroundColor: "#FF6B6B",
+  redeemButton: {
+    backgroundColor: "#4CAF50",
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 20,
   },
-  applyButtonText: {
+  redeemButtonText: {
     fontSize: 12,
     color: "#fff",
     fontWeight: "600",
@@ -412,7 +397,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   retryButton: {
-    backgroundColor: "#FF6B6B",
+    backgroundColor: "#4CAF50",
     paddingVertical: 10,
     paddingHorizontal: 24,
     borderRadius: 8,
@@ -439,4 +424,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default VoucherScreen;
+export default RedeemableVoucher;
