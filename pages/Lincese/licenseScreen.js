@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Platform,
   Image,
+  Modal,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import axios from "axios";
@@ -20,6 +21,48 @@ import { AuthContext } from "../../contexts/AuthContext";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import * as ImagePicker from "expo-image-picker";
 import DatePickerField from "../../components/DatePickerField";
+import { useAlert } from "../../components/CustomAlert";
+
+const VALIDATION_RULES = {
+  licenseNumber: {
+    label: "Số bằng lái",
+    required: "Số bằng lái là bắt buộc.",
+    pattern: /^[A-Z0-9-]+$/,
+    patternError: "Số bằng lái không hợp lệ.",
+  },
+  licenseType: {
+    label: "Loại bằng lái",
+    required: "Loại bằng lái là bắt buộc.",
+    pattern: /^[A-Z0-9\s]+$/,
+    patternError: "Loại bằng lái không hợp lệ.",
+  },
+  issuedDate: {
+    label: "Ngày cấp",
+    required: "Ngày cấp là bắt buộc.",
+    pastDate: "Ngày cấp phải là ngày trong quá khứ.",
+    invalidDate: "Ngày cấp không hợp lệ.",
+  },
+  expiryDate: {
+    label: "Ngày hết hạn",
+    required: "Ngày hết hạn là bắt buộc.",
+    futureDate: "Ngày hết hạn phải sau ngày cấp.",
+    invalidDate: "Ngày hết hạn không hợp lệ.",
+  },
+  issuingAuthority: {
+    label: "Cơ quan cấp",
+    required: "Cơ quan cấp là bắt buộc.",
+    pattern: /^[^@#$%^&*!]+$/,
+    patternError: "Cơ quan cấp không được chứa ký tự đặc biệt (@, #, $, %, ^, &, *, !).",
+  },
+  frontView: {
+    label: "Mặt trước bằng lái",
+    required: "Mặt trước bằng lái là bắt buộc.",
+  },
+  backView: {
+    label: "Mặt sau bằng lái",
+    required: "Mặt sau bằng lái là bắt buộc.",
+  },
+};
 
 const LicenseScreen = () => {
   const navigation = useNavigation();
@@ -36,6 +79,8 @@ const LicenseScreen = () => {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const { logout } = useContext(AuthContext);
+  const { showAlert } = useAlert();
+  const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -67,12 +112,8 @@ const LicenseScreen = () => {
         setLicenseId(licenseData.licenseId);
         setLicenseDetails({
           ...licenseData,
-          issuedDate: licenseData.issuedDate
-            ? new Date(licenseData.issuedDate).toISOString().split("T")[0]
-            : "",
-          expiryDate: licenseData.expiryDate
-            ? new Date(licenseData.expiryDate).toISOString().split("T")[0]
-            : "",
+          issuedDate: licenseData.issuedDate ? licenseData.issuedDate.split("T")[0] : "",
+          expiryDate: licenseData.expiryDate ? licenseData.expiryDate.split("T")[0] : "",
           frontView: licenseData.frontView,
           backView: licenseData.backView,
         });
@@ -117,49 +158,58 @@ const LicenseScreen = () => {
     } else if (error.response?.data?.message === "License not found") {
       setLicenseId(null);
       resetLicenseDetails();
-      console.log("Không tìm thấy bằng lái.");
-    } else if (error.response?.status === 400) {
-      Alert.alert("Lỗi", "Lỗi khi lấy thông tin bằng lái!");
-      console.log("Error fetching License details!", error);
     } else {
-      Alert.alert("Lỗi", "Lỗi khi lấy thông tin bằng lái!");
-      console.log("Error fetching License details:", error);
+      showAlert({
+        title: "Lỗi",
+        message: "Đã xảy ra lỗi khi xử lý yêu cầu!",
+        type: "error",
+      });
     }
   };
 
   const validateInputs = () => {
     const newErrors = {};
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset time to start of day
+    
+    Object.entries(VALIDATION_RULES).forEach(([field, rules]) => {
+      const value = licenseDetails[field];
+      
+      if (rules.required && !value) {
+        newErrors[field] = rules.required;
+        return;
+      }
 
-    if (!licenseDetails.licenseNumber.trim()) {
-      newErrors.licenseNumber = "Số bằng lái là bắt buộc.";
-    }
-    if (!licenseDetails.licenseType.trim()) {
-      newErrors.licenseType = "Loại bằng lái là bắt buộc.";
-    }
-    if (!licenseDetails.issuingAuthority.trim()) {
-      newErrors.issuingAuthority = "Cơ quan cấp là bắt buộc.";
-    }
-    if (!licenseDetails.issuedDate) {
-      newErrors.issuedDate = "Ngày cấp là bắt buộc.";
-    }
-    if (!licenseDetails.expiryDate) {
-      newErrors.expiryDate = "Ngày hết hạn là bắt buộc.";
-    }
-    if (!licenseDetails.frontView) {
-      newErrors.frontView = "Mặt trước bằng lái là bắt buộc.";
-    }
-    if (!licenseDetails.backView) {
-      newErrors.backView = "Mặt sau bằng lái là bắt buộc.";
-    }
-    if (
-      licenseDetails.issuedDate &&
-      licenseDetails.expiryDate &&
-      new Date(licenseDetails.expiryDate) <= new Date(licenseDetails.issuedDate)
-    ) {
-      newErrors.expiryDate = "Ngày hết hạn phải sau ngày cấp.";
-    }
+      if (rules.pattern && value && !rules.pattern.test(value)) {
+        newErrors[field] = rules.patternError;
+        return;
+      }
 
-    console.log("Validation Errors:", newErrors);
+      if (field === "issuedDate" && value) {
+        const [year, month, day] = value.split('-').map(Number);
+        const issuedDate = new Date(year, month - 1, day);
+        issuedDate.setHours(0, 0, 0, 0); // Reset time to start of day
+        
+        // Kiểm tra nếu ngày cấp là hôm nay hoặc trong tương lai
+        if (issuedDate >= today) {
+          newErrors[field] = rules.pastDate;
+        }
+      }
+
+      if (field === "expiryDate" && value) {
+        const [year, month, day] = value.split('-').map(Number);
+        const expiryDate = new Date(year, month - 1, day);
+        expiryDate.setHours(0, 0, 0, 0); // Reset time to start of day
+        const [issuedYear, issuedMonth, issuedDay] = licenseDetails.issuedDate.split('-').map(Number);
+        const issuedDate = new Date(issuedYear, issuedMonth - 1, issuedDay);
+        issuedDate.setHours(0, 0, 0, 0); // Reset time to start of day
+        
+        if (expiryDate <= issuedDate) {
+          newErrors[field] = rules.futureDate;
+        }
+      }
+    });
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -214,7 +264,7 @@ const LicenseScreen = () => {
   const updateLicenseDetails = async () => {
     if (!validateInputs()) return;
 
-    setLoading(true);
+    setIsUpdating(true);
     try {
       const token = await AsyncStorage.getItem("token");
       if (!token)
@@ -224,8 +274,8 @@ const LicenseScreen = () => {
       const requestDTO = {
         licenseNumber: licenseDetails.licenseNumber,
         licenseType: licenseDetails.licenseType,
-        issuedDate: new Date(licenseDetails.issuedDate).toISOString(),
-        expiryDate: new Date(licenseDetails.expiryDate).toISOString(),
+        issuedDate: licenseDetails.issuedDate ? `${licenseDetails.issuedDate}T00:00:00.000` : null,
+        expiryDate: licenseDetails.expiryDate ? `${licenseDetails.expiryDate}T00:00:00.000` : null,
         issuingAuthority: licenseDetails.issuingAuthority,
       };
 
@@ -251,10 +301,6 @@ const LicenseScreen = () => {
         formData.append("backFile", backFile);
       }
 
-      console.log("FormData:", formData);
-      console.log("RequestDTO:", requestDTO);
-      console.log("Token:", token);
-
       const { data, status } = await axios.put(
         `${BASE_URL}/api/registerDriver/license`,
         formData,
@@ -268,33 +314,26 @@ const LicenseScreen = () => {
       );
 
       if (status === 200) {
-        Alert.alert("Thành công", "Cập nhật bằng lái thành công.");
+        showAlert({
+          title: "Thành công",
+          message: "Cập nhật bằng lái thành công.",
+          type: "success",
+          autoClose: true,
+        });
         setLicenseId(data.data.licenseId);
-      } else {
-        Alert.alert(
-          "Lỗi",
-          `Không thể cập nhật bằng lái. Mã lỗi: ${response.status}`
-        );
+        navigation.goBack();
       }
     } catch (error) {
       handleLicenseError(error);
-      console.error("Error fetching License details:", error);
-      if (error.response) {
-        console.log("API Error:", error.response.data);
-      } else if (error.request) {
-        console.log("Request Error:", error.request);
-      } else {
-        console.log("General Error:", error.message);
-      }
     } finally {
-      setLoading(false);
+      setIsUpdating(false);
     }
   };
 
   const createNewLicense = async () => {
     if (!validateInputs()) return;
 
-    setLoading(true);
+    setIsUpdating(true);
     try {
       const token = await AsyncStorage.getItem("token");
       if (!token)
@@ -304,8 +343,8 @@ const LicenseScreen = () => {
       const requestDTO = {
         licenseNumber: licenseDetails.licenseNumber,
         licenseType: licenseDetails.licenseType,
-        issuedDate: new Date(licenseDetails.issuedDate).toISOString(),
-        expiryDate: new Date(licenseDetails.expiryDate).toISOString(),
+        issuedDate: licenseDetails.issuedDate ? `${licenseDetails.issuedDate}T00:00:00.000` : null,
+        expiryDate: licenseDetails.expiryDate ? `${licenseDetails.expiryDate}T00:00:00.000` : null,
         issuingAuthority: licenseDetails.issuingAuthority,
       };
 
@@ -345,16 +384,18 @@ const LicenseScreen = () => {
 
       // Xử lý phản hồi
       if (status === 200) {
-        // Xử lý thành công nếu status = 200
-        alert("Đăng ký bằng lái thành công!");
-      } else {
-        throw new Error("Đăng ký bằng lái thất bại");
+        showAlert({
+          title: "Thành công",
+          message: "Đăng ký bằng lái thành công.",
+          type: "success",
+          autoClose: true,
+        });
+        navigation.goBack();
       }
     } catch (error) {
-      console.error(error);
-      alert("Đã xảy ra lỗi!");
+      handleLicenseError(error);
     } finally {
-      setLoading(false);
+      setIsUpdating(false);
     }
   };
 
@@ -384,7 +425,7 @@ const LicenseScreen = () => {
           style={[styles.uploadButton, errors[view] && styles.inputError]}
           onPress={() => selectImage(view)}
         >
-          <Ionicons name="camera" size={24} color="#007AFF" />
+          <Ionicons name="camera" size={24} color="#00b5ec" />
           <Text style={styles.uploadButtonText}>Chụp ảnh</Text>
         </TouchableOpacity>
       )}
@@ -424,7 +465,7 @@ const LicenseScreen = () => {
         {loading ? (
           <ActivityIndicator
             size="large"
-            color="#007AFF"
+            color="#00b5ec"
             style={styles.loader}
           />
         ) : (
@@ -445,13 +486,16 @@ const LicenseScreen = () => {
               onChange={(value) => handleInputChange("issuedDate", value)}
               field="issuedDate"
               error={errors.issuedDate}
+              style={[styles.input, errors.issuedDate && styles.inputError]}
             />
+
             <DatePickerField
               label="Ngày hết hạn"
               value={licenseDetails.expiryDate}
               onChange={(value) => handleInputChange("expiryDate", value)}
               field="expiryDate"
               error={errors.expiryDate}
+              style={[styles.input, errors.expiryDate && styles.inputError]}
             />
             {renderInputField(
               "Cơ quan cấp",
@@ -461,15 +505,36 @@ const LicenseScreen = () => {
             {renderImageSection("frontView", "Mặt trước bằng lái")}
             {renderImageSection("backView", "Mặt sau bằng lái")}
             <TouchableOpacity
-              style={styles.saveButton}
+              style={[styles.saveButton, isUpdating && styles.buttonDisabled]}
               onPress={licenseId ? updateLicenseDetails : createNewLicense}
+              disabled={isUpdating}
             >
-              <Text style={styles.saveButtonText}>
-                {licenseId ? "Cập nhật" : "Tạo mới bằng lái"}
-              </Text>
+              {isUpdating ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Text style={styles.saveButtonText}>
+                  {licenseId ? "Cập nhật" : "Tạo mới bằng lái"}
+                </Text>
+              )}
             </TouchableOpacity>
           </>
         )}
+
+        {/* Loading Overlay */}
+        <Modal
+          transparent={true}
+          visible={isUpdating}
+          animationType="fade"
+        >
+          <View style={styles.loadingOverlay}>
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#00b5ec" />
+              <Text style={styles.loadingText}>
+                {licenseId ? "Đang cập nhật bằng lái..." : "Đang tạo bằng lái mới..."}
+              </Text>
+            </View>
+          </View>
+        </Modal>
       </ScrollView>
     </SafeAreaView>
   );
@@ -482,54 +547,30 @@ const styles = StyleSheet.create({
   },
   container: {
     flexGrow: 1,
-    padding: 30,
+    padding: 20,
   },
   header: {
     marginTop: Platform.OS === "ios" ? 20 : 10,
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 30,
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e0e0e0",
   },
   backIcon: {
-    marginRight: 10,
+    marginRight: 15,
   },
   headerTitle: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: "bold",
-    color: "#000",
+    color: "#333",
   },
   inputContainer: {
     marginBottom: 20,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#333",
-    marginBottom: 8,
-  },
-  input: {
     backgroundColor: "#fff",
-    padding: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#ddd",
-    fontSize: 16,
-    color: "#333",
-  },
-  inputError: {
-    borderColor: "red",
-  },
-  errorText: {
-    color: "red",
-    fontSize: 14,
-    marginTop: 5,
-  },
-  saveButton: {
-    backgroundColor: "#007AFF",
-    paddingVertical: 16,
-    borderRadius: 8,
-    alignItems: "center",
-    marginTop: 20,
+    borderRadius: 12,
+    padding: 15,
     ...Platform.select({
       ios: {
         shadowColor: "#000",
@@ -539,6 +580,50 @@ const styles = StyleSheet.create({
       },
       android: {
         elevation: 2,
+      },
+    }),
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 8,
+  },
+  input: {
+    height: 45,
+    borderColor: "#ddd",
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    backgroundColor: "#f9f9f9",
+    fontSize: 16,
+  },
+  inputError: {
+    borderColor: "#ff3b30",
+    backgroundColor: "#fff5f5",
+  },
+  errorText: {
+    color: "#ff3b30",
+    fontSize: 13,
+    marginTop: 6,
+    marginLeft: 4,
+  },
+  saveButton: {
+    backgroundColor: "#00b5ec",
+    padding: 16,
+    borderRadius: 12,
+    alignItems: "center",
+    marginTop: 25,
+    marginBottom: 20,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#00b5ec",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 3,
+      },
+      android: {
+        elevation: 3,
       },
     }),
   },
@@ -552,6 +637,20 @@ const styles = StyleSheet.create({
   },
   imageContainer: {
     marginBottom: 20,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 15,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
   imageWrapper: {
     alignItems: "center",
@@ -562,6 +661,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 10,
     borderWidth: 1,
+    borderColor: "#ddd",
   },
   uploadButton: {
     backgroundColor: "#f0f0f0",
@@ -575,12 +675,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
   },
   uploadButtonText: {
-    color: "#007AFF",
+    color: "#00b5ec",
     fontSize: 16,
     marginLeft: 10,
   },
   retakeButton: {
-    backgroundColor: "#007AFF",
+    backgroundColor: "#00b5ec",
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 4,
@@ -614,12 +714,43 @@ const styles = StyleSheet.create({
     borderBottomColor: "#e0e0e0",
   },
   datePickerButtonText: {
-    color: "#007AFF",
+    color: "#00b5ec",
     fontSize: 16,
   },
   datePickerIOS: {
     height: 200,
     width: "100%",
+  },
+  buttonDisabled: {
+    opacity: 0.7,
+  },
+  loadingOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingContainer: {
+    backgroundColor: "#fff",
+    padding: 20,
+    borderRadius: 10,
+    alignItems: "center",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+      },
+      android: {
+        elevation: 5,
+      },
+    }),
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: "#333",
   },
 });
 
