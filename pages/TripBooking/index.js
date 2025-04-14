@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { use, useCallback, useEffect, useRef, useState } from "react";
 import {
   Text,
   View,
@@ -28,7 +28,7 @@ import * as Location from "expo-location"; // Thêm import này
 
 const TripBooking = () => {
   // Form state
-  const [bookingType, setBookingType] = useState("Round-trip");
+  const [bookingType, setBookingType] = useState("");
   const [bookingDate, setBookingDate] = useState(new Date());
   const [expirationDate, setExpirationDate] = useState(new Date());
   const [pickupLocation, setPickupLocation] = useState(null);
@@ -60,6 +60,47 @@ const TripBooking = () => {
   const [discountAmount, setDiscountAmount] = useState(0);
   const [finalPrice, setFinalPrice] = useState(0);
   const [notes, setNotes] = useState("");
+  const [isUrgent, setIsUrgent] = useState(false);
+  // Thêm state mới
+  const [insurances, setInsurances] = useState([]);
+  const [selectedInsuranceId, setSelectedInsuranceId] = useState(null);
+  const [insuranceName, setInsuranceName] = useState("");
+  const [insuranceDescription, setInsuranceDescription] = useState("");
+
+  useEffect(() => {
+    try {
+      fetchTypeBooking();
+    } catch (error) {}
+  }, []);
+
+  const fetchTypeBooking = async () => {
+    try {
+      let token = await AsyncStorage.getItem("token");
+      const res = await axios.get(`${BASE_URL}/api/bookingType`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const responseData = res.data.data.content;
+      // Map API response to the format required by Dropdown component
+      const formattedData = responseData.map((item) => ({
+        label: item.bookingTypeName,
+        value: item.bookingTypeId,
+      }));
+
+      // Update the data array for the dropdown
+      setData(formattedData);
+
+      // Set default value if available
+      if (formattedData.length > 0) {
+        setBookingType(formattedData[0].value);
+      }
+    } catch (error) {
+      console.error(
+        "Lỗi khi lấy loại chuyến xe:",
+        error.response?.data || error.message
+      );
+    }
+  };
 
   const getCurrentLocation = async () => {
     try {
@@ -149,10 +190,10 @@ const TripBooking = () => {
   const route = useRoute();
   const bottomSheetRef = useRef(null);
 
-  const data = [
+  const [data, setData] = useState([
     { label: "1 chiều", value: "1 chiều" },
     { label: "2 chiều", value: "2 chiều" },
-  ];
+  ]);
 
   const paymentMethods = [
     { label: "Thanh toán khi hoàn thành", value: "CASH", icon: "cash-outline" },
@@ -336,27 +377,60 @@ const TripBooking = () => {
         !pickupLocation ||
         !dropoffLocation ||
         !isValidCoordinate(pickupLocation.latitude, pickupLocation.longitude) ||
-        !isValidCoordinate(dropoffLocation.latitude, dropoffLocation.longitude)
+        !isValidCoordinate(
+          dropoffLocation.latitude,
+          dropoffLocation.longitude
+        ) ||
+        !bookingType ||
+        !capacity ||
+        isNaN(parseInt(capacity))
       ) {
-        console.error("Tọa độ không hợp lệ:", {
+        console.error("Dữ liệu không hợp lệ:", {
           pickupLocation,
           dropoffLocation,
+          capacity,
+          bookingType,
         });
-        Alert.alert("Lỗi", "Tọa độ địa điểm không hợp lệ.");
+        Alert.alert(
+          "Lỗi",
+          "Vui lòng kiểm tra lại thông tin địa điểm và trọng tải."
+        );
         return;
       }
+
       let token = await AsyncStorage.getItem("token");
       const origin = `${pickupLocation.latitude},${pickupLocation.longitude}`;
       const destination = `${dropoffLocation.latitude},${dropoffLocation.longitude}`;
       const weight = parseInt(capacity);
-      console.log("Gửi yêu cầu getPrice:", { origin, destination, weight });
-      const res = await axios.get(
-        `${BASE_URL}/api/tripBookings/direction?origin=${origin}&destination=${destination}&weight=${weight}`,
+
+      const payload = {
+        pickupLocation: origin,
+        dropoffLocation: destination,
+        capacity: weight,
+        bookingType,
+      };
+
+      if (selectedInsuranceId) {
+        payload.selectedInsurancePolicyId = selectedInsuranceId; // Thêm selectedInsurancePolicyId
+      }
+
+      console.log("Payload gửi lên API:", payload); // Debug payload
+
+      const res = await axios.post(
+        `${BASE_URL}/api/tripBookings/direction`,
+        payload,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
+
       const priceData = res.data.data;
+      console.log("Dữ liệu từ API:", priceData);
+
+      // Lưu danh sách bảo hiểm
+      setInsurances(priceData.insurances || []);
+
+      // Không tự động chọn gói bảo hiểm, giữ nguyên selectedInsuranceId
       setTotalPrice({
         price: priceData.price || 0,
         expectedDistance: priceData.expectedDistance || 0,
@@ -370,6 +444,10 @@ const TripBooking = () => {
       setTotalPrice({ price: 0, expectedDistance: 0, isFirstOrder: false });
       setFinalPrice(0);
       setDiscountAmount(0);
+      setInsurances([]);
+      setSelectedInsuranceId(null);
+      setInsuranceName("");
+      setInsuranceDescription("");
     }
   };
 
@@ -379,7 +457,7 @@ const TripBooking = () => {
       if (!token) throw new Error("Token not found");
 
       const userInfoString = await AsyncStorage.getItem("userInfo");
-      const userId = JSON.parse(userInfoString)?.data?.userId || 1028;
+      const userId = JSON.parse(userInfoString)?.data?.userId;
 
       const discountRequestBody = {
         orderValue: totalPrice.price,
@@ -486,10 +564,11 @@ const TripBooking = () => {
         pickupLocation,
         dropoffLocation,
         capacity,
+        bookingType,
       });
       getPrice();
     }
-  }, [pickupLocation, dropoffLocation, capacity]);
+  }, [pickupLocation, dropoffLocation, capacity, bookingType]);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener("focus", () => {
@@ -502,7 +581,6 @@ const TripBooking = () => {
       if (params.pickupLocation) setPickupLocation(params.pickupLocation);
       if (params.dropoffLocation) setDropoffLocation(params.dropoffLocation);
       if (params.capacity) setCapacity(params.capacity);
-      if (params.notes) setNotes(params.notes);
       if (params.paymentMethod) setPaymentMethod(params.paymentMethod);
       if (params.bookingType) setBookingType(params.bookingType);
       if (params.bookingDate) setBookingDate(new Date(params.bookingDate));
@@ -684,7 +762,6 @@ const TripBooking = () => {
       startLocationAddress,
       endLocationAddress,
       titlePickup,
-      notes,
       titleDropoff,
     });
   };
@@ -704,21 +781,6 @@ const TripBooking = () => {
         </View>
 
         <View style={styles.formCard}>
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Loại chuyến xe</Text>
-            <Dropdown
-              style={styles.dropdown}
-              data={data}
-              labelField="label"
-              valueField="value"
-              placeholder="Chọn loại chuyến"
-              value={bookingType}
-              onChange={(item) => setBookingType(item.value)}
-              placeholderStyle={styles.placeholderStyle}
-              selectedTextStyle={styles.selectedTextStyle}
-            />
-          </View>
-
           <View style={styles.dateRow}>
             <View style={[styles.inputGroup, styles.dateInput]}>
               <Text style={styles.label}>Ngày đặt</Text>
@@ -799,6 +861,84 @@ const TripBooking = () => {
             />
             {errors.capacity && (
               <Text style={styles.errorText}>{errors.capacity}</Text>
+            )}
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Loại chuyến xe</Text>
+            <Dropdown
+              style={styles.dropdown}
+              data={data}
+              labelField="label"
+              valueField="value"
+              placeholder="Chọn loại chuyến"
+              value={bookingType}
+              onChange={(item) => setBookingType(item.value)}
+              placeholderStyle={styles.placeholderStyle}
+              selectedTextStyle={styles.selectedTextStyle}
+            />
+          </View>
+
+          {/* Checkbox option with description */}
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Chọn gói bảo hiểm</Text>
+            {insurances.length > 0 ? (
+              insurances.map((insurance) => (
+                <View
+                  key={insurance.insurancePolicyId}
+                  style={styles.checkboxContainer}
+                >
+                  <TouchableOpacity
+                    style={styles.checkbox}
+                    onPress={() => {
+                      const newSelectedId =
+                        selectedInsuranceId === insurance.insurancePolicyId
+                          ? null // Bỏ chọn
+                          : insurance.insurancePolicyId; // Chọn gói mới
+                      setSelectedInsuranceId(newSelectedId);
+                      setInsuranceName(
+                        newSelectedId ? insurance.insuranceName : ""
+                      );
+                      setInsuranceDescription(
+                        newSelectedId ? insurance.insuranceDescription : ""
+                      );
+                      getPrice(); // Gọi getPrice để gửi selectedInsurancePolicyId
+                    }}
+                  >
+                    <View
+                      style={[
+                        styles.checkboxBox,
+                        selectedInsuranceId === insurance.insurancePolicyId &&
+                          styles.checkboxChecked,
+                      ]}
+                    >
+                      {selectedInsuranceId === insurance.insurancePolicyId && (
+                        <Ionicons name="checkmark" size={16} color="#fff" />
+                      )}
+                    </View>
+                    <View style={styles.checkboxTextContainer}>
+                      <Text style={styles.checkboxLabel}>
+                        {insurance.insuranceName}
+                      </Text>
+                      <Text style={styles.checkboxDescription}>
+                        {insurance.insuranceDescription}
+                      </Text>
+                      <Text style={styles.checkboxPrice}>
+                        Giá:{" "}
+                        {insurance.insurancePrice.toLocaleString("vi-VN", {
+                          style: "currency",
+                          currency: "VND",
+                        })}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                </View>
+              ))
+            ) : (
+              <Text style={styles.noInsuranceText}>
+                Không có gói bảo hiểm nào
+              </Text>
             )}
           </View>
 
@@ -1331,6 +1471,60 @@ const styles = StyleSheet.create({
     minHeight: 80,
     paddingTop: 10,
     marginBottom: 20,
+  },
+  checkboxContainer: {
+    marginBottom: 20,
+    backgroundColor: "#f9f9f9",
+    borderRadius: 12,
+    padding: 15,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+  },
+  checkbox: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+  },
+  checkboxBox: {
+    width: 22,
+    height: 22,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: "#00b5ec",
+    backgroundColor: "#fff",
+    marginRight: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 2,
+  },
+  checkboxChecked: {
+    backgroundColor: "#00b5ec",
+  },
+  checkboxTextContainer: {
+    flex: 1,
+  },
+  checkboxLabel: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 4,
+  },
+  checkboxDescription: {
+    fontSize: 14,
+    color: "#666",
+    lineHeight: 20,
+    flexWrap: "wrap",
+    flexShrink: 1,
+  },
+  noInsuranceText: {
+    fontSize: 14,
+    color: "#666",
+    marginTop: 8,
+  },
+  checkboxPrice: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#2ecc71",
+    marginTop: 4,
   },
 });
 
