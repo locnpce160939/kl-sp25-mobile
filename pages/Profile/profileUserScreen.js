@@ -34,6 +34,10 @@ const ProfileUserScreen = () => {
   });
   const [loading, setLoading] = useState(false);
   const { logout } = useContext(AuthContext);
+  const [validationErrors, setValidationErrors] = useState({
+    fullName: "",
+    phone: "",
+  });
 
   useEffect(() => {
     fetchUserDetails();
@@ -64,42 +68,90 @@ const ProfileUserScreen = () => {
 
   const handleUserError = async (error) => {
     if (error.response?.status === 401) {
-      // Thay Alert.alert bằng showAlert
       showAlert({
-        title: "Phiên đăng nhập đã hết hạn",
-        message: "Vui lòng đăng nhập lại.",
+        title: "Lỗi",
+        message: "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
         type: "error",
         confirmText: "OK",
         onClose: async () => {
           await logout();
         },
       });
-    } else {
-      // Only alert if userDetails is empty
-      if (!userDetails || !userDetails.username) {
-        showAlert({
-          title: "Lỗi",
-          message: "Không thể tải thông tin người dùng.",
-          type: "error",
-        });
-      }
+    } else if (!userDetails || !userDetails.username) {
+      showAlert({
+        title: "Lỗi",
+        message: "Không thể tải thông tin người dùng. Vui lòng thử lại sau.",
+        type: "error",
+      });
     }
   };
 
   const handleInputChange = (field, value) => {
+    if (field === "phone") {
+      // Only allow numbers
+      value = value.replace(/[^0-9]/g, "");
+    } else if (field === "fullName") {
+      // Remove only specific special characters
+      value = value.replace(/[@#$%^&*!]/g, "");
+    }
     setUserDetails((prev) => ({ ...prev, [field]: value }));
+    // Clear validation error when user types
+    if (validationErrors[field]) {
+      setValidationErrors((prev) => ({ ...prev, [field]: "" }));
+    }
+  };
+
+  const validateInputs = () => {
+    const errors = {
+      fullName: "",
+      phone: "",
+    };
+    let isValid = true;
+
+    const specialChars = /[@#$%^&*!]/;
+    
+    if (!userDetails.fullName.trim()) {
+      errors.fullName = "Vui lòng nhập họ tên";
+      isValid = false;
+    } else if (specialChars.test(userDetails.fullName.trim())) {
+      errors.fullName = "Họ tên không được chứa ký tự đặc biệt";
+      isValid = false;
+    }
+
+    if (!userDetails.phone.trim()) {
+      errors.phone = "Vui lòng nhập số điện thoại";
+      isValid = false;
+    } else if (!/^\d{10}$/.test(userDetails.phone.trim())) {
+      errors.phone = "Số điện thoại phải có 10 chữ số";
+      isValid = false;
+    }
+
+    setValidationErrors(errors);
+    return isValid;
   };
 
   const updateUserDetails = async () => {
+    if (!validateInputs()) return;
+    
     setLoading(true);
     try {
       const token = await AsyncStorage.getItem("token");
-      if (!token)
-        throw new Error("Token không tồn tại. Vui lòng đăng nhập lại.");
+      if (!token) {
+        showAlert({
+          title: "Lỗi",
+          message: "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
+          type: "error",
+          confirmText: "OK",
+          onClose: async () => {
+            await logout();
+          },
+        });
+        return;
+      }
 
       const updatedDetails = {
-        fullName: userDetails.fullName,
-        phone: userDetails.phone,
+        fullName: userDetails.fullName.trim(),
+        phone: userDetails.phone.trim(),
       };
 
       const { status } = await axios.put(
@@ -117,19 +169,32 @@ const ProfileUserScreen = () => {
       if (status === 200) {
         showAlert({
           title: "Thành công",
-          message: "Cập nhật thông tin thành công.",
+          message: "Cập nhật thông tin thành công",
           type: "success",
-          autoClose: true,
+          autoClose: true
         });
-      } else {
+        setTimeout(() => {
+          navigation.goBack();
+        }, 1500);
+      }
+    } catch (error) {
+      if (error.response?.status === 401) {
         showAlert({
           title: "Lỗi",
-          message: "Không thể cập nhật thông tin.",
+          message: "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
+          type: "error",
+          confirmText: "OK",
+          onClose: async () => {
+            await logout();
+          },
+        });
+      } else if (error.response?.status === 400) {
+        showAlert({
+          title: "Lỗi",
+          message: "Thông tin không hợp lệ. Vui lòng kiểm tra lại.",
           type: "error",
         });
       }
-    } catch (error) {
-      handleUserError(error);
     } finally {
       setLoading(false);
     }
@@ -171,13 +236,19 @@ const ProfileUserScreen = () => {
         style={[
           styles.input,
           (field === "username" || field === "email") && styles.disabledInput,
+          validationErrors[field] && styles.errorInput,
         ]}
         value={userDetails[field]}
         onChangeText={(text) => handleInputChange(field, text)}
         placeholder={placeholder}
         placeholderTextColor={"#999"}
         editable={field === "fullName" || field === "phone"}
+        keyboardType={field === "phone" ? "numeric" : "default"}
+        maxLength={field === "phone" ? 10 : undefined}
       />
+      {validationErrors[field] ? (
+        <Text style={styles.errorText}>{validationErrors[field]}</Text>
+      ) : null}
     </View>
   );
 
@@ -411,6 +482,16 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "600",
+  },
+  errorInput: {
+    borderColor: "#ff3b30",
+    borderWidth: 1,
+  },
+  errorText: {
+    color: "#ff3b30",
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 8,
   },
 });
 
