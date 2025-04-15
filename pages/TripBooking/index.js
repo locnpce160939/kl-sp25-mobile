@@ -894,8 +894,8 @@ const TripBooking = () => {
                     onPress={() => {
                       const newSelectedId =
                         selectedInsuranceId === insurance.insurancePolicyId
-                          ? null // Bỏ chọn
-                          : insurance.insurancePolicyId; // Chọn gói mới
+                          ? null 
+                          : insurance.insurancePolicyId; 
                       setSelectedInsuranceId(newSelectedId);
                       setInsuranceName(
                         newSelectedId ? insurance.insuranceName : ""

@@ -449,7 +449,6 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (error) {
       setIsLoading(false);
-      console.error("Login error:", error);
       Alert.alert("Error", error.response.data.message);
     }
   };
