@@ -55,7 +55,7 @@ const Order = () => {
     try {
       const token = await AsyncStorage.getItem("token");
       const response = await axios.get(
-        BASE_URL + "/api/tripBookings/getByAccountId",
+        BASE_URL + "/api/tripBookings/getByAccountId?page=0&size=100",
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -263,7 +263,7 @@ const Order = () => {
     try {
       const token = await AsyncStorage.getItem("token");
       const response = await axios.get(
-        `${BASE_URL}/api/review/driver/${driverId}`,
+        `${BASE_URL}/api/review/driver/${driverId}?page=0&size=10`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -272,7 +272,7 @@ const Order = () => {
         }
       );
       if (response.data.code === 200) {
-        setReviews(response.data.data);
+        setReviews(response.data.data.content);
       }
     } catch (err) {
       console.error("Error fetching reviews:", err);
