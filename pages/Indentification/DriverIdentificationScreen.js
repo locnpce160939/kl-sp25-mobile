@@ -26,6 +26,8 @@ import { useAlert } from "../../components/CustomAlert"; // Import hook useAlert
 import Ionicons from "react-native-vector-icons/Ionicons";
 
 import * as ImagePicker from "expo-image-picker";
+import CreateDriverIdentificationScreen from "./CreateDriverIdentificationScreen";
+import UpdateDriverIdentificationScreen from "./UpdateDriverIdentificationScreen";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -79,12 +81,12 @@ const ImageCameraField = ({
       console.log(`[${label}] Bắt đầu gửi request OCR...`, {
         uri,
         endpoint:
-          "https://aa81-2402-800-6349-e2ce-b5b7-9d49-e69e-6bb7.ngrok-free.app/uploader",
+          "https://scan-id.ftcs.online/uploader",
       });
 
       // Gọi API OCR
       const response = await fetch(
-        "https://aa81-2402-800-6349-e2ce-b5b7-9d49-e69e-6bb7.ngrok-free.app/uploader",
+        "https://scan-id.ftcs.online/uploader",
         {
           method: "POST",
           body: formData,
@@ -245,26 +247,6 @@ const ImageCameraField = ({
     </View>
   );
 };
-const InputField = ({
-  label,
-  value,
-  onChangeText,
-  placeholder,
-  keyboardType = "default",
-}) => (
-  <View style={styles.inputContainer}>
-    <Text style={styles.label}>
-      {label} <Text style={styles.required}>*</Text>
-    </Text>
-    <TextInput
-      style={styles.input}
-      value={value}
-      onChangeText={onChangeText}
-      placeholder={placeholder}
-      keyboardType={keyboardType}
-    />
-  </View>
-);
 
 const PickerField = ({
   label,
@@ -478,683 +460,90 @@ const DatePickerField = ({ label, value, onChange }) => {
 const DriverIdentificationScreen = ({ navigation }) => {
   const { createDriverIdentification, getProvinces, getDistricts, getWards } =
     useContext(AuthContext);
-  const { showAlert } = useAlert(); // Sử dụng hook useAlert
+  const { showAlert } = useAlert();
 
-  const [formData, setFormData] = useState({
-    idNumber: "",
-    fullName: "",
-    gender: "",
-    birthday: "",
-    country: "",
-    permanentAddressWard: "",
-    permanentAddressDistrict: "",
-    permanentAddressProvince: "",
-    permanentStreetAddress: "",
-    temporaryAddressWard: "",
-    temporaryAddressDistrict: "",
-    temporaryAddressProvince: "",
-    temporaryStreetAddress: "",
-    issueDate: "",
-    expiryDate: "",
-    issuedBy: "",
-    frontFile: null,
-    backFile: null,
-  });
-  const handleScanComplete = useCallback((scannedData) => {
-    setFormData((prev) => ({
-      ...prev,
-      ...scannedData,
-    }));
-  }, []);
-  const [errors, setErrors] = useState({});
-  const [provinces, setProvinces] = useState([]);
-  const [permanentDistricts, setPermanentDistricts] = useState([]);
-  const [temporaryDistricts, setTemporaryDistricts] = useState([]);
-  const [permanentWards, setPermanentWards] = useState([]);
-  const [temporaryWards, setTemporaryWards] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleInputChange = useCallback((field, value) => {
-    if (field === "idNumber" && !value.trim()) {
-      setIsEditMode(false);
-    }
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    setErrors((prev) => ({ ...prev, [field]: "" }));
-  }, []);
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasData, setHasData] = useState(false);
+  const [driverData, setDriverData] = useState(null);
 
   useEffect(() => {
-    const fetchProvinces = async () => {
+    const checkExistingData = async () => {
       try {
-        const provinceList = await getProvinces();
-        setProvinces(provinceList);
-      } catch (error) {
-        Alert.alert("Error", "Failed to load provinces.");
-      }
-    };
-    fetchProvinces();
-  }, []);
+        const userInfoString = await AsyncStorage.getItem("userInfo");
+        if (!userInfoString) {
+          setHasData(false);
+          setDriverData(null);
+          setIsLoading(false);
+          return;
+        }
 
-  const [isEditMode, setIsEditMode] = useState(false);
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setIsLoading(true);
-        const data = await getDriverIdentificationById();
+        const parsedUserInfo = JSON.parse(userInfoString);
+        const accessToken = parsedUserInfo?.data?.access_token;
 
-        if (
-          data &&
-          (data.idNumber || data.fullName || data.driverIdentificationId)
-        ) {
-          setIsEditMode(true);
+        if (!accessToken) {
+          setHasData(false);
+          setDriverData(null);
+          setIsLoading(false);
+          return;
+        }
 
-          // Create a sequence of async operations
-          const loadAddressData = async () => {
-            // Load permanent address data
-            if (data.permanentAddress?.province?.id) {
-              const permanentDistricts = await getDistricts(
-                data.permanentAddress.province.id
-              );
-              setPermanentDistricts(permanentDistricts);
-
-              if (data.permanentAddress?.district?.id) {
-                const permanentWards = await getWards(
-                  data.permanentAddress.district.id
-                );
-                setPermanentWards(permanentWards);
-              }
+        try {
+          const res = await axios.get(
+            `${BASE_URL}/api/registerDriver/identification`,
+            {
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+              },
             }
+          );
 
-            // Load temporary address data
-            if (data.temporaryAddress?.province?.id) {
-              const temporaryDistricts = await getDistricts(
-                data.temporaryAddress.province.id
-              );
-              setTemporaryDistricts(temporaryDistricts);
-
-              if (data.temporaryAddress?.district?.id) {
-                const temporaryWards = await getWards(
-                  data.temporaryAddress.district.id
-                );
-                setTemporaryWards(temporaryWards);
-              }
-            }
-          };
-
-          // Set form data
-          setFormData({
-            idNumber: data.idNumber || "",
-            fullName: data.fullName || "",
-            gender: data.gender || "",
-            birthday: data.birthday || "",
-            country: data.country || "",
-            permanentAddressWard: data.permanentAddress?.ward?.id
-              ? String(data.permanentAddress.ward.id)
-              : "",
-            permanentAddressDistrict: data.permanentAddress?.district?.id
-              ? String(data.permanentAddress.district.id)
-              : "",
-            permanentAddressProvince: data.permanentAddress?.province?.id
-              ? String(data.permanentAddress.province.id)
-              : "",
-            permanentStreetAddress: data.permanentAddress?.streetAddress || "",
-            temporaryAddressWard: data.temporaryAddress?.ward?.id
-              ? String(data.temporaryAddress.ward.id)
-              : "",
-            temporaryAddressDistrict: data.temporaryAddress?.district?.id
-              ? String(data.temporaryAddress.district.id)
-              : "",
-            temporaryAddressProvince: data.temporaryAddress?.province?.id
-              ? String(data.temporaryAddress.province.id)
-              : "",
-            temporaryStreetAddress: data.temporaryAddress?.streetAddress || "",
-            issueDate: data.issueDate || "",
-            expiryDate: data.expiryDate || "",
-            issuedBy: data.issuedBy || "",
-            frontFile: data.frontView ? { uri: data.frontView } : null,
-            backFile: data.backView ? { uri: data.backView } : null,
-          });
-
-          // Load address data after setting form data
-          await loadAddressData();
-        } else {
-          setIsEditMode(false);
+          // Kiểm tra response code và dữ liệu
+          if (
+            res.status === 200 && 
+            res.data && 
+            res.data.code === 200 && 
+            res.data.data && 
+            Object.keys(res.data.data).length > 0 &&
+            res.data.data.idNumber // Kiểm tra có thông tin CCCD
+          ) {
+            setHasData(true);
+            setDriverData(res.data.data);
+          } else {
+            setHasData(false);
+            setDriverData(null);
+          }
+        } catch (error) {
+          // Nếu là lỗi 404 hoặc bất kỳ lỗi nào -> chuyển sang form tạo mới
+          console.log("Error fetching driver data:", error?.response?.status);
+          setHasData(false);
+          setDriverData(null);
         }
       } catch (error) {
-        console.error("Error loading data:", error);
-        setIsEditMode(false);
+        console.error("Error checking existing data:", error);
+        setHasData(false);
+        setDriverData(null);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchData();
+    checkExistingData();
   }, []);
 
-  const getDriverIdentificationById = async () => {
-    try {
-      setIsLoading(true);
-      const userInfoString = await AsyncStorage.getItem("userInfo");
-      if (!userInfoString) {
-        setIsLoading(false);
-        return null;
-      }
-
-      const parsedUserInfo = JSON.parse(userInfoString);
-      const accessToken = parsedUserInfo?.data?.access_token;
-
-      if (!accessToken) {
-        setIsLoading(false);
-        return null;
-      }
-
-      const res = await axios.get(
-        `${BASE_URL}/api/registerDriver/identification`,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        }
-      );
-
-      if (res.status === 200 && res.data.code === 200) {
-        return res.data.data;
-      } else {
-        // Kiểm tra nếu lỗi là 400 với thông báo "Driver Identification not found"
-        if (
-          res.data.code === 400 &&
-          res.data.message === "Driver Identification not found"
-        ) {
-          return null; // Không hiển thị thông báo lỗi, chỉ trả về null
-        } else {
-          // Nếu không phải lỗi 400 trên, không hiển thị thông báo lỗi
-          return null;
-        }
-      }
-    } catch (error) {
-      // Xử lý lỗi nếu có
-      if (error.response) {
-        // Nếu có lỗi từ response, không hiển thị thông báo lỗi
-        return null;
-      } else {
-        // Nếu có lỗi không phải từ response (chẳng hạn như lỗi mạng)
-        return null;
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleProvinceChange = async (value, addressType) => {
-    if (!value) return;
-
-    try {
-      const districtsData = await getDistricts(value);
-
-      if (addressType === "permanent") {
-        // Update state in a single batch
-        setFormData((prev) => ({
-          ...prev,
-          permanentAddressProvince: value,
-          permanentAddressDistrict: "",
-          permanentAddressWard: "",
-        }));
-        setPermanentDistricts(districtsData);
-        setPermanentWards([]);
-      } else {
-        // Update state in a single batch
-        setFormData((prev) => ({
-          ...prev,
-          temporaryAddressProvince: value,
-          temporaryAddressDistrict: "",
-          temporaryAddressWard: "",
-        }));
-        setTemporaryDistricts(districtsData);
-        setTemporaryWards([]);
-      }
-    } catch (error) {
-      console.error("Error loading districts:", error);
-      Alert.alert("Error", "Failed to load districts.");
-    }
-  };
-
-  const handleDistrictChange = async (value, addressType) => {
-    if (!value) return;
-
-    try {
-      const wardsData = await getWards(value);
-
-      if (addressType === "permanent") {
-        // Update state in a single batch
-        setFormData((prev) => ({
-          ...prev,
-          permanentAddressDistrict: value,
-          permanentAddressWard: "",
-        }));
-        setPermanentWards(wardsData);
-      } else {
-        // Update state in a single batch
-        setFormData((prev) => ({
-          ...prev,
-          temporaryAddressDistrict: value,
-          temporaryAddressWard: "",
-        }));
-        setTemporaryWards(wardsData);
-      }
-    } catch (error) {
-      console.error("Error loading wards:", error);
-      Alert.alert("Error", "Failed to load wards.");
-    }
-  };
-
-  const handleGenderChange = (value) => {
-    setFormData({ ...formData, gender: value });
-    // Optional: Clear error if user selects a value
-    if (value) {
-      setErrors({ ...errors, gender: "" });
-    }
-  };
-
-  const validateForm = () => {
-    const newErrors = {};
-    Object.entries(formData).forEach(([field, value]) => {
-      if (!value || (typeof value === "string" && !value.trim())) {
-        newErrors[field] = `${field} is required.`;
-      }
-    });
-
-    if (formData.issueDate && formData.expiryDate) {
-      if (new Date(formData.expiryDate) <= new Date(formData.issueDate)) {
-        newErrors.expiryDate = "Expiry date must be after issue date.";
-      }
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async () => {
-    if (isLoading) return;
-    if (!validateForm()) return;
-
-    setIsLoading(true);
-    try {
-      const userInfoString = await AsyncStorage.getItem("userInfo");
-      if (!userInfoString) {
-        Alert.alert("Error", "No user information found. Please login again.");
-        setIsLoading(false);
-        return;
-      }
-
-      const parsedUserInfo = JSON.parse(userInfoString);
-      const accessToken = parsedUserInfo?.data?.access_token;
-
-      if (!accessToken) {
-        Alert.alert("Error", "Missing access token. Please login again.");
-        setIsLoading(false);
-        return;
-      }
-
-      //  const data = await getDriverIdentificationById();
-      // Check if we're in edit mode instead of checking data existence
-      if (isEditMode) {
-        // Update existing record
-        await updateDriverIdentification(formData);
-        // Alert.alert("Success", "Driver identification updated successfully.");
-        showAlert({
-          title: "Thành công",
-          message: "Cập nhật CCCD thành công.",
-          type: "success",
-          autoClose: true,
-        });
-      } else {
-        // Create new record
-        await createDriverIdentification(formData, navigation);
-        // Alert.alert("Success", "Driver identification created successfully.");
-        showAlert({
-          title: "Thành công",
-          message: "Đăng kí CCCD thành công.",
-          type: "success",
-          autoClose: true,
-        });
-      }
-    } catch (error) {
-      console.error("Error during form submission:", error);
-      const errorMessage =
-        error.response?.data?.message || "An error occurred during submission.";
-      Alert.alert("Error", errorMessage);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const updateDriverIdentification = async (updatedData) => {
-    try {
-      setIsLoading(true);
-      const userInfo = await AsyncStorage.getItem("userInfo");
-      if (!userInfo) {
-        Alert.alert("Error", "No user information found. Please login again.");
-        setIsLoading(false);
-        return null;
-      }
-
-      const { access_token } = JSON.parse(userInfo)?.data;
-      if (!access_token) {
-        Alert.alert("Error", "Missing access token. Please login again.");
-        setIsLoading(false);
-        return null;
-      }
-
-      // if (!updatedData.idNumber) {
-      //   Alert.alert("Error", "ID Number is missing. Cannot update.");
-      //   setIsLoading(false);
-      //   return null;
-      // }
-
-      const requestDTO = {
-        idNumber: updatedData.idNumber,
-        fullName: updatedData.fullName,
-        gender: updatedData.gender,
-        birthday: updatedData.birthday,
-        country: updatedData.country,
-        permanentAddressWard: updatedData.permanentAddressWard,
-        permanentAddressDistrict: updatedData.permanentAddressDistrict,
-        permanentAddressProvince: updatedData.permanentAddressProvince,
-        permanentStreetAddress: updatedData.permanentStreetAddress,
-        temporaryAddressWard: updatedData.temporaryAddressWard,
-        temporaryAddressDistrict: updatedData.temporaryAddressDistrict,
-        temporaryAddressProvince: updatedData.temporaryAddressProvince,
-        temporaryStreetAddress: updatedData.temporaryStreetAddress,
-        issueDate: updatedData.issueDate,
-        expiryDate: updatedData.expiryDate,
-        issuedBy: updatedData.issuedBy,
-      };
-
-      const formData = new FormData();
-      formData.append("requestDTO", JSON.stringify(requestDTO));
-
-      if (updatedData.frontFile?.uri) {
-        // Only append to FormData if it's a new image (not a URL)
-        if (!updatedData.frontFile.uri.startsWith("http")) {
-          formData.append("frontFile", updatedData.frontFile);
-        }
-      }
-
-      if (updatedData.backFile?.uri) {
-        // Only append to FormData if it's a new image (not a URL)
-        if (!updatedData.backFile.uri.startsWith("http")) {
-          formData.append("backFile", updatedData.backFile);
-        }
-      }
-
-      const response = await axios.put(
-        `${BASE_URL}/api/registerDriver/identification`,
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${access_token}`,
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
-
-      setIsLoading(false);
-      if (response.status === 200) {
-      } else {
-        Alert.alert(
-          "Error",
-          response.data.message || "Failed to update identification."
-        );
-      }
-    } catch (error) {
-      console.error("Error updating driver identification:", error);
-      setIsLoading(false);
-      Alert.alert(
-        "Error",
-        error.response?.data.message || "An unknown error occurred."
-      );
-    }
-  };
-
-  return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <TouchableOpacity onPress={() => navigation.goBack()}>
-        <View style={styles.header}>
-          <Ionicons
-            name="arrow-back"
-            size={24}
-            color="#000"
-            style={styles.backIcon}
-          />
-          <Text style={styles.title}>Căn Cước Công Dân</Text>
-        </View>
-      </TouchableOpacity>
-
-      <InputField
-        label="Số CCCD"
-        value={formData.idNumber}
-        onChangeText={(value) => handleInputChange("idNumber", value)}
-        placeholder="Nhập số cccd của bạn"
-        keyboardType="numeric"
-      />
-      {errors.idNumber && (
-        <Text style={styles.errorText}>{errors.idNumber}</Text>
-      )}
-
-      <InputField
-        label="Họ và Tên"
-        value={formData.fullName}
-        onChangeText={(value) => handleInputChange("fullName", value)}
-        placeholder="Nhập tên của bạn"
-      />
-      {errors.fullName && (
-        <Text style={styles.errorText}>{errors.fullName}</Text>
-      )}
-
-      <View style={styles.inputContainer}>
-        <Text style={styles.label}>
-          Giới Tính <Text style={styles.required}>*</Text>
-        </Text>
-        <View style={styles.genderGroup}>
-          <TouchableOpacity
-            style={[
-              styles.genderOption,
-              formData.gender === "Nam" && styles.genderOptionSelected,
-            ]}
-            onPress={() => handleGenderChange("Nam")}
-          >
-            <Text
-              style={[
-                styles.genderText,
-                formData.gender === "Nam" && styles.genderTextSelected,
-              ]}
-            >
-              Nam
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.genderOption,
-              formData.gender === "Nữ" && styles.genderOptionSelected,
-            ]}
-            onPress={() => handleGenderChange("Nữ")}
-          >
-            <Text
-              style={[
-                styles.genderText,
-                formData.gender === "Nữ" && styles.genderTextSelected,
-              ]}
-            >
-              Nữ
-            </Text>
-          </TouchableOpacity>
-        </View>
-        {errors.gender && <Text style={styles.errorText}>{errors.gender}</Text>}
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#00b5ec" />
       </View>
+    );
+  }
 
-      <DatePickerField
-        label="Ngày Sinh"
-        value={formData.birthday}
-        onChange={(value) => handleInputChange("birthday", value)}
-      />
-      {errors.birthday && (
-        <Text style={styles.errorText}>{errors.birthday}</Text>
-      )}
-
-      <InputField
-        label="Quốc Tịch"
-        value={formData.country}
-        onChangeText={(value) => handleInputChange("country", value)}
-        placeholder="Nhập quốc tịch của bạn"
-      />
-      {errors.country && <Text style={styles.errorText}>{errors.country}</Text>}
-
-      <PickerField
-        label="Địa chỉ thường trú Tỉnh/Thành PHố"
-        items={provinces}
-        selectedValue={formData.permanentAddressProvince}
-        onValueChange={(value) => handleProvinceChange(value, "permanent")}
-      />
-      {errors.permanentAddressProvince && (
-        <Text style={styles.errorText}>{errors.permanentAddressProvince}</Text>
-      )}
-
-      <PickerField
-        label="Địa chỉ thường trú Quận/Huyện"
-        items={permanentDistricts}
-        selectedValue={formData.permanentAddressDistrict}
-        onValueChange={(value) => handleDistrictChange(value, "permanent")}
-        enabled={!!formData.permanentAddressProvince}
-      />
-      {errors.permanentAddressDistrict && (
-        <Text style={styles.errorText}>{errors.permanentAddressDistrict}</Text>
-      )}
-
-      <PickerField
-        label="Địa chỉ thường trú Phường/Xã"
-        items={permanentWards}
-        selectedValue={formData.permanentAddressWard}
-        onValueChange={(value) =>
-          handleInputChange("permanentAddressWard", value)
-        }
-        enabled={!!formData.permanentAddressDistrict}
-      />
-      {errors.permanentAddressWard && (
-        <Text style={styles.errorText}>{errors.permanentAddressWard}</Text>
-      )}
-
-      <InputField
-        label="Địa chỉ Đường thường trú "
-        value={formData.permanentStreetAddress}
-        onChangeText={(value) =>
-          handleInputChange("permanentStreetAddress", value)
-        }
-        placeholder="Nhập tên đường của bạn, số nhà....."
-      />
-      {errors.permanentStreetAddress && (
-        <Text style={styles.errorText}>{errors.permanentStreetAddress}</Text>
-      )}
-
-      <PickerField
-        label="Địa chỉ tạm trú Tỉnh/Thành PHố"
-        items={provinces}
-        selectedValue={formData.temporaryAddressProvince}
-        onValueChange={(value) => handleProvinceChange(value, "temporary")}
-      />
-      {errors.temporaryAddressProvince && (
-        <Text style={styles.errorText}>{errors.temporaryAddressProvince}</Text>
-      )}
-
-      <PickerField
-        label="Địa chỉ tạm trú Quận/Huyện"
-        items={temporaryDistricts}
-        selectedValue={formData.temporaryAddressDistrict}
-        onValueChange={(value) => handleDistrictChange(value, "temporary")}
-        enabled={!!formData.temporaryAddressProvince}
-      />
-      {errors.temporaryAddressDistrict && (
-        <Text style={styles.errorText}>{errors.temporaryAddressDistrict}</Text>
-      )}
-
-      <PickerField
-        label="Địa chỉ tạm trú Phường/Xã"
-        items={temporaryWards}
-        selectedValue={formData.temporaryAddressWard}
-        onValueChange={(value) =>
-          handleInputChange("temporaryAddressWard", value)
-        }
-        enabled={!!formData.temporaryAddressDistrict}
-      />
-      {errors.temporaryAddressWard && (
-        <Text style={styles.errorText}>{errors.temporaryAddressWard}</Text>
-      )}
-
-      <InputField
-        label="Địa chỉ Đường tạm trú"
-        value={formData.temporaryStreetAddress}
-        onChangeText={(value) =>
-          handleInputChange("temporaryStreetAddress", value)
-        }
-        placeholder="Nhập tên đường của bạn, số nhà....."
-      />
-      {errors.temporaryStreetAddress && (
-        <Text style={styles.errorText}>{errors.temporaryStreetAddress}</Text>
-      )}
-
-      <DatePickerField
-        label="Ngày cấp"
-        value={formData.issueDate}
-        onChange={(value) => handleInputChange("issueDate", value)}
-      />
-      {errors.issueDate && (
-        <Text style={styles.errorText}>{errors.issueDate}</Text>
-      )}
-
-      <DatePickerField
-        label="Ngày hết hạn"
-        value={formData.expiryDate}
-        onChange={(value) => handleInputChange("expiryDate", value)}
-      />
-      {errors.expiryDate && (
-        <Text style={styles.errorText}>{errors.expiryDate}</Text>
-      )}
-
-      <InputField
-        label="Được cấp bởi"
-        value={formData.issuedBy}
-        onChangeText={(value) => handleInputChange("issuedBy", value)}
-        placeholder="Nhập nơi cấp cccd của bạn"
-      />
-      {errors.issuedBy && (
-        <Text style={styles.errorText}>{errors.issuedBy}</Text>
-      )}
-
-      <ImageCameraField
-        label="Ảnh mặt trước CCCD"
-        image={formData.frontFile}
-        onImageSelect={(file) => handleInputChange("frontFile", file)}
-        onScanComplete={handleScanComplete}
-        error={errors.frontFile}
-      />
-
-      <ImageCameraField
-        label="Ảnh mặt sau CCCD"
-        image={formData.backFile}
-        onImageSelect={(file) => handleInputChange("backFile", file)}
-        onScanComplete={handleScanComplete}
-        error={errors.backFile}
-      />
-
-      <TouchableOpacity
-        style={[styles.submitButton, isLoading && styles.disabledButton]}
-        onPress={handleSubmit}
-        disabled={isLoading}
-      >
-        <Text style={styles.submitButtonText}>
-          {isLoading ? "Processing..." : isEditMode ? "Lưu" : "Xong"}
-        </Text>
-      </TouchableOpacity>
-    </ScrollView>
+  // Nếu không có data hoặc có lỗi -> hiển thị form tạo mới
+  // Chỉ hiển thị form cập nhật khi chắc chắn có data hợp lệ
+  return hasData && driverData ? (
+    <UpdateDriverIdentificationScreen navigation={navigation} initialData={driverData} />
+  ) : (
+    <CreateDriverIdentificationScreen navigation={navigation} />
   );
 };
 
@@ -1472,6 +861,12 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     paddingBottom: 20, // Add padding to avoid safe area issues
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f9f9f9",
   },
 });
 

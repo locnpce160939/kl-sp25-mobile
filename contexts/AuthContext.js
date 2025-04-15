@@ -5,6 +5,7 @@ import { useNavigation } from "@react-navigation/native";
 import { Alert } from "react-native";
 import Navigation from "../navigation/Navigation";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import DriverIdentificationScreen from "../pages/Indentification/DriverIdentificationScreen";
 
 export const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
@@ -264,123 +265,110 @@ export const AuthProvider = ({ children }) => {
 
   const createDriverIdentification = async (formData, navigation) => {
     if (isLoading) return;
-
     setIsLoading(true);
-    try {
-      // const checkFileSize = (file) => {
-      //   console.log("File size:", file.size);
-      //   const maxSize = 5 * 1024 * 1024; // 5MB
-      //   if (file.size > maxSize) {
-      //     throw new Error("Kích thước file quá lớn. Tối đa 5MB");
-      //   }
-      // };
 
-      const userInfoString = await AsyncStorage.getItem("userInfo");
-      if (!userInfoString) {
-        Alert.alert(
-          "Lỗi",
-          "Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại."
-        );
-        return;
+    try {
+      const userInfo = await AsyncStorage.getItem("userInfo");
+      if (!userInfo) {
+        throw new Error("User information not found");
       }
 
-      const parsedUserInfo = JSON.parse(userInfoString);
+      const parsedUserInfo = JSON.parse(userInfo);
       const accessToken = parsedUserInfo?.data?.access_token;
 
-      if (!accessToken || typeof accessToken !== "string") {
-        Alert.alert("Lỗi", "Token không hợp lệ. Vui lòng đăng nhập lại.");
-        return;
+      if (!accessToken) {
+        throw new Error("Access token not found");
       }
 
-      console.log("Access Token:", accessToken);
+      // Validate required fields
+      const requiredFields = [
+        "idNumber",
+        "fullName",
+        "gender",
+        "birthday",
+        "country",
+        "permanentAddressWard",
+        "permanentAddressDistrict",
+        "permanentAddressProvince",
+        "permanentStreetAddress",
+        "issueDate",
+        "expiryDate",
+        "issuedBy"
+      ];
 
-      const formDataToSend = new FormData();
-
-      if (formData.frontFile) {
-        //checkFileSize(formData.frontFile);
-        formDataToSend.append("frontFile", {
-          uri: formData.frontFile.uri,
-          type: "image/jpeg",
-          name: "front.jpeg",
-        });
-      } else {
-        throw new Error("Thiếu ảnh mặt trước CCCD/CMND");
+      for (const field of requiredFields) {
+        if (!formData[field]) {
+          throw new Error(`Missing required field: ${field}`);
+        }
       }
 
-      if (formData.backFile) {
-        //  checkFileSize(formData.backFile);
-        formDataToSend.append("backFile", {
-          uri: formData.backFile.uri,
-          type: "image/jpeg",
-          name: "back.jpeg",
-        });
-      } else {
-        throw new Error("Thiếu ảnh mặt sau CCCD/CMND");
-      }
+      // Create FormData object
+      const formDataToSubmit = new FormData();
 
-      const requestDTO = {
-        idNumber: formData.idNumber,
-        fullName: formData.fullName,
-        gender: formData.gender,
-        birthday: formData.birthday,
-        country: formData.country,
-        permanentAddressWard: formData.permanentAddressWard,
-        permanentAddressDistrict: formData.permanentAddressDistrict,
-        permanentAddressProvince: formData.permanentAddressProvince,
-        permanentStreetAddress: formData.permanentStreetAddress,
-        temporaryAddressWard: formData.temporaryAddressWard,
-        temporaryAddressDistrict: formData.temporaryAddressDistrict,
-        temporaryAddressProvince: formData.temporaryAddressProvince,
-        temporaryStreetAddress: formData.temporaryStreetAddress,
-        issueDate: formData.issueDate,
-        expiryDate: formData.expiryDate,
-        issuedBy: formData.issuedBy,
+      // Format dates properly
+      const formatDate = (dateString) => {
+        if (!dateString) return "";
+        try {
+          const date = new Date(dateString);
+          return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}T00:00:00`;
+        } catch (error) {
+          console.warn("Error formatting date:", error);
+          return "";
+        }
       };
 
-      formDataToSend.append("requestDTO", JSON.stringify(requestDTO));
+      // Append all fields to FormData
+      Object.keys(formData).forEach(key => {
+        if (formData[key] !== null && formData[key] !== undefined) {
+          if (key === 'birthday' || key === 'issueDate' || key === 'expiryDate') {
+            formDataToSubmit.append(key, formatDate(formData[key]));
+          } else if (key === 'gender') {
+            formDataToSubmit.append(key, formData[key] === "Nam" ? "Male" : "Female");
+          } else if (key === 'frontFile' || key === 'backFile') {
+            if (formData[key]) {
+              formDataToSubmit.append(key, {
+                uri: formData[key].uri,
+                type: 'image/jpeg',
+                name: `${key}.jpeg`
+              });
+            }
+          } else {
+            formDataToSubmit.append(key, formData[key]);
+          }
+        }
+      });
 
-      console.log("Data to send:");
-      for (let pair of formDataToSend.entries()) {
-        console.log(pair[0], pair[1]);
-      }
+      // Log the form data being sent
+      console.log("Sending form data:", formData);
 
       const response = await axios.post(
         `${BASE_URL}/api/registerDriver/identification`,
-        formDataToSend,
+        formDataToSubmit,
         {
           headers: {
-            Authorization: `Bearer ${accessToken}`,
             "Content-Type": "multipart/form-data",
-            Accept: "application/json",
+            Authorization: `Bearer ${accessToken}`,
           },
-          timeout: 300000, // 5 phút
         }
       );
 
-      console.log("Response from server:", response.data);
-
-      if (response.status === 200 || response.status === 201) {
-        Alert.alert("Thành công", "Đã tạo thông tin CCCD/CMND thành công");
-        navigation.goBack();
+      if (response.data) {
+        // Update local storage with new identification data
+        const updatedUserInfo = JSON.parse(userInfo);
+        updatedUserInfo.driverIdentification = response.data;
+        await AsyncStorage.setItem("userInfo", JSON.stringify(updatedUserInfo));
+        
+        // Navigate back to profile
+        navigation.navigate("Profile");
       }
     } catch (error) {
-      console.error("Error details:", {
-        message: error.message,
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
-        headers: error.response?.headers,
-      });
-
-      let errorMessage = "Đã xảy ra lỗi khi tạo thông tin CCCD/CMND";
-
-      if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error.message) {
-        errorMessage = error.message;
+      console.error("Error creating driver identification:", error);
+      if (error.response) {
+        console.error("Error response data:", error.response.data);
+        console.error("Error response status:", error.response.status);
+        console.error("Error response headers:", error.response.headers);
       }
-
-      Alert.alert("Lỗi", errorMessage);
+      throw error;
     } finally {
       setIsLoading(false);
     }
@@ -542,6 +530,92 @@ export const AuthProvider = ({ children }) => {
         Alert.alert("Error", e.response.data.message);
       });
   };
+    // ================================== Update Driver Identification ========================================
+    const updateDriverIdentification = async (formData) => {
+      if (isLoading) return;
+  
+      setIsLoading(true);
+      try {
+        const userInfoString = await AsyncStorage.getItem("userInfo");
+        if (!userInfoString) {
+          Alert.alert(
+            "Lỗi",
+            "Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại."
+          );
+          return;
+        }
+  
+        const parsedUserInfo = JSON.parse(userInfoString);
+        const accessToken = parsedUserInfo?.data?.access_token;
+  
+        if (!accessToken || typeof accessToken !== "string") {
+          Alert.alert("Lỗi", "Token không hợp lệ. Vui lòng đăng nhập lại.");
+          return;
+        }
+  
+        const formDataToSend = new FormData();
+  
+        if (formData.frontFile) {
+          formDataToSend.append("frontFile", {
+            uri: formData.frontFile.uri,
+            type: "image/jpeg",
+            name: "front.jpeg",
+          });
+        }
+  
+        if (formData.backFile) {
+          formDataToSend.append("backFile", {
+            uri: formData.backFile.uri,
+            type: "image/jpeg",
+            name: "back.jpeg",
+          });
+        }
+  
+        const requestDTO = {
+          idNumber: formData.idNumber,
+          fullName: formData.fullName,
+          gender: formData.gender,
+          birthday: formData.birthday,
+          country: formData.country,
+          permanentAddressWard: formData.permanentAddressWard,
+          permanentAddressDistrict: formData.permanentAddressDistrict,
+          permanentAddressProvince: formData.permanentAddressProvince,
+          permanentStreetAddress: formData.permanentStreetAddress,
+          temporaryAddressWard: formData.temporaryAddressWard,
+          temporaryAddressDistrict: formData.temporaryAddressDistrict,
+          temporaryAddressProvince: formData.temporaryAddressProvince,
+          temporaryStreetAddress: formData.temporaryStreetAddress,
+          issueDate: formData.issueDate,
+          expiryDate: formData.expiryDate,
+          issuedBy: formData.issuedBy,
+        };
+  
+        formDataToSend.append("requestDTO", JSON.stringify(requestDTO));
+  
+        const response = await axios.put(
+          `${BASE_URL}/api/registerDriver/identification`,
+          formDataToSend,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "multipart/form-data",
+              Accept: "application/json",
+            },
+            timeout: 60000, // 1 minute timeout
+          }
+        );
+  
+        if (response.status === 200 && response.data.code === 200) {
+          return response.data;
+        }
+        throw new Error(response.data.message || "Failed to update identification");
+      } catch (error) {
+        console.error("Error in updateDriverIdentification:", error);
+        throw error;
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
   return (
     <AuthContext.Provider
@@ -552,6 +626,7 @@ export const AuthProvider = ({ children }) => {
         getProvinces,
         getDriverIdentificationById,
         createDriverIdentification,
+        updateDriverIdentification,
         confirmOtp,
         login,
         logout,
