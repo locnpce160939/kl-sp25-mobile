@@ -76,18 +76,13 @@ const ScheduleScreen = () => {
   };
 
   const onDateChange = (event, selectedDate) => {
-    if (event.type === "dismissed") {
-      setShowDatePicker(false);
-      return;
-    }
-
-    if (selectedDate) {
+    setShowDatePicker(false);
+    if (event.type === "set" && selectedDate) {
       if (dateType === "start") {
         setStartDay(selectedDate);
       } else {
         setEndDay(selectedDate);
       }
-      setShowDatePicker(false);
     }
   };
 
@@ -131,7 +126,6 @@ const ScheduleScreen = () => {
 
   const handleMapPress = async (event) => {
     const { coordinate } = event.nativeEvent;
-    console.log("Hellloooooooooo", coordinate);
     if (selectingPoint === "start") {
       setLocations((prev) => ({
         ...prev,
@@ -178,12 +172,14 @@ const ScheduleScreen = () => {
   const handleCreateSchedule = async () => {
     if (!validateForm()) {
       setTouched({
-        location: true,
+        startLocation: true,
+        endLocation: true,
         startDay: true,
         endDay: true,
         capacity: true,
         vehicle: true,
       });
+      // Hiển thị lỗi trong giao diện, không dùng Alert
       return;
     }
 
@@ -213,7 +209,7 @@ const ScheduleScreen = () => {
         }
       );
       if (res.status === 200) {
-        Alert.alert(res.data.message);
+        Alert.alert("Thành công", res.data.message);
       }
     } catch (error) {
       const responseData = error.response?.data;
@@ -222,9 +218,9 @@ const ScheduleScreen = () => {
         responseData?.message === "Validation failed"
       ) {
         const validationMessages = Object.values(responseData.data).join("\n");
-        Alert.alert("Validation Error", validationMessages);
+        Alert.alert("Lỗi xác thực", validationMessages);
       } else {
-        Alert.alert("Error", error.response?.data?.message || "Đã xảy ra lỗi!");
+        Alert.alert("Lỗi", error.response?.data?.message || "Đã xảy ra lỗi!");
       }
     }
   };
@@ -299,43 +295,15 @@ const ScheduleScreen = () => {
 
   // Render date picker based on platform
   const renderDatePicker = () => {
+    if (!showDatePicker) return null;
     return (
-      <Modal visible={showDatePicker} transparent={true} animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.pickerHeader}>
-              <View style={styles.pickerButtonContainer}>
-                <TouchableOpacity
-                  style={styles.pickerButton}
-                  onPress={() => setShowDatePicker(false)}
-                >
-                  <Text style={styles.pickerButtonText}>Hủy</Text>
-                </TouchableOpacity>
-                <Text style={styles.pickerHeaderText}>
-                  {dateType === "start"
-                    ? "Chọn ngày bắt đầu"
-                    : "Chọn ngày kết thúc"}
-                </Text>
-                <TouchableOpacity
-                  style={styles.pickerButton}
-                  onPress={() => setShowDatePicker(false)}
-                >
-                  <Text style={styles.pickerButtonText}>Xong</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-            <DateTimePicker
-              value={dateType == "start" ? startDay : endDay}
-              mode="date"
-              display="spinner"
-              onChange={onDateChange}
-              style={styles.datePickerIOS}
-              locale="vi-VN"
-              textColor="black"
-            />
-          </View>
-        </View>
-      </Modal>
+      <DateTimePicker
+        value={dateType === "start" ? startDay : endDay}
+        mode="date"
+        display="spinner" 
+        onChange={onDateChange}
+        locale="vi-VN"
+      />
     );
   };
 
@@ -360,6 +328,7 @@ const ScheduleScreen = () => {
       }));
       setTitlePickup(item.formatted_address);
       setStartLocationAddress(item.formatted_address);
+      handleBlur("startLocation"); // Thêm dòng này
     } else {
       setLocations((prev) => ({
         ...prev,
@@ -367,6 +336,7 @@ const ScheduleScreen = () => {
       }));
       setTitleDropoff(item.formatted_address);
       setEndLocationAddress(item.formatted_address);
+      handleBlur("endLocation"); // Thêm dòng này
     }
   };
 
@@ -374,6 +344,7 @@ const ScheduleScreen = () => {
     <KeyboardAvoidingView style={{ flex: 1 }}>
       <TouchableWithoutFeedback>
         <View style={styles.container}>
+          {/* Các trường nhập liệu giữ nguyên như mã gốc */}
           <Text style={styles.label}>Điểm bắt đầu *</Text>
           <TouchableOpacity
             style={[
@@ -390,7 +361,6 @@ const ScheduleScreen = () => {
             <Text style={styles.errorText}>{errors.startLocation}</Text>
           )}
 
-          {/* End Location Input */}
           <Text style={styles.label}>Điểm kết thúc *</Text>
           <TouchableOpacity
             style={[
@@ -468,7 +438,7 @@ const ScheduleScreen = () => {
                   )
                   .map((vehicle) => (
                     <Picker.Item
-                      key={vehicle.vehicleId.toString()} // Add unique key here
+                      key={vehicle.vehicleId.toString()}
                       label={vehicle.model}
                       value={vehicle.vehicleId}
                     />
@@ -490,7 +460,6 @@ const ScheduleScreen = () => {
             <Text style={styles.saveButtonText}>Lưu</Text>
           </TouchableOpacity>
 
-          {/* Map Modal */}
           <Modal visible={isMapVisible} animationType="slide">
             <GestureHandlerRootView>
               <View style={styles.modalContainer}>
@@ -564,9 +533,9 @@ const ScheduleScreen = () => {
               </View>
             </GestureHandlerRootView>
           </Modal>
-          {renderDatePicker()}
         </View>
       </TouchableWithoutFeedback>
+      {renderDatePicker()}
     </KeyboardAvoidingView>
   );
 };
@@ -706,8 +675,9 @@ const styles = StyleSheet.create({
   // Date Picker Modal Styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.4)",
-    justifyContent: "flex-end",
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   modalContent: {
     width: "100%",
