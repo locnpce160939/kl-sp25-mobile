@@ -76,7 +76,7 @@ const ScheduleListScreen = () => {
       }
     >
       <View style={styles.headerContainer}>
-        <Text style={styles.scheduleId}>Mã Lộ Trình #{item.scheduleId}</Text>
+        <Text style={styles.scheduleId}>Chuyến #{item.scheduleId}</Text>
         <View
           style={[
             styles.statusBadge,
