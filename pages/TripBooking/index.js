@@ -371,7 +371,7 @@ const TripBooking = () => {
     );
   };
 
-  const getPrice = async () => {
+  const getPrice = async (insuranceId = null) => {
     try {
       if (
         !pickupLocation ||
@@ -399,6 +399,10 @@ const TripBooking = () => {
       }
 
       let token = await AsyncStorage.getItem("token");
+      if (!token) {
+        throw new Error("Token không tồn tại. Vui lòng đăng nhập lại.");
+      }
+
       const origin = `${pickupLocation.latitude},${pickupLocation.longitude}`;
       const destination = `${dropoffLocation.latitude},${dropoffLocation.longitude}`;
       const weight = parseInt(capacity);
@@ -410,27 +414,31 @@ const TripBooking = () => {
         bookingType,
       };
 
-      if (selectedInsuranceId) {
-        payload.selectedInsurancePolicyId = selectedInsuranceId; // Thêm selectedInsurancePolicyId
+      if (insuranceId) {
+        payload.selectedInsurancePolicyId = insuranceId;
       }
 
-      console.log("Payload gửi lên API:", payload); // Debug payload
+      console.log("Payload gửi lên API:", payload);
 
       const res = await axios.post(
         `${BASE_URL}/api/tripBookings/direction`,
         payload,
         {
           headers: { Authorization: `Bearer ${token}` },
+          timeout: 10000,
         }
       );
 
       const priceData = res.data.data;
       console.log("Dữ liệu từ API:", priceData);
 
-      // Lưu danh sách bảo hiểm
-      setInsurances(priceData.insurances || []);
+      // Cập nhật danh sách bảo hiểm
+      const newInsurances = Array.isArray(priceData.insurances)
+        ? priceData.insurances
+        : [];
+      setInsurances(newInsurances);
 
-      // Không tự động chọn gói bảo hiểm, giữ nguyên selectedInsuranceId
+      // Cập nhật giá
       setTotalPrice({
         price: priceData.price || 0,
         expectedDistance: priceData.expectedDistance || 0,
@@ -438,16 +446,33 @@ const TripBooking = () => {
       });
       setFinalPrice(priceData.price || 0);
       setDiscountAmount(0);
+
+      // Cập nhật lại selectedInsuranceId để giữ trạng thái checkbox
+      if (
+        insuranceId &&
+        newInsurances.some((ins) => ins.insurancePolicyId === insuranceId)
+      ) {
+        setSelectedInsuranceId(insuranceId);
+        const selectedInsurance = newInsurances.find(
+          (ins) => ins.insurancePolicyId === insuranceId
+        );
+        setInsuranceName(selectedInsurance?.insuranceName || "");
+        setInsuranceDescription(selectedInsurance?.insuranceDescription || "");
+      } else {
+        setSelectedInsuranceId(null);
+        setInsuranceName("");
+        setInsuranceDescription("");
+      }
     } catch (error) {
       console.error("Lỗi khi lấy giá:", error.response?.data || error.message);
-      Alert.alert("Lỗi", "Không thể tính giá. Vui lòng kiểm tra lại địa điểm.");
+      Alert.alert(
+        "Lỗi",
+        error.response?.data?.message ||
+          "Không thể tính giá. Vui lòng kiểm tra lại địa điểm."
+      );
       setTotalPrice({ price: 0, expectedDistance: 0, isFirstOrder: false });
       setFinalPrice(0);
       setDiscountAmount(0);
-      setInsurances([]);
-      setSelectedInsuranceId(null);
-      setInsuranceName("");
-      setInsuranceDescription("");
     }
   };
 
@@ -894,8 +919,8 @@ const TripBooking = () => {
                     onPress={() => {
                       const newSelectedId =
                         selectedInsuranceId === insurance.insurancePolicyId
-                          ? null 
-                          : insurance.insurancePolicyId; 
+                          ? null
+                          : insurance.insurancePolicyId;
                       setSelectedInsuranceId(newSelectedId);
                       setInsuranceName(
                         newSelectedId ? insurance.insuranceName : ""
@@ -903,7 +928,8 @@ const TripBooking = () => {
                       setInsuranceDescription(
                         newSelectedId ? insurance.insuranceDescription : ""
                       );
-                      getPrice(); // Gọi getPrice để gửi selectedInsurancePolicyId
+                      // Truyền newSelectedId trực tiếp vào getPrice
+                      getPrice(newSelectedId);
                     }}
                   >
                     <View
@@ -919,17 +945,19 @@ const TripBooking = () => {
                     </View>
                     <View style={styles.checkboxTextContainer}>
                       <Text style={styles.checkboxLabel}>
-                        {insurance.insuranceName}
+                        {insurance.insuranceName || "N/A"}
                       </Text>
                       <Text style={styles.checkboxDescription}>
-                        {insurance.insuranceDescription}
+                        {insurance.insuranceDescription || "Không có mô tả"}
                       </Text>
                       <Text style={styles.checkboxPrice}>
                         Giá:{" "}
-                        {insurance.insurancePrice.toLocaleString("vi-VN", {
-                          style: "currency",
-                          currency: "VND",
-                        })}
+                        {insurance.insurancePrice
+                          ? insurance.insurancePrice.toLocaleString("vi-VN", {
+                              style: "currency",
+                              currency: "VND",
+                            })
+                          : "0 VND"}
                       </Text>
                     </View>
                   </TouchableOpacity>
