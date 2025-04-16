@@ -304,6 +304,11 @@ const SocketNotification = () => {
         return;
       }
 
+      if (role !== "DRIVER") {
+        Alert.alert("Error", "Only drivers can accept trips");
+        return;
+      }
+
       const userInfoString = await AsyncStorage.getItem("userInfo");
       const userInfo = JSON.parse(userInfoString);
       const token = userInfo?.data?.access_token;

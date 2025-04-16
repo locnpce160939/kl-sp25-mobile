@@ -188,7 +188,7 @@ const RedeemableVoucher = () => {
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="arrow-back" size={24} color="#00b5ec" />
+          <Ionicons name="arrow-back" size={24} color="#FFFFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Đổi Voucher</Text>
       </View>
@@ -256,7 +256,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     marginLeft: 16,
-    color: "#00b5ec",
+    color: "#FFFFF",
   },
   listContainer: {
     padding: 16,

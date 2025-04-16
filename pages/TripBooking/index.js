@@ -592,6 +592,16 @@ const TripBooking = () => {
         setEndLocationAddress(params.endLocationAddress);
       if (params.titlePickup) setTitlePickup(params.titlePickup);
       if (params.titleDropoff) setTitleDropoff(params.titleDropoff);
+      if (params.notes) setNotes(params.notes);
+      if (params.selectedInsuranceId) {
+        setSelectedInsuranceId(params.selectedInsuranceId);
+        setInsuranceName(params.insuranceName);
+        setInsuranceDescription(params.insuranceDescription);
+        // Gọi getPrice() để cập nhật lại danh sách insurance và trạng thái checkbox
+        if (pickupLocation && dropoffLocation && capacity) {
+          getPrice();
+        }
+      }
     });
     return unsubscribe;
   }, [navigation, route.params, totalPrice.price]);
@@ -746,6 +756,13 @@ const TripBooking = () => {
   };
 
   const handleVoucherPress = () => {
+    if (!paymentMethod) {
+      Alert.alert(
+        "Thông báo",
+        "Vui lòng chọn phương thức thanh toán trước khi sử dụng voucher"
+      );
+      return;
+    }
     const formattedPaymentMethod = paymentMethod || "CASH";
     navigation.navigate("VoucherScreen", {
       orderValue: totalPrice.price,
@@ -763,6 +780,10 @@ const TripBooking = () => {
       endLocationAddress,
       titlePickup,
       titleDropoff,
+      notes,
+      selectedInsuranceId,
+      insuranceName,
+      insuranceDescription
     });
   };
 
@@ -1529,3 +1550,4 @@ const styles = StyleSheet.create({
 });
 
 export default TripBooking;
+

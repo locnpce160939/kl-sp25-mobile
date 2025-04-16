@@ -39,6 +39,9 @@ const VoucherScreen = () => {
     endLocationAddress,
     titlePickup,
     titleDropoff,
+    selectedInsuranceId,
+    insuranceName,
+    insuranceDescription
   } = route.params || {};
 
   console.log("orderValue", orderValue);
@@ -94,7 +97,6 @@ const VoucherScreen = () => {
     const voucherCode = voucher.code;
     console.log("Voucher Code (data.code):", voucherCode);
 
-    // Truyền voucherCode và tất cả dữ liệu form ngược lại TripBooking
     navigation.navigate("Booking", {
       voucherCode,
       orderValue,
@@ -112,6 +114,9 @@ const VoucherScreen = () => {
       endLocationAddress,
       titlePickup,
       titleDropoff,
+      selectedInsuranceId,
+      insuranceName,
+      insuranceDescription
     });
   };
 

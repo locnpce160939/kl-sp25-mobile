@@ -11,6 +11,8 @@ import {
   SafeAreaView,
   ScrollView,
   Animated,
+  Image,
+  StatusBar,
 } from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import io from "socket.io-client";
@@ -210,7 +212,9 @@ const ChatDriverReal = ({ route, navigation }) => {
       >
         {!isCustomer && (
           <View style={styles.avatarContainer}>
-            <Text style={styles.avatarText}>N</Text>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>N</Text>
+            </View>
           </View>
         )}
         <View
@@ -276,6 +280,7 @@ const ChatDriverReal = ({ route, navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -326,17 +331,21 @@ const ChatDriverReal = ({ route, navigation }) => {
           value={inputMessage}
           onChangeText={setInputMessage}
           placeholder="Nhập tin nhắn..."
+          placeholderTextColor="#999"
           multiline
         />
         <TouchableOpacity
           onPress={() => sendMessage(inputMessage)}
-          style={styles.sendButton}
+          style={[
+            styles.sendButton,
+            inputMessage.trim().length > 0 && styles.sendButtonActive,
+          ]}
           disabled={inputMessage.trim().length === 0}
         >
           <Icon
             name="send"
             size={24}
-            color={inputMessage.trim().length > 0 ? "#0099ff" : "#ccc"}
+            color={inputMessage.trim().length > 0 ? "#fff" : "#ccc"}
           />
         </TouchableOpacity>
       </KeyboardAvoidingView>
@@ -346,58 +355,73 @@ const ChatDriverReal = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: "#f5f5f5",
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     padding: 16,
+    backgroundColor: "#fff",
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
-    backgroundColor: "#fff",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
   headerTitleContainer: {
     flex: 1,
+    marginLeft: 12,
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: "bold",
+    fontWeight: "600",
+    color: "#333",
   },
   headerSubtitle: {
     fontSize: 12,
     color: "#666",
+    marginTop: 2,
   },
   backButton: {
-    marginRight: 16,
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: "#f0f0f0",
   },
   phoneButton: {
     padding: 8,
+    borderRadius: 8,
+    backgroundColor: "#f0f0f0",
   },
   messagesList: {
     padding: 16,
   },
   messageContainer: {
     flexDirection: "row",
-    marginVertical: 4,
+    marginVertical: 8,
     maxWidth: "80%",
   },
   avatarContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "#e0e0e0",
+    marginRight: 8,
+  },
+  avatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#00b5ec",
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 8,
   },
   avatarText: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#666",
+    color: "#fff",
   },
   messageContent: {
     padding: 12,
     borderRadius: 16,
+    maxWidth: "100%",
   },
   customerMessage: {
     alignSelf: "flex-end",
@@ -406,41 +430,55 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
   },
   customerMessageContent: {
-    backgroundColor: "#0099ff",
+    backgroundColor: "#00b5ec",
+    borderTopRightRadius: 4,
   },
   driverMessageContent: {
-    backgroundColor: "#f0f0f0",
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 4,
+    elevation: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 1,
   },
   messageText: {
     fontSize: 16,
     color: "#fff",
+    lineHeight: 22,
   },
   timestamp: {
     fontSize: 12,
     color: "rgba(255, 255, 255, 0.7)",
     marginTop: 4,
+    alignSelf: "flex-end",
   },
   quickMessagesWrapper: {
     overflow: "hidden",
     borderTopWidth: 1,
     borderTopColor: "#eee",
+    backgroundColor: "#fff",
   },
   quickMessagesContainer: {
-    padding: 8,
+    padding: 12,
   },
   quickMessageButton: {
     backgroundColor: "#f0f0f0",
-    padding: 8,
-    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
     marginHorizontal: 4,
+    borderWidth: 1,
+    borderColor: "#eee",
   },
   quickMessageText: {
-    color: "#000",
+    color: "#333",
     fontSize: 14,
   },
   inputContainer: {
     flexDirection: "row",
-    padding: 16,
+    padding: 12,
+    backgroundColor: "#fff",
     borderTopWidth: 1,
     borderTopColor: "#eee",
     alignItems: "center",
@@ -448,6 +486,8 @@ const styles = StyleSheet.create({
   toggleButton: {
     padding: 8,
     marginRight: 8,
+    borderRadius: 8,
+    backgroundColor: "#f0f0f0",
   },
   input: {
     flex: 1,
@@ -457,9 +497,16 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     marginRight: 8,
     maxHeight: 100,
+    fontSize: 16,
+    color: "#333",
   },
   sendButton: {
     padding: 8,
+    borderRadius: 8,
+    backgroundColor: "#f0f0f0",
+  },
+  sendButtonActive: {
+    backgroundColor: "#00b5ec",
   },
 });
 
