@@ -27,6 +27,7 @@ import ProfileUserScreen from "../pages/Profile/profileUserScreen";
 import PaymentScreen from "../pages/Payment";
 import BalanceHistoryDetailScreen from "../pages/BalanceDriver/BalanceHistoryDetailScreen";
 import VoucherScreen from "../pages/Voucher/VoucherScreen";
+import MyVouchers from "../pages/Voucher/MyVouchers";
 import Withdraw from "../pages/Withdraw";
 import BonusScreen from "../pages/BonusDriver/Bonus";
 import RedeemableVoucher from "../pages/Voucher/RedeemableVoucher";
@@ -122,6 +123,13 @@ const Navigation = () => {
              <Stack.Screen
               name="BonusScreen"
               component={BonusScreen}
+              options={{ headerShown: false }}
+              
+            />
+             
+             <Stack.Screen
+              name="MyVouchers"
+              component={MyVouchers}
               options={{ headerShown: false }}
               
             />
