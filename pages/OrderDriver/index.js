@@ -360,7 +360,7 @@ const OrderDriver = ({ route }) => {
                       onPress={() => {
                         navigation.navigate("ChatDriverReal", {
                           driverId: selectedBooking.customer.accountId,
-                          driverName: selectedBooking.customer.fullName,
+                          customerName: selectedBooking.customer.fullName,
                           bookingId: selectedBooking.bookingId,
                         });
                       }}

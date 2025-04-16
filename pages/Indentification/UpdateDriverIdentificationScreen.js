@@ -890,7 +890,7 @@ const formatDate = (dateString) => {
       const requestDTO = {
         idNumber: formData.idNumber.trim(),
         fullName: formData.fullName.trim(),
-        gender: formData.gender === "Nam" ? "Nam" : "NữNữ",
+        gender: formData.gender === "Nam" ? "Nam" : "Nữ",
         birthday: formatDate(formData.birthday),
         country: formData.country.trim(),
         permanentAddressWard: formData.permanentAddressWard ? Number(formData.permanentAddressWard) : null,
