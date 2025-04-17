@@ -13,6 +13,7 @@ import {
   Image,
   Modal,
 } from "react-native";
+import { Picker } from '@react-native-picker/picker';
 import { useNavigation } from "@react-navigation/native";
 import axios from "axios";
 import { BASE_URL } from "../../configUrl";
@@ -28,13 +29,13 @@ const VALIDATION_RULES = {
     label: "Số bằng lái",
     required: "Số bằng lái là bắt buộc.",
     pattern: /^[A-Z0-9-]+$/,
-    patternError: "Số bằng lái không hợp lệ.",
+    patternError: "Số bằng lái không hợp lệ",
   },
   licenseType: {
     label: "Loại bằng lái",
     required: "Loại bằng lái là bắt buộc.",
     pattern: /^[A-Z0-9\s]+$/,
-    patternError: "Loại bằng lái không hợp lệ.",
+    patternError: "Loại bằng lái không hợp lệ (A1,A2,B1,...).",
   },
   issuedDate: {
     label: "Ngày cấp",
@@ -75,12 +76,53 @@ const LicenseScreen = () => {
     frontView: null,
     backView: null,
   });
+  const [showCustomType, setShowCustomType] = useState(false);
   const [licenseId, setLicenseId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const { logout } = useContext(AuthContext);
   const { showAlert } = useAlert();
   const [isUpdating, setIsUpdating] = useState(false);
+
+  const licenseTypes = [
+    { value: '', label: 'Chọn loại bằng lái' },
+    { value: 'B1', label: 'Hạng B1 (10 năm)' },
+    { value: 'B2', label: 'Hạng B2 (10 năm)' },
+    { value: 'C1', label: 'Hạng C1 (10 năm)' },
+    { value: 'C', label: 'Hạng C (5 năm)' },
+    { value: 'D1', label: 'Hạng D1 (5 năm)' },
+    { value: 'D2', label: 'Hạng D2 (5 năm)' },
+    { value: 'D', label: 'Hạng D (5 năm)' },
+    { value: 'BE', label: 'Hạng BE (5 năm)' },
+    { value: 'C1E', label: 'Hạng C1E (5 năm)' },
+    { value: 'CE', label: 'Hạng CE (5 năm)' },
+    { value: 'D1E', label: 'Hạng D1E (5 năm)' },
+    { value: 'D2E', label: 'Hạng D2E (5 năm)' },
+    { value: 'DE', label: 'Hạng DE (5 năm)' },
+    { value: 'other', label: 'Khác' }
+  ];
+
+  const handleLicenseTypeChange = (value) => {
+    if (value === 'other') {
+      setShowCustomType(true);
+    } else {
+      setShowCustomType(false);
+      setLicenseDetails(prev => ({ ...prev, licenseType: value }));
+    }
+  };
+
+  const handleCustomTypeChange = (text) => {
+    setLicenseDetails(prev => {
+      const newState = { ...prev, licenseType: text };
+      if (prev.issuedDate) {
+        const issuedDate = new Date(prev.issuedDate);
+        const expiryDate = new Date(issuedDate);
+        expiryDate.setFullYear(issuedDate.getFullYear() + 5);
+        newState.expiryDate = expiryDate.toISOString().split('T')[0];
+      }
+      return newState;
+    });
+  };
 
   useEffect(() => {
     (async () => {
@@ -110,6 +152,10 @@ const LicenseScreen = () => {
 
       if (licenseData) {
         setLicenseId(licenseData.licenseId);
+        const existingType = licenseTypes.find(type => type.value === licenseData.licenseType);
+        if (!existingType && licenseData.licenseType) {
+          setShowCustomType(true);
+        }
         setLicenseDetails({
           ...licenseData,
           issuedDate: licenseData.issuedDate ? licenseData.issuedDate.split("T")[0] : "",
@@ -170,7 +216,7 @@ const LicenseScreen = () => {
   const validateInputs = () => {
     const newErrors = {};
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // Reset time to start of day
+    today.setHours(0, 0, 0, 0);
     
     Object.entries(VALIDATION_RULES).forEach(([field, rules]) => {
       const value = licenseDetails[field];
@@ -185,27 +231,56 @@ const LicenseScreen = () => {
         return;
       }
 
-      if (field === "issuedDate" && value) {
-        const [year, month, day] = value.split('-').map(Number);
-        const issuedDate = new Date(year, month - 1, day);
-        issuedDate.setHours(0, 0, 0, 0); // Reset time to start of day
-        
-        // Kiểm tra nếu ngày cấp là hôm nay hoặc trong tương lai
-        if (issuedDate >= today) {
-          newErrors[field] = rules.pastDate;
+      if (field === "licenseNumber" && value) {
+        if (value.length !== 12) {
+          newErrors[field] = "Số bằng lái phải có đúng 12 ký tự";
+          return;
+        }
+        if (!/^\d+$/.test(value)) {
+          newErrors[field] = "Số bằng lái chỉ được nhập số";
+          return;
         }
       }
 
-      if (field === "expiryDate" && value) {
-        const [year, month, day] = value.split('-').map(Number);
-        const expiryDate = new Date(year, month - 1, day);
-        expiryDate.setHours(0, 0, 0, 0); // Reset time to start of day
-        const [issuedYear, issuedMonth, issuedDay] = licenseDetails.issuedDate.split('-').map(Number);
-        const issuedDate = new Date(issuedYear, issuedMonth - 1, issuedDay);
-        issuedDate.setHours(0, 0, 0, 0); // Reset time to start of day
+      if (field === "licenseType" && value) {
+        if (!showCustomType && !licenseTypes.map(t => t.value).includes(value)) {
+          newErrors[field] = "Vui lòng chọn loại bằng lái hợp lệ";
+          return;
+        }
+        if (showCustomType && value.length < 2) {
+          newErrors[field] = "Loại bằng lái phải có ít nhất 2 ký tự";
+          return;
+        }
+      }
+
+      if (field === "issuedDate" && value) {
+        const issuedDate = new Date(value);
+        issuedDate.setHours(0, 0, 0, 0);
+        
+        if (issuedDate > today) {
+          newErrors[field] = "Ngày cấp không được lớn hơn ngày hiện tại";
+          return;
+        }
+      }
+      
+      if (field === "expiryDate" && value && licenseDetails.issuedDate) {
+        const expiryDate = new Date(value);
+        const issuedDate = new Date(licenseDetails.issuedDate);
         
         if (expiryDate <= issuedDate) {
-          newErrors[field] = rules.futureDate;
+          newErrors[field] = "Ngày hết hạn phải sau ngày cấp";
+          return;
+        }
+      }
+
+      if (field === "issuingAuthority" && value) {
+        if (value.length < 5) {
+          newErrors[field] = "Cơ quan cấp phải có ít nhất 5 ký tự";
+          return;
+        }
+        if (value.length > 60) {
+          newErrors[field] = "Cơ quan cấp không được vượt quá 60 ký tự";
+          return;
         }
       }
     });
@@ -400,8 +475,46 @@ const LicenseScreen = () => {
   };
 
   const handleInputChange = (field, value) => {
-    setLicenseDetails((prev) => ({ ...prev, [field]: value }));
-    setErrors((prev) => ({ ...prev, [field]: null }));
+    if (field === "issuedDate" && value) {
+      const issuedDate = new Date(value);
+      const licenseType = licenseDetails.licenseType;
+      let validDuration = 5;
+      
+      if (['B1', 'B2', 'C1'].includes(licenseType)) {
+        validDuration = 10;
+      }
+      
+      const expiryDate = new Date(issuedDate);
+      expiryDate.setFullYear(issuedDate.getFullYear() + validDuration);
+      
+      const formattedExpiryDate = expiryDate.toISOString().split('T')[0];
+      
+      setLicenseDetails(prev => ({
+        ...prev,
+        [field]: value,
+        expiryDate: formattedExpiryDate
+      }));
+    } else if (field === "licenseType") {
+      setLicenseDetails(prev => {
+        const newState = { ...prev, [field]: value };
+        if (prev.issuedDate) {
+          const issuedDate = new Date(prev.issuedDate);
+          let validDuration = 5;
+          
+          if (['B1', 'B2', 'C1'].includes(value)) {
+            validDuration = 10;
+          }
+          
+          const expiryDate = new Date(issuedDate);
+          expiryDate.setFullYear(issuedDate.getFullYear() + validDuration);
+          newState.expiryDate = expiryDate.toISOString().split('T')[0];
+        }
+        return newState;
+      });
+    } else {
+      setLicenseDetails(prev => ({ ...prev, [field]: value }));
+    }
+    setErrors(prev => ({ ...prev, [field]: null }));
   };
 
   const renderImageSection = (view, label) => (
@@ -475,11 +588,39 @@ const LicenseScreen = () => {
               "licenseNumber",
               "Nhập số bằng lái"
             )}
-            {renderInputField(
-              "Loại bằng lái",
-              "licenseType",
-              "Nhập loại bằng lái"
-            )}
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Loại bằng lái</Text>
+              <View style={[styles.dropdownContainer, errors.licenseType && styles.inputError]}>
+                <Picker
+                  selectedValue={showCustomType ? 'other' : licenseDetails.licenseType}
+                  onValueChange={handleLicenseTypeChange}
+                  style={[styles.picker]}
+                  mode="dropdown"
+                  dropdownIconColor="#000"
+                  enabled={!loading}
+                >
+                  {licenseTypes.map((type) => (
+                    <Picker.Item 
+                      key={type.value} 
+                      label={type.label} 
+                      value={type.value}
+                      color={type.value === '' ? '#999' : '#000'}
+                    />
+                  ))}
+                </Picker>
+              </View>
+              {showCustomType && (
+                <TextInput
+                  style={[styles.input, { marginTop: 10 }, errors.licenseType && styles.inputError]}
+                  value={licenseDetails.licenseType}
+                  onChangeText={handleCustomTypeChange}
+                  placeholder="Nhập loại bằng lái"
+                  placeholderTextColor="#999"
+                  editable={!loading}
+                />
+              )}
+              {errors.licenseType && <Text style={styles.errorText}>{errors.licenseType}</Text>}
+            </View>
             <DatePickerField
               label="Ngày cấp"
               value={licenseDetails.issuedDate}
@@ -495,13 +636,23 @@ const LicenseScreen = () => {
               onChange={(value) => handleInputChange("expiryDate", value)}
               field="expiryDate"
               error={errors.expiryDate}
-              style={[styles.input, errors.expiryDate && styles.inputError]}
+              style={[styles.input, { backgroundColor: '#f5f5f5' }, errors.expiryDate && styles.inputError]}
+              disabled={true}
             />
-            {renderInputField(
-              "Cơ quan cấp",
-              "issuingAuthority",
-              "Nhập cơ quan cấp"
-            )}
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Cơ quan cấp</Text>
+              <TextInput
+                style={[styles.input, errors.issuingAuthority && styles.inputError]}
+                value={licenseDetails.issuingAuthority}
+                onChangeText={(text) => handleInputChange("issuingAuthority", text)}
+                placeholder="Nhập cơ quan cấp"
+                placeholderTextColor="#999"
+                maxLength={60}
+              />
+              {errors.issuingAuthority && (
+                <Text style={styles.errorText}>{errors.issuingAuthority}</Text>
+              )}
+            </View>
             {renderImageSection("frontView", "Mặt trước bằng lái")}
             {renderImageSection("backView", "Mặt sau bằng lái")}
             <TouchableOpacity
@@ -751,6 +902,20 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 16,
     color: "#333",
+  },
+  dropdownContainer: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    backgroundColor: '#f9f9f9',
+    marginBottom: 10,
+    height: 45,
+    justifyContent: 'center',
+  },
+  picker: {
+    height: 65,
+    width: '100%',
+    color: '#000',
   },
 });
 

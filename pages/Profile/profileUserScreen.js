@@ -9,8 +9,6 @@ import {
   SafeAreaView,
   ActivityIndicator,
   Platform,
-  Image,
-  Dimensions,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import axios from "axios";
@@ -18,20 +16,19 @@ import { BASE_URL } from "../../configUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AuthContext } from "../../contexts/AuthContext";
 import Ionicons from "react-native-vector-icons/Ionicons";
-import * as ImagePicker from "expo-image-picker";
-import { useAlert } from "../../components/CustomAlert"; // Import hook useAlert
+import { useAlert } from "../../components/CustomAlert";
 
 const ProfileUserScreen = () => {
   const navigation = useNavigation();
-  const { showAlert } = useAlert(); // Sử dụng hook useAlert
+  const { showAlert } = useAlert();
   const [userDetails, setUserDetails] = useState({
     username: "",
     fullName: "",
     email: "",
     phone: "",
-    profilePicture: null,
     status: "",
   });
+  const [displayName, setDisplayName] = useState("");
   const [loading, setLoading] = useState(false);
   const { logout } = useContext(AuthContext);
   const [validationErrors, setValidationErrors] = useState({
@@ -58,6 +55,7 @@ const ProfileUserScreen = () => {
 
       if (userData) {
         setUserDetails(userData);
+        setDisplayName(userData.fullName || "Chưa cập nhật");
       }
     } catch (error) {
       handleUserError(error);
@@ -91,8 +89,11 @@ const ProfileUserScreen = () => {
       // Only allow numbers
       value = value.replace(/[^0-9]/g, "");
     } else if (field === "fullName") {
-      // Remove only specific special characters
+      // Remove only specific special characters and limit length
       value = value.replace(/[@#$%^&*!]/g, "");
+      if (value.length > 50) {
+        value = value.substring(0, 50);
+      }
     }
     setUserDetails((prev) => ({ ...prev, [field]: value }));
     // Clear validation error when user types
@@ -115,6 +116,9 @@ const ProfileUserScreen = () => {
       isValid = false;
     } else if (specialChars.test(userDetails.fullName.trim())) {
       errors.fullName = "Họ tên không được chứa ký tự đặc biệt";
+      isValid = false;
+    } else if (userDetails.fullName.trim().length > 50) {
+      errors.fullName = "Họ tên không được vượt quá 50 ký tự";
       isValid = false;
     }
 
@@ -167,6 +171,7 @@ const ProfileUserScreen = () => {
       );
 
       if (status === 200) {
+        setDisplayName(userDetails.fullName.trim() || "Chưa cập nhật");
         showAlert({
           title: "Thành công",
           message: "Cập nhật thông tin thành công",
@@ -200,32 +205,6 @@ const ProfileUserScreen = () => {
     }
   };
 
-  const selectProfilePicture = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") {
-      showAlert({
-        title: "Lỗi",
-        message: "Cần cho phép truy cập thư viện ảnh để sử dụng tính năng này!",
-        type: "warning",
-      });
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.5,
-    });
-
-    if (!result.canceled) {
-      setUserDetails((prev) => ({
-        ...prev,
-        profilePicture: result.assets[0].uri,
-      }));
-    }
-  };
-
   const renderInputField = (label, field, placeholder, icon) => (
     <View style={styles.inputContainer}>
       <View style={styles.labelContainer}>
@@ -244,11 +223,16 @@ const ProfileUserScreen = () => {
         placeholderTextColor={"#999"}
         editable={field === "fullName" || field === "phone"}
         keyboardType={field === "phone" ? "numeric" : "default"}
-        maxLength={field === "phone" ? 10 : undefined}
+        maxLength={field === "phone" ? 10 : field === "fullName" ? 50 : undefined}
       />
       {validationErrors[field] ? (
         <Text style={styles.errorText}>{validationErrors[field]}</Text>
       ) : null}
+      {field === "fullName" && (
+        <Text style={styles.charCount}>
+          {userDetails.fullName.length}/50 ký tự
+        </Text>
+      )}
     </View>
   );
 
@@ -275,26 +259,11 @@ const ProfileUserScreen = () => {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.profileHeader}>
-            <View style={styles.profilePictureContainer}>
-              {userDetails.profilePicture ? (
-                <Image
-                  source={{ uri: userDetails.profilePicture }}
-                  style={styles.profilePicture}
-                />
-              ) : (
-                <View style={styles.defaultProfilePicture}>
-                  <Ionicons name="person" size={50} color="#fff" />
-                </View>
-              )}
-              <TouchableOpacity
-                style={styles.editPictureButton}
-                onPress={selectProfilePicture}
-              >
-                <Ionicons name="camera" size={20} color="#fff" />
-              </TouchableOpacity>
+            <View style={styles.profileIconContainer}>
+              <Ionicons name="person-circle" size={130} color="#00b5ec" />
             </View>
             <Text style={styles.userName}>
-              {userDetails.fullName || "Chưa cập nhật"}
+              {displayName}
             </Text>
           </View>
 
@@ -306,9 +275,9 @@ const ProfileUserScreen = () => {
               "person-outline"
             )}
             {renderInputField(
-              "Họ tên",
+              "Họ và tên",
               "fullName",
-              "Nhập họ tên",
+              "Nhập họ và tên",
               "card-outline"
             )}
             {renderInputField("Email", "email", "Nhập email", "mail-outline")}
@@ -381,39 +350,16 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
   },
-  profilePictureContainer: {
-    position: "relative",
+  profileIconContainer: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: "#f0f0f0",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 3,
+    borderColor: "#fff",
     marginBottom: 16,
-  },
-  profilePicture: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 3,
-    borderColor: "#fff",
-  },
-  defaultProfilePicture: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: "#00b5ec",
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 3,
-    borderColor: "#fff",
-  },
-  editPictureButton: {
-    position: "absolute",
-    bottom: 0,
-    right: 0,
-    backgroundColor: "#00b5ec",
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 3,
-    borderColor: "#fff",
   },
   userName: {
     fontSize: 24,
@@ -492,6 +438,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 4,
     marginLeft: 8,
+  },
+  charCount: {
+    fontSize: 12,
+    color: "#666",
+    textAlign: "right",
+    marginTop: 4,
   },
 });
 
