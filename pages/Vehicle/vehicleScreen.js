@@ -13,6 +13,7 @@ import {
   Modal,
   Animated,
 } from "react-native";
+import { Picker } from '@react-native-picker/picker';
 import axios from "axios";
 import { BASE_URL } from "../../configUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -28,50 +29,63 @@ const VALIDATION_RULES = {
   licensePlate: {
     label: "Biển số",
     required: "Biển số xe là bắt buộc.",
-    pattern: /^[A-Z0-9-]+$/,
-    patternError: "Biển số xe không hợp lệ.",
+    pattern: /^\d{2}[A-Z]-\d{3,5}\d{2}$/,
+    patternError: "Biển số xe không hợp lệ (VD: 51A-12345).",
+    maxLength: 10,
+    lengthError: "Biển số xe không được vượt quá 10 ký tự.",
   },
   vehicleType: {
     label: "Loại xe",
     required: "Loại xe là bắt buộc.",
+    pattern: /^[^@#$%^&*!]+$/,
+    patternError: "Loại xe không được chứa ký tự đặc biệt (@, #, $, %, ^, &, *, !).",
+    minLength: 3,
+    maxLength: 50,
+    lengthError: "Loại xe phải từ 3 đến 50 ký tự.",
   },
   make: {
     label: "Hãng xe",
     required: "Hãng xe là bắt buộc.",
     pattern: /^[^@#$%^&*!]+$/,
     patternError: "Hãng xe không được chứa ký tự đặc biệt (@, #, $, %, ^, &, *, !).",
+    minLength: 3,
+    maxLength: 20,
+    lengthError: "Hãng xe phải từ 3 đến 20 ký tự.",
   },
   model: {
     label: "Dòng xe",
     required: "Dòng xe là bắt buộc.",
     pattern: /^[^@#$%^&*!]+$/,
     patternError: "Dòng xe không được chứa ký tự đặc biệt (@, #, $, %, ^, &, *, !).",
+    minLength: 5,
+    maxLength: 40,
+    lengthError: "Dòng xe phải từ 5 đến 40 ký tự.",
   },
   year: {
     label: "Năm sản xuất",
     required: "Năm sản xuất là bắt buộc.",
-    min: 1900,
+    min: 1980,
     max: new Date().getFullYear(),
     rangeError: (min, max) => `Năm sản xuất phải từ ${min} đến ${max}.`,
   },
   capacity: {
-    label: "Tải trọng",
+    label: "Tải trọng(kg)",
     required: "Tải trọng là bắt buộc.",
     min: 1000,
     max: 15000,
     rangeError: (min, max) => `Tải trọng phải từ ${min} đến ${max} kg.`,
   },
   dimensions: {
-    label: "Kích thước",
+    label: "Kích thước(mm)", 
     required: "Kích thước là bắt buộc.",
-    pattern: /^[^@#$%^&*!]+$/,
-    patternError: "Kích thước không được chứa ký tự đặc biệt (@, #, $, %, ^, &, *, !).",
+    pattern: /^\d+(\.\d+)?\s*x\s*\d+(\.\d+)?\s*x\s*\d+(\.\d+)?$/,
+    patternError: "Kích thước không hợp lệ. Vui lòng nhập theo định dạng: Chiều dài x Chiều rộng x Chiều cao (mm)",
   },
   insuranceStatus: {
     label: "Tình trạng bảo hiểm",
     required: "Tình trạng bảo hiểm là bắt buộc.",
-    pattern: /^[^@#$%^&*!]+$/,
-    patternError: "Tình trạng bảo hiểm không được chứa ký tự đặc biệt (@, #, $, %, ^, &, *, !).",
+    options: ["Bảo hiểm còn hiệu lực", "Bảo hiểm hết hiệu lực"],
+    patternError: "Vui lòng chọn tình trạng bảo hiểm.",
   },
   registrationExpiryDate: {
     label: "Ngày hết hạn đăng kiểm",
@@ -156,6 +170,17 @@ const VehicleScreen = () => {
         return;
       }
 
+      if (value) {
+        if (rules.minLength && value.length < rules.minLength) {
+          newErrors[field] = rules.lengthError;
+          return;
+        }
+        if (rules.maxLength && value.length > rules.maxLength) {
+          newErrors[field] = rules.lengthError;
+          return;
+        }
+      }
+
       if (rules.pattern && value && !rules.pattern.test(value)) {
         newErrors[field] = rules.patternError;
         return;
@@ -222,7 +247,7 @@ const VehicleScreen = () => {
         duration: 300,
         useNativeDriver: true,
       }),
-      Animated.delay(2000),
+      Animated.delay(3000),
       Animated.timing(notificationOpacity, {
         toValue: 0,
         duration: 300,
@@ -284,11 +309,14 @@ const VehicleScreen = () => {
       });
       
       if (response.status === 200) {
-        showNotification(
-          vehicleId ? "Cập nhật thông tin xe thành công!" : "Thêm xe mới thành công!",
-          "success"
-        );
+        showAlert({
+          title: "Thành công",
+          message: vehicleId ? "Cập nhật thông tin xe thành công!" : "Thêm xe mới thành công!",
+          type: "success",
+          autoClose: true,
+        });
         setViewMode("list");
+        fetchVehicleList();
       }
     } catch (error) {
       handleVehicleError(error);
@@ -555,15 +583,18 @@ const VehicleScreen = () => {
         <View style={styles.sectionContent}>
           <View style={styles.inputContainer}>
             <Text style={styles.label}>{VALIDATION_RULES.insuranceStatus.label}</Text>
-            <TextInput
-              style={[styles.input, errors.insuranceStatus && styles.inputError]}
-              placeholder={`Nhập ${VALIDATION_RULES.insuranceStatus.label.toLowerCase()}`}
-              value={formData.insuranceStatus}
-              onChangeText={(text) => handleInputChange("insuranceStatus", text)}
-            />
-            {errors.insuranceStatus && (
-              <Text style={styles.errorText}>{errors.insuranceStatus}</Text>
-            )}
+            <View style={[styles.selectContainer, errors.insuranceStatus && styles.inputError]}>
+              <Picker
+                selectedValue={formData.insuranceStatus}
+                onValueChange={(value) => handleInputChange("insuranceStatus", value)}
+                style={styles.picker}
+              >
+                {VALIDATION_RULES.insuranceStatus.options.map((option) => (
+                  <Picker.Item key={option} label={option} value={option} />
+                ))}
+              </Picker>
+            </View>
+            {errors.insuranceStatus && <Text style={styles.errorText}>{errors.insuranceStatus}</Text>}
           </View>
 
           <View style={styles.inputContainer}>
@@ -1102,6 +1133,18 @@ const styles = StyleSheet.create({
   notificationMessage: {
     fontSize: 14,
     color: "#666",
+  },
+  selectContainer: {
+    height: 45,
+    borderColor: "#ddd",
+    borderWidth: 1,
+    borderRadius: 8,
+    backgroundColor: "#f9f9f9",
+    justifyContent: "center",
+  },
+  picker: {
+    height: 60,
+    width: "100%",
   },
 });
 
