@@ -58,9 +58,9 @@ const Login = ({ navigation }) => {
     <TouchableWithoutFeedback onPress={dismissKeyboard}>
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.title}>Welcome Back!</Text>
+          <Text style={styles.title}>Chào mừng bạn!</Text>
           <Text style={styles.subtitle}>
-            Log in to your account to continue.
+           Đăng nhập tài khoản của bạn để tiếp tục
           </Text>
         </View>
 
@@ -69,7 +69,7 @@ const Login = ({ navigation }) => {
         <View style={styles.inputWrapper}>
           <TextInput
             style={styles.input}
-            placeholder="Username"
+            placeholder="Tên đăng nhập"
             placeholderTextColor="#aaa"
             value={username}
             onChangeText={(text) => {
@@ -85,7 +85,7 @@ const Login = ({ navigation }) => {
         <View style={styles.inputWrapper}>
           <TextInput
             style={styles.input}
-            placeholder="Password"
+            placeholder="Mật khẩu"
             placeholderTextColor="#aaa"
             secureTextEntry={true}
             value={password}
@@ -100,7 +100,7 @@ const Login = ({ navigation }) => {
         ) : null}
 
         <TouchableOpacity style={styles.buttonPrimary} onPress={handleLogin}>
-          <Text style={styles.buttonText}>Log In</Text>
+          <Text style={styles.buttonText}>Đăng nhập</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -108,7 +108,7 @@ const Login = ({ navigation }) => {
           style={styles.buttonSecondary}
         >
           <Text style={styles.secondaryText}>
-            Don’t have an account? Sign up
+         Tạo tài khoản ở đây 
           </Text>
         </TouchableOpacity>
 
@@ -116,7 +116,7 @@ const Login = ({ navigation }) => {
           onPress={() => navigation.navigate("ForgotPassword")}
           style={styles.buttonSecondary}
         >
-          <Text style={styles.secondaryText}>Forgot Password?</Text>
+          <Text style={styles.secondaryText}>Quên mật khẩu?</Text>
         </TouchableOpacity>
       </View>
     </TouchableWithoutFeedback>

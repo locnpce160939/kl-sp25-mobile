@@ -153,7 +153,7 @@ const Navigation = () => {
             <Stack.Screen
               name="Signup"
               component={Signup}
-              options={{ headerShown: false }}
+             // options={{ headerShown: false }}
             />
             <Stack.Screen
               name="ConfirmOTP"
@@ -163,7 +163,7 @@ const Navigation = () => {
             <Stack.Screen
               name="ForgotPassword"
               component={ForgotpassScreen}
-              options={{ headerShown: false }}
+             // options={{ headerShown: false }}
             />
             <Stack.Screen
               name="NewPass"

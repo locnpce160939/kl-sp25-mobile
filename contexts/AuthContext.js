@@ -6,12 +6,14 @@ import { Alert } from "react-native";
 import Navigation from "../navigation/Navigation";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import DriverIdentificationScreen from "../pages/Indentification/DriverIdentificationScreen";
+import { useAlert } from "../components/CustomAlert"; // Import hook useAlert
 
 export const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isPlash, setIsPlash] = useState(false);
   const [userInfo, setUserInfo] = useState({});
+  const { showAlert } = useAlert(); // Sử dụng hook useAlert
 
   // ================================== Register ========================================
   const register = async (
@@ -20,12 +22,15 @@ export const AuthProvider = ({ children }) => {
     email,
     phone,
     role,
-    navigation
+    navigation,
+    fullName
   ) => {
     try {
       setIsLoading(true);
+      console.log("Registering with data:", { username, password, email, phone, role, fullName });
 
       const res = await axios.post(`${BASE_URL}/api/account/register/send`, {
+        fullName,
         username,
         password,
         email,
@@ -37,21 +42,29 @@ export const AuthProvider = ({ children }) => {
         const userInfo = res.data;
         if (userInfo.code === 200) {
           setIsLoading(false);
-          navigation.navigate("ConfirmOTP", {
+          console.log("Navigation to ConfirmOTP with params:", {
+            fullName,
             username,
             password,
             email,
             phone,
             role,
-            navigation,
+          });
+          navigation.navigate("ConfirmOTP", {
+            fullName,
+            username,
+            password,
+            email,
+            phone,
+            role,
           });
         } else {
           Alert.alert("Registration Error", userInfo.message);
         }
       }
     } catch (error) {
-      const message = error.response.data.message;
-      Alert.alert("Registe failed", message);
+      const message = error.response?.data?.message || "Registration failed";
+      Alert.alert("Register failed", message);
     } finally {
       setIsLoading(false);
     }
@@ -382,6 +395,7 @@ export const AuthProvider = ({ children }) => {
     phone,
     role,
     otp,
+    fullName,
     navigation
   ) => {
     setIsLoading(true);
@@ -392,24 +406,39 @@ export const AuthProvider = ({ children }) => {
         email,
         phone,
         role,
-        otp,
+        otp: parseInt(otp), // Convert otp to number since API expects numeric value
+        fullName,
       })
       .then((res) => {
         const userInfo = res.data;
-        console.log(userInfo);
+        console.log("API Response:", userInfo);
         if (userInfo.code === 200) {
           setIsLoading(false);
-          Alert.alert("Register successfully");
+          showAlert({
+            title: "Thành công",
+            message: "Bạn đã đăng ký thành công.",
+            type: "success",
+          });
           navigation.navigate("Login");
         } else {
           setIsLoading(false);
-          Alert.alert("Something went wrong");
+          showAlert({
+            title: "Lỗi",
+            message: userInfo.message || "Xác nhận OTP thất bại.",
+            type: "error",
+          });
         }
       })
-      .catch((e) => {
+      .catch((error) => {
         setIsLoading(false);
-        console.error(`Registration failed: ${e}`);
-        throw e;
+        console.error("OTP Confirmation Error:", error.response?.data || error);
+        const errorMessage = error.response?.data?.message || "Xác nhận OTP thất bại";
+        showAlert({
+          title: "Lỗi",
+          message: errorMessage,
+          type: "error",
+        });
+        throw error;
       });
   };
 

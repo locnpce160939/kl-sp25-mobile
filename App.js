@@ -9,12 +9,14 @@ import { AlertProvider } from "./components/CustomAlert";
 export default function App() {
   return (
     <SafeAreaProvider>
+      <AlertProvider>
       <AuthProvider>
         <AlertProvider>
           <SocketNotification />
           <Navigation />
         </AlertProvider>
       </AuthProvider>
+      </AlertProvider>
     </SafeAreaProvider>
   );
 }

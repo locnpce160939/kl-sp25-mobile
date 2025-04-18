@@ -24,7 +24,8 @@ import { Ionicons } from "@expo/vector-icons";
 import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useNavigation, useRoute } from "@react-navigation/native";
-import * as Location from "expo-location"; // Thêm import này
+import * as Location from "expo-location"; // Thêm import nàyz
+import { useAlert } from "../../components/CustomAlert"; // Import hook useAlert
 
 const TripBooking = () => {
   // Form state
@@ -66,6 +67,7 @@ const TripBooking = () => {
   const [selectedInsuranceId, setSelectedInsuranceId] = useState(null);
   const [insuranceName, setInsuranceName] = useState("");
   const [insuranceDescription, setInsuranceDescription] = useState("");
+  const { showAlert } = useAlert(); // Sử dụng hook useAlert
 
   useEffect(() => {
     try {
@@ -559,7 +561,11 @@ const TripBooking = () => {
             bookingId: res.data.data.bookingId,
           });
         }
-        Alert.alert("Thành công", res.data.message);
+        showAlert({
+          title: "thành Công",
+          message: "Bạn đã đặt chuyến đi thành công",
+          type: "success",
+        });
         setVoucherCode(null);
         setDiscountAmount(0);
         setFinalPrice(0);

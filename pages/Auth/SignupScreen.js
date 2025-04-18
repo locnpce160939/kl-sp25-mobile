@@ -16,12 +16,14 @@ import Spinner from "react-native-loading-spinner-overlay";
 
 export default Signup = () => {
   const [username, setUsername] = useState("");
+  const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [role, setRole] = useState("CUSTOMER"); 
 
   const [usernameError, setUsernameError] = useState("");
+  const [fullNameError, setFullNameError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [emailError, setEmailError] = useState("");
   const [phoneError, setPhoneError] = useState("");
@@ -34,13 +36,27 @@ export default Signup = () => {
 
     // Validate Username
     if (!username.trim()) {
-      setUsernameError("Full Name không được để trống");
+      setUsernameError("Username không được để trống");
       isValid = false;
     } else if (username.length < 3) {
-      setUsernameError("Full Name phải có ít nhất 3 ký tự");
+      setUsernameError("Username phải có ít nhất 3 ký tự");
       isValid = false;
     } else {
       setUsernameError("");
+    }
+
+    // Validate Full Name
+    if (!fullName.trim()) {
+      setFullNameError("Full Name không được để trống");
+      isValid = false;
+    } else if (fullName.length < 2) {
+      setFullNameError("Full Name phải có ít nhất 2 ký tự");
+      isValid = false;
+    } else if (!/^[a-zA-ZÀ-ỹ\s]+$/.test(fullName)) {
+      setFullNameError("Full Name chỉ được chứa chữ cái và khoảng trắng");
+      isValid = false;
+    } else {
+      setFullNameError("");
     }
 
     // Validate Phone
@@ -89,14 +105,14 @@ export default Signup = () => {
     <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
       <TouchableWithoutFeedback onPress={dismissKeyboard}>
         <View style={styles.container}>
-          <Text style={styles.headerText}>Sign Up</Text>
+          <Text style={styles.headerText}>Đăng kí tài khoản</Text>
 
           <Spinner visible={isLoading} />
 
           <View style={styles.inputContainer}>
             <TextInput
               style={styles.inputs}
-              placeholder="Full Name"
+              placeholder="Tên đăng nhập"
               value={username}
               onChangeText={(value) => {
                 setUsername(value);
@@ -111,7 +127,22 @@ export default Signup = () => {
           <View style={styles.inputContainer}>
             <TextInput
               style={styles.inputs}
-              placeholder="Phone Number"
+              placeholder="Họ và Tên"
+              value={fullName}
+              onChangeText={(value) => {
+                setFullName(value);
+                setFullNameError("");
+              }}
+            />
+          </View>
+          {fullNameError ? (
+            <Text style={styles.errorText}>{fullNameError}</Text>
+          ) : null}
+
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={styles.inputs}
+              placeholder="Số điện thoại"
               keyboardType="phone-pad"
               value={phone}
               onChangeText={(value) => {
@@ -143,7 +174,7 @@ export default Signup = () => {
           <View style={styles.inputContainer}>
             <TextInput
               style={styles.inputs}
-              placeholder="Password"
+              placeholder="Mật khẩu"
               secureTextEntry={true}
               value={password}
               onChangeText={(value) => {
@@ -172,7 +203,7 @@ export default Signup = () => {
                   role === "DRIVER" && styles.checkboxSelected,
                 ]}
               />
-              <Text style={styles.roleText}>Are you driver?</Text>
+              <Text style={styles.roleText}>Bạn muốn là tài xế?</Text>
             </TouchableOpacity>
           </View>
 
@@ -180,7 +211,7 @@ export default Signup = () => {
             style={styles.button}
             onPress={() => {
               if (validateInputs()) {
-                register(username, password, email, phone, role, navigation);
+                register(username, password, email, phone, role, navigation, fullName);
               }
             }}
           >
@@ -189,7 +220,7 @@ export default Signup = () => {
 
           <TouchableOpacity onPress={() => navigation.navigate("Login")}>
             <Text style={styles.loginLink}>
-              Already have an account? Log in
+            Bạn đã có tài khoản ? Đăng nhập
             </Text>
           </TouchableOpacity>
         </View>
