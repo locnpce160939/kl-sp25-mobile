@@ -16,22 +16,22 @@ import {
 import { AuthContext } from "../../contexts/AuthContext";
 
 export default Confirmotp = ({ navigation, route }) => {
-  console.log(route.params);
+  console.log("Route params:", route.params);
   const { confirmOtp } = useContext(AuthContext);
   const [otp, setOtp] = useState("");
-  const { username, password, email, phone, role } = route.params;
+  const { username, password, email, phone, role, fullName } = route.params;
   return (
     <View style={styles.container}>
       <ImageBackground
         style={styles.bgImage}
         source={require("../../assets/BgcLogin.jpg")}
       />
-      <Text style={styles.title}>Confirm OTP</Text>
+      <Text style={styles.title}>Xác nhận mã OTP</Text>
 
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.inputs}
-          placeholder="OTP here"
+          placeholder="nhập OTP ở đây"
           keyboardType="phone-pad"
           value={otp}
           onChangeText={(text) => setOtp(text)}
@@ -47,17 +47,17 @@ export default Confirmotp = ({ navigation, route }) => {
       <TouchableOpacity
         style={[styles.buttonContainer, styles.loginButton]}
         onPress={() => {
-          confirmOtp(username, password, email, phone, role, otp,navigation);
+          confirmOtp(username, password, email, phone, role, otp, fullName, navigation);
         }}
       >
-        <Text style={styles.loginText}>Confirm</Text>
+        <Text style={styles.loginText}>Xác nhận</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
         style={styles.buttonContainer}
         onPress={() => navigation.navigate("Login")}
       >
-        <Text style={styles.btnText}>Back to Login</Text>
+        <Text style={styles.btnText}>Quay lại đăng nhập</Text>
       </TouchableOpacity>
     </View>
   );

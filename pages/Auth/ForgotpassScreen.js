@@ -24,13 +24,13 @@ const ForgotpassScreen = () => {
     <TouchableWithoutFeedback onPress={dismissKeyboard}>
       <View style={styles.container}>
         <Spinner visible={isLoading}></Spinner>
-        <Text style={styles.title}>Forgot Password</Text>
+        <Text style={styles.title}>Quên mật khẩu</Text>
         <Text style={styles.subtitle}>
-          Enter your email address to reset your password.
+          Vui lòng nhập email của bạn để đặt lại mật khẩu.
         </Text>
         <TextInput
           style={styles.input}
-          placeholder="Enter your email"
+          placeholder="Nhập email của bạn"
           keyboardType="email-address"
           value={email}
           onChangeText={(value) => setEmail(value)}
@@ -42,7 +42,7 @@ const ForgotpassScreen = () => {
               forgotPass(email,navigation)
             }
           >
-            <Text style={styles.buttonText}>Send</Text>
+            <Text style={styles.buttonText}>Gửi</Text>
           </TouchableOpacity>
         </View>
       </View>

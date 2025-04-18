@@ -29,9 +29,9 @@ const NewPassScreen = ({route}) => {
     <TouchableWithoutFeedback onPress={dismissKeyboard}>
       <View style={styles.container}>
         <Spinner visible={isLoading}></Spinner>
-        <Text style={styles.title}>Reset Password</Text>
+        <Text style={styles.title}>Đặt lại mật khẩu</Text>
         <Text style={styles.subtitle}>
-          Enter your email, OTP, and new password to reset.
+         Vui lòng nhập OTP và mật khẩu mới để đặt lại mật khẩu
         </Text>
 
 
@@ -39,7 +39,7 @@ const NewPassScreen = ({route}) => {
         {/* OTP Input */}
         <TextInput
           style={styles.input}
-          placeholder="Enter OTP"
+          placeholder="nhập OTP"
           keyboardType="numeric"
           value={otp}
           onChangeText={(value) => setOtp(value)}
@@ -48,7 +48,7 @@ const NewPassScreen = ({route}) => {
         {/* Password Input */}
         <TextInput
           style={styles.input}
-          placeholder="Enter new password"
+          placeholder="Nhập mật khẩu mới"
           secureTextEntry={true}
           value={newPassword}
           onChangeText={(value) => setNewPassword(value)}
@@ -57,7 +57,7 @@ const NewPassScreen = ({route}) => {
         {/* Confirm Password Input */}
         <TextInput
           style={styles.input}
-          placeholder="Confirm new password"
+          placeholder="Xác nhận mật khẩu mới"
           secureTextEntry={true}
           value={confirmPassword}
           onChangeText={(value) => setConfirmPassword(value)}
@@ -69,7 +69,7 @@ const NewPassScreen = ({route}) => {
             style={styles.buttonPrimary}
             onPress={() => newpass(email, otp, newPassword, confirmPassword, navigation)}
           >
-            <Text style={styles.buttonText}>Submit</Text>
+            <Text style={styles.buttonText}>Gửi</Text>
           </TouchableOpacity>
         </View>
       </View>
