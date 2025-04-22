@@ -455,7 +455,7 @@ const RedeemableVoucher = () => {
         >
           <Ionicons name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Đổi Voucher</Text>
+        <Text style={styles.headerTitle}>Đổi mã ưu đãi</Text>
       </View>
 
       <View style={styles.topSection}>
@@ -469,7 +469,7 @@ const RedeemableVoucher = () => {
           onPress={() => navigation.navigate("MyVouchers")}
         >
           <Ionicons name="ticket-outline" size={20} color="#4CAF50" />
-          <Text style={styles.viewMyVouchersText}>Xem voucher của bạn</Text>
+          <Text style={styles.viewMyVouchersText}>Xem mã ưu đãi của bạn</Text>
           <Ionicons name="chevron-forward" size={20} color="#4CAF50" />
         </TouchableOpacity>
       </View>

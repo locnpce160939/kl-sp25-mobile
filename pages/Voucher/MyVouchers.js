@@ -150,7 +150,7 @@ const MyVouchers = () => {
         >
           <Ionicons name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Voucher của tôi</Text>
+        <Text style={styles.headerTitle}>Mã ưu đãi của tôi</Text>
       </View>
 
       {loading ? (
@@ -186,7 +186,7 @@ const MyVouchers = () => {
                 style={styles.getVoucherButton}
                 onPress={() => navigation.navigate("RedeemableVoucher")}
               >
-                <Text style={styles.getVoucherButtonText}>Đổi voucher ngay</Text>
+                <Text style={styles.getVoucherButtonText}>Đổi mã ưu đãi ngay</Text>
               </TouchableOpacity>
             </View>
           }

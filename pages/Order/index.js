@@ -173,7 +173,7 @@ const Order = () => {
         >
           <Icon name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Order</Text>
+        <Text style={styles.headerTitle}>Đơn hàng</Text>
         <View style={styles.placeholder} />
       </View>
     );
@@ -339,7 +339,7 @@ const Order = () => {
             >
               <Icon name="arrow-back" size={24} color="#000" />
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Booking Details</Text>
+            <Text style={styles.modalTitle}>Chi tiết đơn hàng</Text>
           </View>
           <ScrollView style={styles.modalContent}>
             {/* Status Card */}

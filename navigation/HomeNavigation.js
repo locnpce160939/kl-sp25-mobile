@@ -44,17 +44,26 @@ const HomeNavigation = () => {
       <Tab.Screen
         name="Home"
         component={HomeScreen}
-        options={{ headerShown: false }}
+        options={{ 
+          headerShown: false,
+          tabBarLabel: "Trang chủ"
+        }}
       />
       <Tab.Screen
         name="Profile"
         component={profileScreen}
-        options={{ headerShown: false }}
+        options={{ 
+          headerShown: false,
+          tabBarLabel: "Hồ sơ"
+        }}
       />
       <Tab.Screen
         name="Balance"
         component={BalanceDriverScreen}
-        options={{ headerShown: false }}
+        options={{ 
+          headerShown: false,
+          tabBarLabel: "ví"
+        }}
       />
     </Tab.Navigator>
     

@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Dimensions,
   Alert,
+  SafeAreaView,
 } from "react-native";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -409,7 +410,7 @@ const OrderDriver = ({ route }) => {
               </View>
             )}
             <View style={styles.detailCard}>
-              <Text style={styles.cardTitle}>Ngày quan trọng</Text>
+              <Text style={styles.cardTitle}>Thời gian</Text>
               <View style={styles.dateGrid}>
                 <View style={styles.dateItem}>
                   <Icon name="event" size={20} color="#666" />
@@ -500,28 +501,59 @@ const OrderDriver = ({ route }) => {
 
   if (loading) {
     return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#0066cc" />
-      </View>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => navigation.goBack()}
+          >
+            <Icon name="arrow-back" size={24} color="#000" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Đơn hàng của bạn</Text>
+        </View>
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color="#0066cc" />
+        </View>
+      </SafeAreaView>
     );
   }
 
   if (error) {
     return (
-      <View style={styles.centerContainer}>
-        <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity
-          style={styles.retryButton}
-          onPress={fetchBookings}
-        >
-          <Text style={styles.retryButtonText}>Thử lại</Text>
-        </TouchableOpacity>
-      </View>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => navigation.goBack()}
+          >
+            <Icon name="arrow-back" size={24} color="#000" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Đơn hàng của bạn</Text>
+        </View>
+        <View style={styles.centerContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={fetchBookings}
+          >
+            <Text style={styles.retryButtonText}>Thử lại</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => navigation.goBack()}
+        >
+          <Icon name="arrow-back" size={24} color="#000" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Đơn hàng của bạn</Text>
+      </View>
       <ScrollView>
         {bookings.length > 0 ? (
           bookings.map(renderBookingCard)
@@ -530,7 +562,7 @@ const OrderDriver = ({ route }) => {
         )}
       </ScrollView>
       {renderDetailModal()}
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -538,6 +570,25 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f5f5f5",
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: 'white',
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  backBtn: {
+    padding: 8,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginLeft: 16,
   },
   centerContainer: {
     flex: 1,

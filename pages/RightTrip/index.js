@@ -7,14 +7,18 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Modal,
+  StatusBar,
+  Platform,
 } from "react-native";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BASE_URL } from "../../configUrl";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import { getTripBookingStatusText } from "../../components/StatusMapper";
+import { useNavigation } from "@react-navigation/native";
 
 const RightTrip = () => {
+  const navigation = useNavigation();
   const [tripData, setTripData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -103,7 +107,7 @@ const RightTrip = () => {
             { color: trip.sameDirection ? "#28a745" : "#dc3545" },
           ]}
         >
-          {trip.sameDirection ? "Same Direction" : "Different Direction"}
+          {trip.sameDirection ? "Cùng tuyến đường" : "khác tuyến đường"}
         </Text>
       </View>
       <View style={styles.tripInfo}>
@@ -130,13 +134,13 @@ const RightTrip = () => {
           >
             <Icon name="arrow-back" size={24} color="black" />
           </TouchableOpacity>
-          <Text style={styles.modalTitle}>Booking details</Text>
+          <Text style={styles.modalTitle}>Chi tiết đơn hàng</Text>
         </View>
 
         <ScrollView style={styles.modalScroll}>
           {/* Pickup Location */}
           <View style={styles.modalSection}>
-            <Text style={styles.modalSectionTitle}>You're picking up at</Text>
+            <Text style={styles.modalSectionTitle}>Điểm đón</Text>
             <View style={styles.modalLocationBox}>
               <Icon
                 name="location-on"
@@ -152,9 +156,7 @@ const RightTrip = () => {
 
           {/* Destination */}
           <View style={styles.modalSection}>
-            <Text style={styles.modalSectionTitle}>
-              Your customer is going to
-            </Text>
+            <Text style={styles.modalSectionTitle}>Điểm đến</Text>
             <View style={styles.modalLocationBox}>
               <Icon
                 name="location-on"
@@ -170,12 +172,12 @@ const RightTrip = () => {
 
           {/* Common Points */}
           <View style={styles.modalSection}>
-            <Text style={styles.modalSectionTitle}>Common points</Text>
+            <Text style={styles.modalSectionTitle}>Điểm chung</Text>
             <View style={styles.timingContainer}>
               <View style={styles.timeBox}>
                 <Icon name="schedule" size={20} color="#00b5ec" />
                 <View style={styles.timeInfo}>
-                  <Text style={styles.timeLabel}>Pickup</Text>
+                  <Text style={styles.timeLabel}>Điểm đón</Text>
                   <Text style={styles.timeValue}>
                     {formatDateTime(selectedTrip.startTime) || "5:20 PM"}
                   </Text>
@@ -184,7 +186,7 @@ const RightTrip = () => {
               <View style={styles.timeBox}>
                 <Icon name="schedule" size={20} color="#00b5ec" />
                 <View style={styles.timeInfo}>
-                  <Text style={styles.timeLabel}>Dropoff</Text>
+                  <Text style={styles.timeLabel}>Điểm đến</Text>
                   <Text style={styles.timeValue}>
                     {formatDateTime(selectedTrip.endTime) || "5:30 PM"}
                   </Text>
@@ -195,7 +197,7 @@ const RightTrip = () => {
 
           {/* Status Timeline */}
           <View style={styles.modalSection}>
-            <Text style={styles.modalSectionTitle}>Status</Text>
+            <Text style={styles.modalSectionTitle}>Trạng thái</Text>
             <View style={styles.timeline}>
               <View style={styles.timelineItem}>
                 <View style={styles.timelineIconContainer}>
@@ -221,7 +223,7 @@ const RightTrip = () => {
                   <View style={styles.timelineLine} />
                 </View>
                 <View style={styles.timelineContent}>
-                  <Text style={styles.timelineText}>Update</Text>
+                  <Text style={styles.timelineText}>Cập nhật</Text>
                   <Text style={styles.timelineTime}>
                     {formatDateTime(selectedTrip.updateAt)}
                   </Text>
@@ -234,7 +236,7 @@ const RightTrip = () => {
                   </View>
                 </View>
                 <View style={styles.timelineContent}>
-                  <Text style={styles.timelineText}>Created</Text>
+                  <Text style={styles.timelineText}>Tạo</Text>
                   <Text style={styles.timelineTime}>
                     {formatDateTime(selectedTrip.createAt)}
                   </Text>
@@ -248,13 +250,13 @@ const RightTrip = () => {
               style={[styles.actionButton, styles.denyButton]}
               onPress={() => alert("Deny trip")}
             >
-              <Text style={styles.buttonText}>Deny</Text>
+              <Text style={styles.buttonText}>Từ chối</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.actionButton, styles.acceptButton]}
               onPress={() => handleAccept(selectedTrip.id)}
             >
-              <Text style={styles.buttonText}>Accept</Text>
+              <Text style={styles.buttonText}>Chấp nhận</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -280,6 +282,18 @@ const RightTrip = () => {
 
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#f5f7fa" />
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Icon name="arrow-back" size={24} color="#333" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Đơn hàng phù hợp</Text>
+        <View style={styles.placeholder} />
+      </View>
+
       <ScrollView>{tripData && tripData.map(renderTripItem)}</ScrollView>
 
       <Modal
@@ -298,6 +312,38 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f5f5f5",
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  //  paddingTop: Platform.OS === 'ios' ? 50 : StatusBar.currentHeight + 10,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    backgroundColor: '#f5f7fa',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  backButton: {
+    padding: 8,
+    marginRight: 16,
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: "600",
+    color: "#1a1a1a",
+    flex: 1,
+    textAlign: 'center',
+  },
+  placeholder: {
+    width: 40,
   },
   centerContainer: {
     flex: 1,

@@ -345,10 +345,10 @@ const BalanceDriverScreen = ({ navigation }) => {
             <Text style={styles.time}>{formatTime(item.transactionDate)}</Text>
           </View>
         </View>
-        <View style={styles.divider} />
+        {/* <View style={styles.divider} />
         <Text style={styles.balance}>
           Số dư: {formatAmount(item.currentBalance)}
-        </Text>
+        </Text> */}
       </View>
     </TouchableOpacity>
   );

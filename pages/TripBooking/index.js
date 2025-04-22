@@ -13,6 +13,7 @@ import {
   ScrollView,
   Alert,
   FlatList,
+  StatusBar,
 } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import MapView, { Marker } from "react-native-maps";
@@ -62,12 +63,15 @@ const TripBooking = () => {
   const [finalPrice, setFinalPrice] = useState(0);
   const [notes, setNotes] = useState("");
   const [isUrgent, setIsUrgent] = useState(false);
+  const [recipientPhoneNumber, setRecipientPhoneNumber] = useState("");
   // Thêm state mới
   const [insurances, setInsurances] = useState([]);
   const [selectedInsuranceId, setSelectedInsuranceId] = useState(null);
   const [insuranceName, setInsuranceName] = useState("");
   const [insuranceDescription, setInsuranceDescription] = useState("");
   const { showAlert } = useAlert(); // Sử dụng hook useAlert
+  const [savedAddresses, setSavedAddresses] = useState([]);
+  const [showSavedAddressesView, setShowSavedAddressesView] = useState(false);
 
   useEffect(() => {
     try {
@@ -136,22 +140,22 @@ const TripBooking = () => {
       };
 
       // Gọi API để lấy thông tin địa chỉ
-      await getNearLocation(currentCoords);
+      const locationData = await getNearLocation(currentCoords);
 
-      // Lấy địa chỉ cụ thể từ locationState (kết quả của getNearLocation)
-      if (locationState.length > 0) {
-        const address = locationState[0].formatted_address; // Lấy địa chỉ đầu tiên
+      // Chỉ cập nhật location field đang active
+      if (locationData && locationData.length > 0) {
+        const address = locationData[0].formatted_address;
         if (activeLocationField === "pickup") {
           setPickupLocation(currentCoords);
-          setTitlePickup(address); // Hiển thị địa chỉ cụ thể
+          setTitlePickup(address);
           setStartLocationAddress(address);
         } else if (activeLocationField === "dropoff") {
           setDropoffLocation(currentCoords);
-          setTitleDropoff(address); // Hiển thị địa chỉ cụ thể
+          setTitleDropoff(address);
           setEndLocationAddress(address);
         }
       } else {
-        // Nếu không lấy được địa chỉ, fallback về "Vị trí hiện tại"
+        // Fallback nếu không lấy được địa chỉ
         if (activeLocationField === "pickup") {
           setPickupLocation(currentCoords);
           setTitlePickup("Vị trí hiện tại");
@@ -186,6 +190,7 @@ const TripBooking = () => {
     pickupLocation: "",
     dropoffLocation: "",
     capacity: "",
+    recipientPhoneNumber: "",
   });
 
   const navigation = useNavigation();
@@ -206,7 +211,12 @@ const TripBooking = () => {
     },
   ];
 
-  // Validation functions
+  // Thêm validation cho số điện thoại
+  const validatePhoneNumber = (phone) => {
+    const phoneRegex = /^0\d{9}$/;
+    return phoneRegex.test(phone);
+  };
+
   const validateForm = () => {
     let isValid = true;
     const newErrors = {
@@ -215,6 +225,7 @@ const TripBooking = () => {
       pickupLocation: "",
       dropoffLocation: "",
       capacity: "",
+      recipientPhoneNumber: "",
     };
 
     if (!bookingDate) {
@@ -248,6 +259,15 @@ const TripBooking = () => {
       isValid = false;
     } else if (isNaN(capacity) || parseInt(capacity) <= 0) {
       newErrors.capacity = "Sức chứa phải là số nguyên dương";
+      isValid = false;
+    }
+
+    // Thêm validation cho số điện thoại
+    if (!recipientPhoneNumber) {
+      newErrors.recipientPhoneNumber = "Số điện thoại người nhận là bắt buộc";
+      isValid = false;
+    } else if (!validatePhoneNumber(recipientPhoneNumber)) {
+      newErrors.recipientPhoneNumber = "Số điện thoại không hợp lệ (phải bắt đầu bằng số 0 và có 10 số)";
       isValid = false;
     }
 
@@ -285,14 +305,9 @@ const TripBooking = () => {
   const openLocationPicker = (type) => {
     setActiveLocationField(type);
     setShowLocationPicker(true);
+    setShowSavedAddressesView(false);
+    setIsSearching(false);
     setIsBottomSheetOpen(true);
-
-    // Kiểm tra nếu chưa có vị trí cho field tương ứng thì lấy vị trí hiện tại
-    if (type === "pickup" && !pickupLocation) {
-      getCurrentLocation();
-    } else if (type === "dropoff" && !dropoffLocation) {
-      getCurrentLocation();
-    }
   };
 
   const handleLocationSelect = async (coordinate) => {
@@ -305,6 +320,26 @@ const TripBooking = () => {
       await getNearLocation(coordinate);
     }
     setIsBottomSheetOpen(true);
+  };
+
+  const handleSavedAddressSelect = (savedAddress) => {
+    const location = {
+      latitude: savedAddress.latitude,
+      longitude: savedAddress.longitude,
+    };
+
+    if (activeLocationField === "pickup") {
+      setPickupLocation(location);
+      setTitlePickup(savedAddress.address);
+      setStartLocationAddress(savedAddress.address);
+    } else if (activeLocationField === "dropoff") {
+      setDropoffLocation(location);
+      setTitleDropoff(savedAddress.address);
+      setEndLocationAddress(savedAddress.address);
+    }
+
+    setShowSavedAddressesView(false);
+    setShowLocationPicker(false);
   };
 
   // API calls
@@ -335,28 +370,70 @@ const TripBooking = () => {
 
   const findLocation = async () => {
     try {
+      if (!searchText || searchText.trim().length < 3) {
+        setResultLocation([]);
+        return;
+      }
+
       let token = await AsyncStorage.getItem("token");
+      if (!token) {
+        Alert.alert("Lỗi", "Vui lòng đăng nhập lại");
+        return;
+      }
+
       const res = await axios.get(
         `${BASE_URL}/api/location/address-geocode?address=${encodeURIComponent(
-          searchText
+          searchText.trim()
         )}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
+          timeout: 10000, // Thêm timeout 10 giây
         }
       );
-      const result = res.data.data.results;
-      console.log("Kết quả tìm kiếm từ API:", result);
-      if (!result || result.length === 0) {
+
+      if (res.data && res.data.data && res.data.data.results) {
+        const result = res.data.data.results;
+        console.log("Kết quả tìm kiếm từ API:", result);
+        if (!result || result.length === 0) {
+          setResultLocation([]);
+          Alert.alert("Thông báo", "Không tìm thấy địa điểm nào.");
+          return;
+        }
+        setResultLocation(result);
+      } else {
+        setResultLocation([]);
         Alert.alert("Thông báo", "Không tìm thấy địa điểm nào.");
       }
-      setResultLocation(result || []);
     } catch (error) {
-      console.error("Lỗi khi tìm kiếm:", error.response?.data || error.message);
-      Alert.alert("Lỗi", "Không thể tìm kiếm địa điểm. Vui lòng thử lại.");
+      console.error("Lỗi khi tìm kiếm:", error);
       setResultLocation([]);
+      
+      if (error.response) {
+        // Xử lý các mã lỗi cụ thể
+        switch (error.response.status) {
+          case 409:
+            Alert.alert("Thông báo", "Vui lòng nhập ít nhất 3 ký tự để tìm kiếm.");
+            break;
+          case 401:
+            Alert.alert("Lỗi", "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+            break;
+          case 429:
+            Alert.alert("Thông báo", "Bạn đã tìm kiếm quá nhiều lần. Vui lòng thử lại sau.");
+            break;
+          default:
+            Alert.alert(
+              "Lỗi",
+              "Không thể tìm kiếm địa điểm. Vui lòng thử lại sau."
+            );
+        }
+      } else if (error.code === 'ECONNABORTED') {
+        Alert.alert("Lỗi", "Kết nối quá chậm. Vui lòng thử lại.");
+      } else {
+        Alert.alert("Lỗi", "Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng.");
+      }
     }
   };
 
@@ -545,6 +622,7 @@ const TripBooking = () => {
           endLocationAddress,
           notes,
           voucherCode: voucherCode || undefined,
+          recipientPhoneNumber,
         },
         {
           headers: {
@@ -562,7 +640,7 @@ const TripBooking = () => {
           });
         }
         showAlert({
-          title: "thành Công",
+          title: "Thành Công",
           message: "Bạn đã đặt chuyến đi thành công",
           type: "success",
         });
@@ -645,6 +723,82 @@ const TripBooking = () => {
       setDiscountAmount(0);
     }
   }, [totalPrice.price, voucherCode]);
+
+  useEffect(() => {
+    loadSavedAddresses();
+  }, []);
+
+  const loadSavedAddresses = async () => {
+    try {
+      const savedAddressesString = await AsyncStorage.getItem('savedAddresses');
+      if (savedAddressesString) {
+        const addresses = JSON.parse(savedAddressesString);
+        setSavedAddresses(addresses);
+      }
+    } catch (error) {
+      console.error("Error loading saved addresses:", error);
+    }
+  };
+
+  const saveAddress = async (address) => {
+    try {
+      const savedAddressesString = await AsyncStorage.getItem('savedAddresses');
+      let addresses = [];
+      if (savedAddressesString) {
+        addresses = JSON.parse(savedAddressesString);
+      }
+
+      // Kiểm tra xem địa chỉ đã tồn tại chưa
+      const isDuplicate = addresses.some(
+        (saved) => saved.address === address.formatted_address
+      );
+
+      if (isDuplicate) {
+        Alert.alert("Thông báo", "Địa chỉ này đã được lưu!");
+        return;
+      }
+
+      const newAddress = {
+        id: Date.now().toString(), // Tạo ID duy nhất
+        name: address.name || address.formatted_address,
+        address: address.formatted_address,
+        latitude: address.geometry.location.lat,
+        longitude: address.geometry.location.lng,
+      };
+
+      addresses.push(newAddress);
+      await AsyncStorage.setItem('savedAddresses', JSON.stringify(addresses));
+      setSavedAddresses(addresses);
+      showAlert({
+        title: "Thành công",
+        message: "Đã lưu địa chỉ thành công",
+        type: "success",
+      });
+    } catch (error) {
+      console.error("Error saving address:", error);
+      Alert.alert("Lỗi", "Không thể lưu địa chỉ. Vui lòng thử lại.");
+    }
+  };
+
+  const deleteAddress = async (addressId) => {
+    try {
+      const savedAddressesString = await AsyncStorage.getItem('savedAddresses');
+      if (savedAddressesString) {
+        let addresses = JSON.parse(savedAddressesString);
+        addresses = addresses.filter(address => address.id !== addressId);
+        await AsyncStorage.setItem('savedAddresses', JSON.stringify(addresses));
+        setSavedAddresses(addresses);
+        showAlert({
+          title: "Thành công",
+          message: "Đã xóa địa chỉ thành công",
+          type: "success",
+        });
+      }
+    } catch (error) {
+      console.error("Error deleting address:", error);
+      Alert.alert("Lỗi", "Không thể xóa địa chỉ. Vui lòng thử lại.");
+    }
+  };
 
   // Render helpers
   const renderDatePicker = (type) => {
@@ -750,16 +904,24 @@ const TripBooking = () => {
         setShowLocationPicker(false);
       }}
     >
-      <Ionicons name="location-outline" size={20} color="#00b5ec" />
-      <View style={styles.locationDetails}>
-        <Text style={styles.locationMainText}>
-          {item.name ||
-            item.address_components?.[0]?.long_name ||
-            "Không có tên"}
-        </Text>
-        <Text style={styles.locationSubText} numberOfLines={2}>
-          {item.formatted_address}
-        </Text>
+      <View style={styles.locationItemContent}>
+        <View style={styles.locationIconContainer}>
+          <Ionicons name="location-outline" size={20} color="#00b5ec" />
+        </View>
+        <View style={styles.locationDetails}>
+          <Text style={styles.locationMainText}>
+            {item.name || item.address_components?.[0]?.long_name || "Không có tên"}
+          </Text>
+          <Text style={styles.locationSubText} numberOfLines={2}>
+            {item.formatted_address}
+          </Text>
+        </View>
+        <TouchableOpacity
+          style={styles.saveAddressButton}
+          onPress={() => saveAddress(item)}
+        >
+          <Ionicons name="bookmark-outline" size={20} color="#00b5ec" />
+        </TouchableOpacity>
       </View>
     </TouchableOpacity>
   );
@@ -818,20 +980,47 @@ const TripBooking = () => {
     });
   };
 
-  return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+  const renderSavedAddressItem = ({ item }) => (
+    <TouchableOpacity
+      style={styles.savedAddressItem}
+      onPress={() => handleSavedAddressSelect(item)}
     >
+      <View style={styles.savedAddressContent}>
+        <Ionicons name="location" size={24} color="#00b5ec" />
+        <View style={styles.savedAddressDetails}>
+          <Text style={styles.savedAddressName}>{item.name}</Text>
+          <Text style={styles.savedAddressText}>{item.address}</Text>
+        </View>
+        <TouchableOpacity
+          style={styles.deleteAddressButton}
+          onPress={() => deleteAddress(item.id)}
+        >
+          <Ionicons name="trash-outline" size={20} color="#ff4444" />
+        </TouchableOpacity>
+      </View>
+    </TouchableOpacity>
+  );
+
+  return (
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+      <StatusBar barStyle="dark-content" backgroundColor="#f5f7fa" />
+      <View style={styles.headerContainer}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.navigate("HomeScreen")}
+        >
+          <Ionicons name="arrow-back" size={24} color="#333" />
+        </TouchableOpacity>
+        <View style={styles.headerTextContainer}>
+          <Text style={styles.headerTitle}>Đặt chuyến xe</Text>
+          <Text style={styles.headerSubtitle}>Nhanh chóng và tiện lợi</Text>
+        </View>
+      </View>
+
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Đặt chuyến xe</Text>
-          <Text style={styles.headerSubtitle}>Nhanh chóng và tiện lợi</Text>
-        </View>
-
         <View style={styles.formCard}>
           <View style={styles.dateRow}>
             <View style={[styles.inputGroup, styles.dateInput]}>
@@ -994,6 +1183,25 @@ const TripBooking = () => {
               <Text style={styles.noInsuranceText}>
                 Không có gói bảo hiểm nào
               </Text>
+            )}
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Số điện thoại người nhận</Text>
+            <TextInput
+              style={styles.textInput}
+              value={recipientPhoneNumber}
+              onChangeText={(text) => {
+                setRecipientPhoneNumber(text);
+                setErrors((prev) => ({ ...prev, recipientPhoneNumber: "" }));
+              }}
+              keyboardType="numeric"
+              placeholder="Nhập số điện thoại người nhận"
+              placeholderTextColor="#999"
+              maxLength={10}
+            />
+            {errors.recipientPhoneNumber && (
+              <Text style={styles.errorText}>{errors.recipientPhoneNumber}</Text>
             )}
           </View>
 
@@ -1165,87 +1373,131 @@ const TripBooking = () => {
       <Modal
         visible={showLocationPicker}
         animationType="slide"
-        onRequestClose={() => setShowLocationPicker(false)}
+        onRequestClose={() => {
+          setShowLocationPicker(false);
+          setShowSavedAddressesView(false);
+        }}
       >
         <GestureHandlerRootView style={styles.modalContainer}>
           <View style={styles.mapContainer}>
             <TouchableOpacity
               style={styles.closeButton}
-              onPress={() => setShowLocationPicker(false)}
+              onPress={() => {
+                setShowLocationPicker(false);
+                setShowSavedAddressesView(false);
+              }}
             >
               <Ionicons name="arrow-back" size={24} color="#333" />
             </TouchableOpacity>
 
-            <View style={styles.searchContainer}>
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Tìm kiếm địa điểm..."
-                onFocus={() => setIsSearching(true)}
-                value={searchText}
-                onChangeText={handleSearchChange}
-              />
-              {isSearching && resultLocation.length > 0 && (
-                <FlatList
-                  data={resultLocation}
-                  renderItem={renderLocationItem}
-                  keyExtractor={(item) => item.place_id}
-                  style={styles.searchResults}
-                  keyboardShouldPersistTaps="handled"
-                />
-              )}
-            </View>
-
-            <MapView
-              style={styles.map}
-              initialRegion={initialRegion}
-              onPress={(e) => handleLocationSelect(e.nativeEvent.coordinate)}
-            >
-              {pickupLocation && activeLocationField === "pickup" && (
-                <Marker coordinate={pickupLocation} title="Điểm đón" />
-              )}
-              {dropoffLocation && activeLocationField === "dropoff" && (
-                <Marker coordinate={dropoffLocation} title="Điểm giao" />
-              )}
-            </MapView>
-
-            {/* Nút lấy vị trí hiện tại */}
-            <TouchableOpacity
-              style={styles.currentLocationButton}
-              onPress={getCurrentLocation}
-            >
-              <Ionicons name="locate-outline" size={24} color="#fff" />
-            </TouchableOpacity>
-
-            {!isSearching && (
-              <BottomSheet ref={bottomSheetRef} index={0} snapPoints={["50%"]}>
-                <BottomSheetView>
+            {showSavedAddressesView ? (
+              <View style={styles.savedAddressesOverlay}>
+                <View style={styles.savedAddressesContainer}>
+                  <View style={styles.savedAddressesHeader}>
+                    <Text style={styles.savedAddressesTitle}>
+                      {activeLocationField === "pickup" ? "Chọn điểm đón" : "Chọn điểm giao"}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => setShowSavedAddressesView(false)}
+                      style={styles.closeModalButton}
+                    >
+                      <Ionicons name="close" size={24} color="#333" />
+                    </TouchableOpacity>
+                  </View>
                   <FlatList
-                    data={locationState}
-                    keyExtractor={(item, index) => index.toString()}
-                    renderItem={({ item }) => (
-                      <TouchableOpacity
-                        style={styles.nearLocationItem}
-                        onPress={() => handleNearLocationPress(item)}
-                      >
-                        <Ionicons
-                          name="location-outline"
-                          size={20}
-                          color="#00b5ec"
-                        />
-                        <Text style={styles.nearLocationText}>
-                          {item.formatted_address}
-                        </Text>
-                      </TouchableOpacity>
+                    data={savedAddresses}
+                    renderItem={renderSavedAddressItem}
+                    keyExtractor={(item) => item.id}
+                    style={styles.savedAddressesList}
+                    ListEmptyComponent={() => (
+                      <Text style={styles.noAddressesText}>
+                        Chưa có địa chỉ nào được lưu
+                      </Text>
                     )}
                   />
-                  <TouchableOpacity
-                    style={styles.confirmButton}
-                    onPress={() => setShowLocationPicker(false)}
-                  >
-                    <Text style={styles.confirmButtonText}>Xác nhận</Text>
-                  </TouchableOpacity>
-                </BottomSheetView>
-              </BottomSheet>
+                </View>
+              </View>
+            ) : (
+              <>
+                <View style={styles.searchContainer}>
+                  <View style={styles.searchInputContainer}>
+                    <TextInput
+                      style={styles.searchInput}
+                      placeholder="Tìm kiếm địa điểm..."
+                      onFocus={() => setIsSearching(true)}
+                      value={searchText}
+                      onChangeText={handleSearchChange}
+                    />
+                    <TouchableOpacity
+                      style={styles.savedAddressesButton}
+                      onPress={() => setShowSavedAddressesView(true)}
+                    >
+                      <Ionicons name="bookmark" size={24} color="#00b5ec" />
+                    </TouchableOpacity>
+                  </View>
+                  {isSearching && resultLocation.length > 0 && (
+                    <FlatList
+                      data={resultLocation}
+                      renderItem={renderLocationItem}
+                      keyExtractor={(item) => item.place_id}
+                      style={styles.searchResults}
+                      keyboardShouldPersistTaps="handled"
+                    />
+                  )}
+                </View>
+
+                <MapView
+                  style={styles.map}
+                  initialRegion={initialRegion}
+                  onPress={(e) => handleLocationSelect(e.nativeEvent.coordinate)}
+                >
+                  {pickupLocation && activeLocationField === "pickup" && (
+                    <Marker coordinate={pickupLocation} title="Điểm đón" />
+                  )}
+                  {dropoffLocation && activeLocationField === "dropoff" && (
+                    <Marker coordinate={dropoffLocation} title="Điểm giao" />
+                  )}
+                </MapView>
+
+                <TouchableOpacity
+                  style={styles.currentLocationButton}
+                  onPress={getCurrentLocation}
+                >
+                  <Ionicons name="locate-outline" size={24} color="#fff" />
+                </TouchableOpacity>
+
+                {!isSearching && (
+                  <BottomSheet ref={bottomSheetRef} index={0} snapPoints={["50%"]}>
+                    <BottomSheetView>
+                      <FlatList
+                        data={locationState}
+                        keyExtractor={(item, index) => index.toString()}
+                        renderItem={({ item }) => (
+                          <TouchableOpacity
+                            style={styles.nearLocationItem}
+                            onPress={() => handleNearLocationPress(item)}
+                          >
+                            <Ionicons
+                              name="location-outline"
+                              size={20}
+                              color="#00b5ec"
+                            />
+                            <Text style={styles.nearLocationText}>
+                              {item.formatted_address}
+                            </Text>
+                          </TouchableOpacity>
+                        )}
+                      />
+                      <TouchableOpacity
+                        style={styles.confirmButton}
+                        onPress={() => setShowLocationPicker(false)}
+                      >
+                        <Text style={styles.confirmButtonText}>Xác nhận</Text>
+                      </TouchableOpacity>
+                    </BottomSheetView>
+                  </BottomSheet>
+                )}
+              </>
             )}
           </View>
         </GestureHandlerRootView>
@@ -1256,10 +1508,41 @@ const TripBooking = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f5f7fa" },
+  headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  //  paddingTop: Platform.OS === 'ios' ? 50 : StatusBar.currentHeight + 10,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    backgroundColor: '#f5f7fa',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  backButton: {
+    padding: 8,
+    marginRight: 16,
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  headerTextContainer: {
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#1a1a1a",
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: "#666",
+    marginTop: 4,
+  },
   scrollContent: { padding: 16, paddingBottom: 32 },
-  header: { marginBottom: 24 },
-  headerTitle: { fontSize: 28, fontWeight: "bold", color: "#1a1a1a" },
-  headerSubtitle: { fontSize: 16, color: "#666", marginTop: 4 },
   formCard: {
     backgroundColor: "#fff",
     borderRadius: 16,
@@ -1434,18 +1717,23 @@ const styles = StyleSheet.create({
     right: 16,
     zIndex: 10,
   },
-  searchInput: {
-    backgroundColor: "#fff",
+  searchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 12,
-    fontSize: 16,
     borderWidth: 1,
-    borderColor: "#e0e0e0",
+    borderColor: '#e0e0e0',
     elevation: 5,
-    shadowColor: "#000",
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
+  },
+  searchInput: {
+    flex: 1,
+    padding: 12,
+    fontSize: 16,
   },
   searchResults: {
     backgroundColor: "#fff",
@@ -1580,6 +1868,96 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#2ecc71",
     marginTop: 4,
+  },
+  searchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  savedAddressesButton: {
+    padding: 12,
+    borderLeftWidth: 1,
+    borderLeftColor: '#e0e0e0',
+  },
+  locationItemContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    padding: 12,
+  },
+  locationIconContainer: {
+    marginRight: 12,
+  },
+  saveAddressButton: {
+    padding: 8,
+  },
+  savedAddressesOverlay: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  savedAddressesContainer: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  savedAddressesHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+    backgroundColor: '#fff',
+  },
+  savedAddressesTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  savedAddressesList: {
+    flex: 1,
+    backgroundColor: '#fff',
+    padding: 16,
+  },
+  savedAddressItem: {
+    backgroundColor: '#f9f9f9',
+    borderRadius: 12,
+    marginBottom: 12,
+    overflow: 'hidden',
+  },
+  savedAddressContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+  },
+  savedAddressDetails: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  savedAddressName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  savedAddressText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  deleteAddressButton: {
+    padding: 8,
+  },
+  noAddressesText: {
+    textAlign: 'center',
+    color: '#666',
+    padding: 20,
   },
 });
 
