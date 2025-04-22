@@ -44,6 +44,12 @@ const ForgotpassScreen = () => {
           >
             <Text style={styles.buttonText}>Gửi</Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Login')}
+            style={styles.linkContainer}
+          >
+            <Text style={styles.linkText}>Quay về trang đăng nhập</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </TouchableWithoutFeedback>
@@ -98,6 +104,14 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "bold",
+  },
+  linkContainer: {
+    marginTop: 15,
+  },
+  linkText: {
+    color: "#00b5ec",
+    fontSize: 16,
+    textAlign: "center",
   },
 });
 

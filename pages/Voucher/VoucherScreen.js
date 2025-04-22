@@ -138,13 +138,19 @@ const VoucherScreen = () => {
     }
   };
 
+  const getVoucherGradientColors = (voucherType) => {
+    return voucherType === "REDEMPTION" 
+      ? ["#4CAF50", "#81C784"]  // Green gradient for REDEMPTION type
+      : ["#FF6B6B", "#FFa06B"]; // Original orange gradient for others
+  };
+
   const renderVoucherItem = ({ item }) => (
     <TouchableOpacity
       style={styles.voucherContainer}
       onPress={() => handleApplyVoucher(item)}
     >
       <LinearGradient
-        colors={["#FF6B6B", "#FFa06B"]}
+        colors={getVoucherGradientColors(item.voucherType)}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
         style={styles.voucherLeftSection}
@@ -214,13 +220,13 @@ const VoucherScreen = () => {
         >
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Voucher của bạn</Text>
+        <Text style={styles.headerTitle}>Mã ưu đãi của bạn</Text>
       </View>
 
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#FF6B6B" />
-          <Text style={styles.loadingText}>Đang tải voucher...</Text>
+          <Text style={styles.loadingText}>Đang tải...</Text>
         </View>
       ) : error ? (
         <View style={styles.errorContainer}>
@@ -241,7 +247,7 @@ const VoucherScreen = () => {
             <View style={styles.emptyContainer}>
               <Ionicons name="ticket-outline" size={64} color="#ddd" />
               <Text style={styles.emptyText}>
-                Không có voucher nào khả dụng
+                Không có mã ưu đãi nào khả dụng
               </Text>
               <Text style={styles.emptySubtext}>
                 Hãy quay lại sau để nhận thêm ưu đãi

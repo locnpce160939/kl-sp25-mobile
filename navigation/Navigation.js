@@ -57,8 +57,10 @@ const Navigation = () => {
               component={HomeNavigation}
               options={{ headerShown: false }}
             />
-            <Stack.Screen name="Schedule" component={ScheduleScreen} />
-            <Stack.Screen name="Booking" component={TripBooking} />
+            <Stack.Screen name="Schedule" component={ScheduleScreen} 
+             options={{ headerShown: false }}/>
+            <Stack.Screen name="Booking" component={TripBooking} 
+            options={{ headerShown: false }} />
 
             <Stack.Screen
               name="VehicleScreen"
@@ -75,14 +77,16 @@ const Navigation = () => {
               component={DriverIdentificationScreen}
               options={{ headerShown: false }}
             />
-            <Stack.Screen name="RightTrip" component={RightTrip} />
+            <Stack.Screen name="RightTrip" component={RightTrip}
+            options={{ headerShown: false }} />
             <Stack.Screen name="ViewTrip" component={ViewTrip} />
             <Stack.Screen
               name="Order"
               component={Order}
               options={{ headerShown: false }}
             />
-            <Stack.Screen name="OrderDriver" component={OrderDriver} />
+            <Stack.Screen name="OrderDriver" component={OrderDriver} 
+              options={{ headerShown: false }}/>
             <Stack.Screen
               name="ScheduleListScreen"
               component={ScheduleListScreen}
@@ -153,7 +157,7 @@ const Navigation = () => {
             <Stack.Screen
               name="Signup"
               component={Signup}
-             // options={{ headerShown: false }}
+              options={{ headerShown: false }}
             />
             <Stack.Screen
               name="ConfirmOTP"
@@ -163,7 +167,7 @@ const Navigation = () => {
             <Stack.Screen
               name="ForgotPassword"
               component={ForgotpassScreen}
-             // options={{ headerShown: false }}
+              options={{ headerShown: false }}
             />
             <Stack.Screen
               name="NewPass"

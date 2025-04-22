@@ -37,7 +37,6 @@ export const AuthProvider = ({ children }) => {
         phone,
         role,
       });
-      // Kiểm tra status code
       if (res.status === 200) {
         const userInfo = res.data;
         if (userInfo.code === 200) {
@@ -59,12 +58,20 @@ export const AuthProvider = ({ children }) => {
             role,
           });
         } else {
-          Alert.alert("Registration Error", userInfo.message);
+          showAlert({
+            title: "Lỗi",
+            message: "Đăng ký thất bại",
+            type: "error",
+          });
         }
       }
     } catch (error) {
-      const message = error.response?.data?.message || "Registration failed";
-      Alert.alert("Register failed", message);
+      const message = error.response?.data?.message || "Đăng ký thất bại";
+      showAlert({
+        title: "Lỗi",
+        message: message,
+        type: "error",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -73,7 +80,11 @@ export const AuthProvider = ({ children }) => {
   //-----------------------------getWards--------------------------------------------------------
   const getWards = async (districtId) => {
     if (!districtId) {
-      Alert.alert("Lỗi", "Vui lòng chọn quận/huyện trước.");
+      showAlert({
+        title: "Lỗi",
+        message: "Vui lòng chọn quận/huyện trước.",
+        type: "error",
+      });
       return [];
     }
 
@@ -83,10 +94,11 @@ export const AuthProvider = ({ children }) => {
       const accessToken = JSON.parse(userInfoString)?.data?.access_token;
 
       if (!accessToken) {
-        Alert.alert(
-          "Lỗi",
-          "Không tìm thấy access token. Vui lòng đăng nhập lại."
-        );
+        showAlert({
+          title: "Lỗi",
+          message: "Không tìm thấy access token. Vui lòng đăng nhập lại.",
+          type: "error",
+        });
         return [];
       }
 
@@ -104,10 +116,11 @@ export const AuthProvider = ({ children }) => {
           id: wards.code,
         }));
       } else {
-        Alert.alert(
-          "Lỗi",
-          response.data.message || "Không thể lấy danh sách ấp/xã."
-        );
+        showAlert({
+          title: "Lỗi",
+          message: response.data.message || "Không thể lấy danh sách ấp/xã.",
+          type: "error",
+        });
         return [];
       }
     } catch (error) {
@@ -115,7 +128,11 @@ export const AuthProvider = ({ children }) => {
       const errorMessage =
         error.response?.data?.message ||
         "Đã xảy ra lỗi không xác định khi lấy danh sách ấp/xã.";
-      Alert.alert("Lỗi", errorMessage);
+      showAlert({
+        title: "Lỗi",
+        message: errorMessage,
+        type: "error",
+      });
       return [];
     } finally {
       setIsLoading(false);
@@ -125,7 +142,11 @@ export const AuthProvider = ({ children }) => {
   //-----------------------------getDistricts ----------------------------------------------------
   const getDistricts = async (provinceId) => {
     if (!provinceId) {
-      Alert.alert("Lỗi", "Vui lòng chọn tỉnh/thành phố trước.");
+      showAlert({
+        title: "Lỗi",
+        message: "Vui lòng chọn tỉnh/thành phố trước.",
+        type: "error",
+      });
       return [];
     }
 
@@ -135,10 +156,11 @@ export const AuthProvider = ({ children }) => {
       const accessToken = JSON.parse(userInfoString)?.data?.access_token;
 
       if (!accessToken) {
-        Alert.alert(
-          "Lỗi",
-          "Không tìm thấy access token. Vui lòng đăng nhập lại."
-        );
+        showAlert({
+          title: "Lỗi",
+          message: "Không tìm thấy access token. Vui lòng đăng nhập lại.",
+          type: "error",
+        });
         return [];
       }
 
@@ -155,10 +177,11 @@ export const AuthProvider = ({ children }) => {
           id: district.code,
         }));
       } else {
-        Alert.alert(
-          "Lỗi",
-          response.data.message || "Không thể lấy danh sách quận/huyện."
-        );
+        showAlert({
+          title: "Lỗi",
+          message: response.data.message || "Không thể lấy danh sách quận/huyện.",
+          type: "error",
+        });
         return [];
       }
     } catch (error) {
@@ -166,7 +189,11 @@ export const AuthProvider = ({ children }) => {
       const errorMessage =
         error.response?.data?.message ||
         "Đã xảy ra lỗi không xác định khi lấy danh sách quận/huyện.";
-      Alert.alert("Lỗi", errorMessage);
+      showAlert({
+        title: "Lỗi",
+        message: errorMessage,
+        type: "error",
+      });
       return [];
     } finally {
       setIsLoading(false);
@@ -176,12 +203,16 @@ export const AuthProvider = ({ children }) => {
   //----------------------------getProvinces -----------------------------------------------------
   const getProvinces = async () => {
     try {
-      setIsLoading(true); // Bật trạng thái loading
+      setIsLoading(true);
       const userInfoString = await AsyncStorage.getItem("userInfo");
       const accessToken = JSON.parse(userInfoString)?.data?.access_token;
 
       if (!accessToken) {
-        Alert.alert("Error", "No access token found. Please login again.");
+        showAlert({
+          title: "Lỗi",
+          message: "Không tìm thấy access token. Vui lòng đăng nhập lại.",
+          type: "error",
+        });
         return [];
       }
 
@@ -190,27 +221,28 @@ export const AuthProvider = ({ children }) => {
       });
 
       if (response.status === 200 && response.data.code === 200) {
-        // Lấy danh sách provinces và đảm bảo có key `fullName`
         return response.data.data.map((province) => ({
           id: province.code,
-          fullName: province.fullName, // Sử dụng fullName
+          fullName: province.fullName,
         }));
       } else {
-        Alert.alert(
-          "Error",
-          response.data.message || "Failed to fetch provinces."
-        );
+        showAlert({
+          title: "Lỗi",
+          message: response.data.message || "Không thể lấy danh sách tỉnh/thành phố.",
+          type: "error",
+        });
         return [];
       }
     } catch (error) {
       console.error("Error fetching provinces:", error);
-      Alert.alert(
-        "Error",
-        "An unknown error occurred while fetching provinces."
-      );
+      showAlert({
+        title: "Lỗi",
+        message: "Đã xảy ra lỗi không xác định khi lấy danh sách tỉnh/thành phố.",
+        type: "error",
+      });
       return [];
     } finally {
-      setIsLoading(false); // Tắt trạng thái loading
+      setIsLoading(false);
     }
   };
 
@@ -219,10 +251,13 @@ export const AuthProvider = ({ children }) => {
     try {
       setIsLoading(true);
 
-      // Lấy thông tin user từ AsyncStorage
       const userInfoString = await AsyncStorage.getItem("userInfo");
       if (!userInfoString) {
-        Alert.alert("Error", "No user information found. Please login again.");
+        showAlert({
+          title: "Lỗi",
+          message: "Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại.",
+          type: "error",
+        });
         setIsLoading(false);
         return null;
       }
@@ -231,15 +266,15 @@ export const AuthProvider = ({ children }) => {
       const accessToken = parsedUserInfo?.data?.access_token;
 
       if (!accessToken) {
-        Alert.alert(
-          "Error",
-          "Missing accountId or access token. Please login again."
-        );
+        showAlert({
+          title: "Lỗi",
+          message: "Không tìm thấy access token. Vui lòng đăng nhập lại.",
+          type: "error",
+        });
         setIsLoading(false);
         return null;
       }
 
-      // Gọi API với accountId
       const res = await axios.get(
         `${BASE_URL}/api/registerDriver/identification/getByAccountId`,
         {
@@ -250,23 +285,29 @@ export const AuthProvider = ({ children }) => {
       );
 
       if (res.status === 200 && res.data.code === 200) {
-        return res.data.data; // Trả về dữ liệu từ API
+        return res.data.data;
       } else {
-        Alert.alert(
-          "Error",
-          res.data.message || "Failed to fetch identification details."
-        );
+        showAlert({
+          title: "Lỗi",
+          message: res.data.message || "Không thể lấy thông tin định danh.",
+          type: "error",
+        });
         return null;
       }
     } catch (error) {
       console.error("Error fetching identification by ID:", error);
       if (error.response) {
-        Alert.alert(
-          "Error",
-          error.response.data.message || "An error occurred."
-        );
+        showAlert({
+          title: "Lỗi",
+          message: error.response.data.message || "Đã xảy ra lỗi.",
+          type: "error",
+        });
       } else {
-        Alert.alert("Error", "An unknown error occurred.");
+        showAlert({
+          title: "Lỗi",
+          message: "Đã xảy ra lỗi không xác định.",
+          type: "error",
+        });
       }
       return null;
     } finally {
@@ -459,14 +500,26 @@ export const AuthProvider = ({ children }) => {
         AsyncStorage.setItem("userInfo", JSON.stringify(user));
         AsyncStorage.setItem("token", user.data.access_token);
         setIsLoading(false);
-        Alert.alert("Login successfully", res.data.message);
+        showAlert({
+          title: "Thành công",
+          message: "Đăng nhập thành công",
+          type: "success",
+        });
       } else {
         setIsLoading(false);
-        Alert.alert("Error", res.data.message);
+        showAlert({
+          title: "Lỗi",
+          message: "Đăng nhập thất bại",
+          type: "error",
+        });
       }
     } catch (error) {
       setIsLoading(false);
-      Alert.alert("Error", error.response.data.message);
+      showAlert({
+        title: "Lỗi",
+        message: "Tên đăng nhập hoặc mật khẩu không đúng",
+        type: "error",
+      });
     }
   };
 
@@ -494,10 +547,18 @@ export const AuthProvider = ({ children }) => {
       setIsLoading(true);
       await AsyncStorage.removeItem("userInfo");
       setUserInfo({});
-      Alert.alert("Logged out successfully");
+      showAlert({
+        title: "Thành công",
+        message: "Đăng xuất thành công",
+        type: "success",
+      });
     } catch (error) {
       console.error("Logout failed:", error);
-      Alert.alert("Error", "Failed to log out. Please try again.");
+      showAlert({
+        title: "Lỗi",
+        message: "Đăng xuất thất bại. Vui lòng thử lại",
+        type: "error",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -516,16 +577,29 @@ export const AuthProvider = ({ children }) => {
         if (userInfo.code === 200) {
           setIsLoading(false);
           navigation.navigate("NewPass", { email });
-          console.log("Success");
+          showAlert({
+            title: "Thành công",
+            message: "Mã xác nhận đã được gửi đến email của bạn",
+            type: "success",
+          });
         } else {
           setIsLoading(false);
-          Alert.alert("Something went wrong");
+          showAlert({
+            title: "Lỗi",
+            message: "Không thể gửi mã xác nhận",
+            type: "error",
+          });
         }
       })
       .catch((e) => {
         setIsLoading(false);
-        console.error(`Forgotpass failed: ${e}`);
-        throw e; // Để thông báo lỗi nếu cần
+        showAlert({
+          title: "Lỗi",
+          message: "Email không tồn tại trong hệ thống",
+          type: "error",
+        });
+        console.error(`Quên mật khẩu thất bại: ${e}`);
+        throw e;
       });
   };
 
@@ -546,16 +620,28 @@ export const AuthProvider = ({ children }) => {
 
         if (userInfo.code === 200) {
           setIsLoading(false);
-          Alert.alert("Change password successfully");
+          showAlert({
+            title: "Thành công",
+            message: "Đổi mật khẩu thành công",
+            type: "success",
+          });
           navigation.navigate("Login");
         } else {
           setIsLoading(false);
-          Alert.alert("Something went wrong");
+          showAlert({
+            title: "Lỗi",
+            message: "Đổi mật khẩu thất bại",
+            type: "error",
+          });
         }
       })
       .catch((e) => {
         setIsLoading(false);
-        Alert.alert("Error", e.response.data.message);
+        showAlert({
+          title: "Lỗi",
+          message: "Mã OTP không đúng hoặc đã hết hạn",
+          type: "error",
+        });
       });
   };
     // ================================== Update Driver Identification ========================================
@@ -566,10 +652,11 @@ export const AuthProvider = ({ children }) => {
       try {
         const userInfoString = await AsyncStorage.getItem("userInfo");
         if (!userInfoString) {
-          Alert.alert(
-            "Lỗi",
-            "Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại."
-          );
+          showAlert({
+            title: "Lỗi",
+            message: "Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại.",
+            type: "error",
+          });
           return;
         }
   
@@ -577,7 +664,11 @@ export const AuthProvider = ({ children }) => {
         const accessToken = parsedUserInfo?.data?.access_token;
   
         if (!accessToken || typeof accessToken !== "string") {
-          Alert.alert("Lỗi", "Token không hợp lệ. Vui lòng đăng nhập lại.");
+          showAlert({
+            title: "Lỗi",
+            message: "Token không hợp lệ. Vui lòng đăng nhập lại.",
+            type: "error",
+          });
           return;
         }
   

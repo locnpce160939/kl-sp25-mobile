@@ -215,7 +215,7 @@ export default Signup = () => {
               }
             }}
           >
-            <Text style={styles.buttonText}>Sign Up</Text>
+            <Text style={styles.buttonText}>Đăng ký</Text>
           </TouchableOpacity>
 
           <TouchableOpacity onPress={() => navigation.navigate("Login")}>

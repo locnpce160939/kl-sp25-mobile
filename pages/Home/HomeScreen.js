@@ -51,7 +51,7 @@ const HomeScreen = () => {
   }, []);
 
   const banners = [
-    { id: 1, image: require("../../assets/zzz.jpg") },
+    { id: 1, image: require("../../assets/BGF.jpg") },
     { id: 2, image: require("../../assets/BgcLogin.jpg") },
     { id: 3, image: require("../../assets/ccc.jpg") },
   ];
