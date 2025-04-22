@@ -1,4 +1,3 @@
-
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axiosInstance from "./axiosConfig";
 
@@ -67,6 +66,32 @@ const fetchToken = async () => {
     }
   } catch (error) {
     console.error("Error fetching token:", error);
+  }
+};
+
+export const getUserProfile = async () => {
+  try {
+    // Fetch and validate token
+    const userInfoString = await AsyncStorage.getItem("userInfo");
+    const accessToken = JSON.parse(userInfoString)?.data?.access_token;
+    
+    if (!accessToken) {
+      console.error("No access token found");
+      return null;
+    }
+
+    // Make API call to get user profile
+    const response = await axiosInstance.get("/api/account/profile");
+
+    if (response.status === 200 && response.data.code === 200) {
+      return response.data.data;
+    } else {
+      console.error("Profile fetch error:", response.data.message);
+      return null;
+    }
+  } catch (error) {
+    console.error("Error fetching profile:", error);
+    return null;
   }
 };
 
