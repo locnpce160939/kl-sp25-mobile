@@ -16,11 +16,13 @@ import Ionicons from "react-native-vector-icons/Ionicons";
 import { useNavigation } from "@react-navigation/native";
 import * as Location from "expo-location";
 import { getUserInfo } from "../../services/ProfileService";
+import { getUserProfile } from "../../services/MenuService";
 
 const { width } = Dimensions.get("window");
 
 const HomeScreen = () => {
   const [userInfo, setUserInfo] = useState({});
+  const [userProfile, setUserProfile] = useState(null);
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
   const navigation = useNavigation();
   const [userRole, setUserRole] = useState(null);
@@ -42,10 +44,16 @@ const HomeScreen = () => {
     const fetchUserInfo = async () => {
       const userInfoString = await AsyncStorage.getItem("userInfo");
       const userRole = JSON.parse(userInfoString)?.data?.role;
-      setUserRole(userRole); // Set role in stat
+      setUserRole(userRole);
       console.log(userRole);
       const data = await getUserInfo();
       setUserInfo(data);
+
+      // Fetch user profile
+      const profileData = await getUserProfile();
+      if (profileData) {
+        setUserProfile(profileData);
+      }
     };
     fetchUserInfo();
   }, []);
@@ -154,7 +162,7 @@ const HomeScreen = () => {
           <Text style={styles.userName}>{userInfo.fullName || "User"}</Text>
         </View>
         <TouchableOpacity style={styles.pointsBadge}>
-          <Text style={styles.pointsText}>12 ✓</Text>
+          <Text style={styles.pointsText}>{userProfile?.ranking || "Loading..."}</Text>
         </TouchableOpacity>
       </View>
 

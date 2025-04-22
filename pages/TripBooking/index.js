@@ -36,6 +36,7 @@ const TripBooking = () => {
   const [pickupLocation, setPickupLocation] = useState(null);
   const [dropoffLocation, setDropoffLocation] = useState(null);
   const [capacity, setCapacity] = useState("");
+
   const [startLocationAddress, setStartLocationAddress] = useState("");
   const [endLocationAddress, setEndLocationAddress] = useState("");
   const [locationState, setLocationState] = useState([]);
@@ -617,6 +618,7 @@ const TripBooking = () => {
           pickupLocation: pickupLocationString,
           dropoffLocation: dropoffLocationString,
           capacity: parseInt(capacity),
+          recipientPhoneNumber: parseInt(recipientPhoneNumber),
           paymentMethod,
           startLocationAddress,
           endLocationAddress,
@@ -702,18 +704,19 @@ const TripBooking = () => {
       if (params.titlePickup) setTitlePickup(params.titlePickup);
       if (params.titleDropoff) setTitleDropoff(params.titleDropoff);
       if (params.notes) setNotes(params.notes);
+      if (params.recipientPhoneNumber) setRecipientPhoneNumber(params.recipientPhoneNumber);
       if (params.selectedInsuranceId) {
         setSelectedInsuranceId(params.selectedInsuranceId);
-        setInsuranceName(params.insuranceName);
-        setInsuranceDescription(params.insuranceDescription);
-        // Gọi getPrice() để cập nhật lại danh sách insurance và trạng thái checkbox
+        setInsuranceName(params.insuranceName || "");
+        setInsuranceDescription(params.insuranceDescription || "");
+        // Gọi getPrice với selectedInsuranceId để cập nhật lại danh sách insurance và trạng thái checkbox
         if (pickupLocation && dropoffLocation && capacity) {
-          getPrice();
+          getPrice(params.selectedInsuranceId);
         }
       }
     });
     return unsubscribe;
-  }, [navigation, route.params, totalPrice.price]);
+  }, [navigation, route.params, totalPrice.price, pickupLocation, dropoffLocation, capacity]);
 
   useEffect(() => {
     if (voucherCode && totalPrice.price > 0) {
@@ -818,8 +821,7 @@ const TripBooking = () => {
                 : setShowExpirationDatePicker(false)
             }
           >
-            <View style={styles.modalOverlay}>
-              <TouchableWithoutFeedback>
+            <View style={styles.modalOverlay}>              <TouchableWithoutFeedback>
                 <View style={styles.datePickerContainer}>
                   <View style={styles.pickerHeader}>
                     <TouchableOpacity
@@ -965,6 +967,7 @@ const TripBooking = () => {
       pickupLocation,
       dropoffLocation,
       capacity,
+      recipientPhoneNumber,
       paymentMethod,
       bookingType,
       bookingDate: bookingDate.toISOString(),
@@ -1962,4 +1965,5 @@ const styles = StyleSheet.create({
 });
 
 export default TripBooking;
+
 

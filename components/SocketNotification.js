@@ -421,7 +421,7 @@ const SocketNotification = () => {
               <View style={styles.headerContent}>
                 <View style={styles.headerLeft}>
                   <Navigation size={18} color="#fff" />
-                  <Text style={styles.title}>New Trip Request</Text>
+                  <Text style={styles.title}>Đơn hàng mới</Text>
                 </View>
                 <TouchableOpacity
                   onPress={closeModal}
@@ -479,7 +479,7 @@ const SocketNotification = () => {
                 disabled={loading}
               >
                 <AlertCircle size={16} color="#ff4d4f" />
-                <Text style={styles.declineText}>Decline</Text>
+                <Text style={styles.declineText}>Từ chối</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -488,7 +488,7 @@ const SocketNotification = () => {
                 disabled={loading}
               >
                 <Text style={styles.viewMapText}>
-                  {showMap ? "Hide Map" : "View Map"}
+                  {showMap ? "Ẩn bản đồ" : "Xem bản đồ"}
                 </Text>
               </TouchableOpacity>
 
@@ -503,7 +503,7 @@ const SocketNotification = () => {
                 >
                   <CheckCircle2 size={16} color="#fff" />
                   <Text style={styles.acceptText}>
-                    {loading ? "Accepting..." : "Accept"}
+                    {loading ? "Đang chấp nhận..." : "Chấp nhận"}
                   </Text>
                 </TouchableOpacity>
               </LinearGradient>
@@ -643,12 +643,12 @@ const styles = StyleSheet.create({
   },
   declineText: {
     color: "#ff4d4f",
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: "500",
   },
   acceptText: {
     color: "#fff",
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: "500",
   },
   map: {
@@ -665,7 +665,7 @@ const styles = StyleSheet.create({
   },
   viewMapText: {
     color: BRAND_COLOR,
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: "500",
   },
   disabledButton: {
