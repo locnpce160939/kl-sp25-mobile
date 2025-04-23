@@ -89,6 +89,7 @@ const Order = () => {
       );
       if (response.data.code === 200) {
         setSelectedBooking(response.data.data);
+        console.log(response.data.data);
         setModalVisible(true);
         // Fetch reviews when booking details are loaded
         if (response.data.data.driver) {
@@ -274,7 +275,7 @@ const Order = () => {
         showAlert({
           title: "Thành công",
           message: "Đánh giá đã được gửi thành công!",
-          type: "success"
+          type: "success",
         });
         setModalVisible(false);
         fetchBookings();
@@ -284,7 +285,7 @@ const Order = () => {
       showAlert({
         title: "Lỗi",
         message: "Mỗi chuyến đi chỉ đánh giá được 1 lần",
-        type: "error"
+        type: "error",
       });
     }
   };
@@ -555,13 +556,6 @@ const Order = () => {
                   </Text>
                 </View>
                 <View style={styles.dateItem}>
-                  <Icon name="event-busy" size={20} color="#dc3545" />
-                  <Text style={styles.dateLabel}>Ngày hết hạn</Text>
-                  <Text style={styles.dateValue}>
-                    {formatDate(selectedBooking.expirationDate)}
-                  </Text>
-                </View>
-                <View style={styles.dateItem}>
                   <Icon name="update" size={20} color="#666" />
                   <Text style={styles.dateLabel}>Cập nhật lần cuối</Text>
                   <Text style={styles.dateValue}>
@@ -610,41 +604,49 @@ const Order = () => {
               </View>
             )}
             <View>
-              <View style={styles.modalContentRate}>
-                {/* Avatar Circle */}
-                <View style={styles.avatarContainer}>
-                  <Icon name="account-circle" size={80} color="#00b5ec" />
+              {selectedBooking.status === "ORDER_COMPLETED" ? (
+                <View style={styles.modalContentRate}>
+                  {/* Avatar Circle */}
+                  <View style={styles.avatarContainer}>
+                    <Icon name="account-circle" size={80} color="#00b5ec" />
+                  </View>
+                  {/* Driver Name */}
+                  <Text style={styles.driverName}>
+                    {selectedBooking.driver.fullName}
+                  </Text>
+                  {/* Star Rating */}
+                  <View style={styles.starContainer}>{renderStars()}</View>
+                  {/* Comments Section */}
+                  <View style={styles.commentSection}>
+                    <Text style={styles.commentLabel}>
+                      Viết đánh giá của bạn
+                    </Text>
+                    <TextInput
+                      style={styles.commentInput}
+                      placeholder="Đánh giá..."
+                      placeholderTextColor="#9E9E9E"
+                      multiline={true}
+                      numberOfLines={4}
+                      value={comment}
+                      onChangeText={setComment}
+                    />
+                  </View>
+                  {/* Submit Button */}
+                  <TouchableOpacity
+                    style={styles.submitButton}
+                    onPress={() => handleRating()}
+                  >
+                    <Text style={styles.submitButtonText}>Xác nhận</Text>
+                  </TouchableOpacity>
+                  {renderReviewHistory()}
                 </View>
-                {/* Driver Name */}
-                <Text style={styles.driverName}>
-                  {selectedBooking.driver.fullName}
-                </Text>
-                {/* Star Rating */}
-                <View style={styles.starContainer}>{renderStars()}</View>
-                {/* Comments Section */}
-                <View style={styles.commentSection}>
-                  <Text style={styles.commentLabel}>Viết đánh giá của bạn</Text>
-                  <TextInput
-                    style={styles.commentInput}
-                    s
-                    placeholder="Đánh giá..."
-                    placeholderTextColor="#9E9E9E"
-                    multiline={true}
-                    numberOfLines={4}
-                    value={comment}
-                    onChangeText={setComment}
-                  />
+              ) : (
+                <View style={{ alignItems: "center", padding: 20 }}>
+                  <Text style={{ color: "#666" }}>
+                    Đánh giá chỉ được gửi khi đơn hàng đã hoàn thành.
+                  </Text>
                 </View>
-
-                {/* Submit Button */}
-                <TouchableOpacity
-                  style={styles.submitButton}
-                  onPress={() => handleRating()}
-                >
-                  <Text style={styles.submitButtonText}>Xác nhận</Text>
-                </TouchableOpacity>
-                {renderReviewHistory()}
-              </View>
+              )}
             </View>
           </ScrollView>
         </View>
@@ -910,7 +912,7 @@ const styles = StyleSheet.create({
   },
   dateGrid: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "space-around",
     flexWrap: "wrap",
   },
   dateItem: {

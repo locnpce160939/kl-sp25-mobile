@@ -114,12 +114,6 @@ const ScheduleListScreen = () => {
             Bắt Đầu: {new Date(item.startDate).toLocaleString()}
           </Text>
         </View>
-        <View style={styles.dateDetail}>
-          <Ionicons name="time-outline" size={16} color="#6c757d" />
-          <Text style={styles.dateText}>
-            Kết Thúc: {new Date(item.endDate).toLocaleString()}
-          </Text>
-        </View>
       </View>
 
       <View style={styles.capacityContainer}>

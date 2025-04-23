@@ -67,42 +67,39 @@ const Insurance = ({route}) => {
     return Object.keys(newErrors).length === 0;
   };
 
+  // ...existing code...
   const submitForm = async () => {
     if (!validateForm()) return;
   
     const formData = new FormData();
   
-    // Append mô tả
-    formData.append("data", JSON.stringify({
-      claimDescription: description.trim(),
-    }));
-  
-    // Append ảnh
-    formData.append("images", {
-      uri: image.uri,
-      type: "image/jpeg", // hoặc dựa theo mime type thật của ảnh
-      name: "image.jpg",  // hoặc image.fileName nếu có
-    });
+    // Append description directly as text
+    formData.append("description", description.trim());
   
     try {
-      const response = await axios.post(
-        `${BASE_URL}/api/tripBooking/insuranceClaim/${bookingId}`,
+      // Convert image URI to a blob (file)
+      const response = await fetch(image.uri);
+      const imageBlob = await response.blob();
+      // Append file image
+      formData.append("images", imageBlob, "image.jpg");
+  
+      const responsePost = await axios.post(
+        `${BASE_URL}/api/tripBookings/insuranceClaim/${bookingId}`, // Corrected endpoint
         formData,
         {
           headers: {
-            "Content-Type": "application/json",
+            "Content-Type": "multipart/form-data",
           },
         }
       );
-  
       Alert.alert("Success", "Image and description submitted successfully!");
-      console.log(response.data);
+      console.log(responsePost.data);
       setImage(null);
       setDescription("");
     } catch (error) {
       Alert.alert("Error", `Failed to submit data: ${error.message}`);
       console.error("Full error:", error);
-      console.error("Error response data:", error.response?.data);
+      console.error("Error response data:", error.response?.data || "No response data");
     }
   };
   
