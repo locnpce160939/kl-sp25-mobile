@@ -138,12 +138,7 @@ const Insurance = ({route}) => {
           title="Pick an image from gallery"
           onPress={pickImageFromGallery}
         />
-        {image && (
-          <Image
-            source={{ uri: image.uri }}
-            style={styles.image}
-          />
-        )}
+        {image && <Image source={{ uri: image.uri }} style={styles.image} />}
         {errors.image && <Text style={styles.errorText}>{errors.image}</Text>}
       </View>
 

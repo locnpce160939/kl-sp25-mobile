@@ -6,23 +6,24 @@ import {
   FlatList,
   ActivityIndicator,
   SafeAreaView,
-  Alert,
   TouchableOpacity,
   Image,
 } from "react-native";
 import axios from "axios";
-import { BASE_URL, BASE_URl } from "../../configUrl";
+import { BASE_URL } from "../../configUrl"; // Đảm bảo BASE_URL được định nghĩa đúng
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AuthContext } from "../../contexts/AuthContext";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { useNavigation } from "@react-navigation/native";
 import { getScheduleStatusText } from "../../components/StatusMapper";
+import { useAlert } from "../../components/CustomAlert";
 
 const ScheduleListScreen = () => {
   const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
   const { logout } = useContext(AuthContext);
   const navigation = useNavigation();
+  const { showAlert } = useAlert();
 
   useEffect(() => {
     fetchSchedules();
@@ -44,28 +45,61 @@ const ScheduleListScreen = () => {
       const scheduleData = response.data.data || response.data;
       setSchedules(scheduleData);
     } catch (error) {
-      console.error("Error fetching schedules:", error); 
-      if (error.response) {
-        console.error("Error response:", error.response.data);
-
-        // Xử lý lỗi 401 (Unauthorized)
-        if (error.response.status === 401) {
-          Alert.alert(
-            "Phiên đăng nhập hết hạn",
-            "Vui lòng đăng nhập lại",
-            [{ text: "OK", onPress: () => logout() }],
-            { cancelable: false }
-          );
-        } else {
-          Alert.alert("Lỗi", "Không thể tải danh sách lịch trình");
-        }
+      console.error("Error fetching schedules:", error);
+      if (error.response?.status === 401) {
+        showAlert({
+          title: "Phiên đăng nhập hết hạn",
+          message: "Vui lòng đăng nhập lại",
+          type: "error",
+          onConfirm: () => logout(),
+        });
       } else {
-        Alert.alert("Lỗi", "Có lỗi xảy ra khi kết nối đến máy chủ");
+        showAlert({
+          title: "Lỗi",
+          message: "Không thể tải danh sách lịch trình",
+          type: "error",
+        });
       }
     } finally {
-      // Dừng trạng thái loading
       setLoading(false);
     }
+  };
+
+  const deleteSchedule = async (scheduleId) => {
+    try {
+      const token = await AsyncStorage.getItem("token");
+      if (!token) {
+        throw new Error("Token không tồn tại. Vui lòng đăng nhập lại.");
+      }
+
+      await axios.delete(`${BASE_URL}/api/schedule/${scheduleId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setSchedules(schedules.filter((schedule) => schedule.scheduleId !== scheduleId));
+      showAlert({
+        title: "Thành công",
+        message: "Lịch trình đã được xóa.",
+        type: "success",
+      });
+    } catch (error) {
+      showAlert({
+          title: "Lỗi",
+          message: "Không thể xóa lịch trình khi đã nhận đơn.",
+          type: "error",
+        });
+    }
+  };
+
+  const confirmDelete = (scheduleId) => {
+    showAlert({
+      title: "Xác nhận xóa",
+      message: "Bạn có chắc chắn muốn xóa lịch trình này?",
+      type: "warning",
+      showCancelButton: true,
+      confirmText: "Xóa",
+      cancelText: "Hủy",
+      onConfirm: () => deleteSchedule(scheduleId),
+    });
   };
 
   const renderItem = ({ item }) => (
@@ -136,6 +170,14 @@ const ScheduleListScreen = () => {
           resizeMode="cover"
         />
       )}
+
+      <TouchableOpacity
+        style={styles.deleteButton}
+        onPress={() => confirmDelete(item.scheduleId)}
+      >
+        <Ionicons name="trash-outline" size={20} color="#dc3545" />
+        <Text style={styles.deleteButtonText}>Xóa</Text>
+      </TouchableOpacity>
     </TouchableOpacity>
   );
 
@@ -270,6 +312,21 @@ const styles = StyleSheet.create({
     height: 200,
     borderRadius: 10,
     marginTop: 10,
+  },
+  deleteButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 10,
+    padding: 8,
+    backgroundColor: "#f8d7da",
+    borderRadius: 5,
+    alignSelf: "flex-end",
+  },
+  deleteButtonText: {
+    marginLeft: 5,
+    color: "#dc3545",
+    fontSize: 14,
+    fontWeight: "bold",
   },
 });
 

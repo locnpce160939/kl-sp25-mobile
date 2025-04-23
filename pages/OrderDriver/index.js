@@ -22,7 +22,7 @@ import {
   getTripBookingStatusText,
   getAgreementStatusText,
   getPaymentStatusText,
-} from "../../components/StatusMapper"; // Import các hàm từ StatusMapper
+} from "../../components/StatusMapper"; 
 
 const OrderDriver = ({ route }) => {
   const [userId, setUserId] = useState(null);
@@ -436,28 +436,30 @@ const OrderDriver = ({ route }) => {
               </View>
             </View>
             <View style={styles.actionButtonsContainer}>
-              <TouchableOpacity
-                style={styles.mapToggleButton}
-                onPress={() => setShowMap(!showMap)}
-              >
-                <Icon
-                  name={showMap ? "map-off" : "map"}
-                  size={20}
-                  color="#fff"
-                />
-                <Text style={styles.buttonText}>
-                  {showMap ? "Ẩn bản đồ" : "Hiện bản đồ"}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
+              {selectedBooking.status !== "ORDER_COMPLETED" && (
+                <TouchableOpacity
+                  style={styles.mapToggleButton}
+                  onPress={() => setShowMap(!showMap)}
+                >
+                  <Icon
+                    name={showMap ? "map-off" : "map"}
+                    size={20}
+                    color="#fff"
+                  />
+                  <Text style={styles.buttonText}>
+                    {showMap ? "Ẩn bản đồ" : "Hiện bản đồ"}
+                  </Text>
+                </TouchableOpacity>
+              )}
+              { selectedBooking.status !== "ORDER_COMPLETED" && (<TouchableOpacity
                 style={styles.completeButton}
                 onPress={handleCompleteTrip}
               >
                 <Icon name="check-circle" size={20} color="#fff" />
                 <Text style={styles.buttonText}>Hoàn tất chuyến đi</Text>
-              </TouchableOpacity>
+              </TouchableOpacity>)}
             </View>
-            {showMap && (
+            {selectedBooking.status !== "ORDER_COMPLETED" && showMap && (
               <View style={styles.mapContainer}>
                 <MapView
                   style={styles.map}
