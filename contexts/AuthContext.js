@@ -504,6 +504,7 @@ export const AuthProvider = ({ children }) => {
           title: "Thành công",
           message: "Đăng nhập thành công",
           type: "success",
+          
         });
       } else {
         setIsLoading(false);

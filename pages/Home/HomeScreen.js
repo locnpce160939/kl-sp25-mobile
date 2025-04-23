@@ -17,6 +17,7 @@ import { useNavigation } from "@react-navigation/native";
 import * as Location from "expo-location";
 import { getUserInfo } from "../../services/ProfileService";
 import { getUserProfile } from "../../services/MenuService";
+import { LinearGradient } from 'expo-linear-gradient';
 
 const { width } = Dimensions.get("window");
 
@@ -26,6 +27,22 @@ const HomeScreen = () => {
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
   const navigation = useNavigation();
   const [userRole, setUserRole] = useState(null);
+
+  const getRankingColor = (ranking) => {
+    switch (ranking?.toUpperCase()) {
+      case 'BRONZE':
+        return '#CD7F32';
+      case 'SILVER':
+        return '#C0C0C0';
+      case 'GOLD':
+        return '#FFD700';
+      case 'PLATINUM':
+       return ['#717D8C', '#8E9AA9', '#D4D9E2'];
+      // return ['#8A8B8F', '#9EA0A1', '#C9C9C9'];  // Gradient colors for platinum
+      default:
+        return '#00b5ec';
+    }
+  };
 
   useEffect(() => {
     (async () => {
@@ -78,19 +95,20 @@ const HomeScreen = () => {
       color: "#2563eb",
       navigate: "Booking",
     },
-    {
-      id: 2,
-      icon: "gift-outline",
-      label: "Khuyến mãi",
-      color: "#dc2626",
-      navigate: "Chat",
-      hot: true,
-    },
+    // {
+    //   id: 2,
+    //   icon: "gift-outline",
+    //   label: "Khuyến mãi",
+    //   color: "#dc2626",
+    //   navigate: "Chat",
+    //   hot: true,
+    // },
     {
       id: 3,
       icon: "home-outline",
       label: "Thêm nhà",
       color: "#16a34a",
+      navigate: "Order",
     },
     {
       id: 4,
@@ -161,9 +179,22 @@ const HomeScreen = () => {
           <Text style={styles.greeting}>Xin chào!</Text>
           <Text style={styles.userName}>{userInfo.fullName || "User"}</Text>
         </View>
-        <TouchableOpacity style={styles.pointsBadge}>
-          <Text style={styles.pointsText}>{userProfile?.ranking || "Loading..."}</Text>
-        </TouchableOpacity>
+        {userProfile?.ranking?.toUpperCase() === 'PLATINUM' ? (
+          <LinearGradient
+            colors={getRankingColor('PLATINUM')}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.pointsBadge}
+          >
+            <Text style={[styles.pointsText, { textShadowColor: 'rgba(0, 0, 0, 0.25)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 2 }]}>
+              {userProfile?.ranking || "Loading..."}
+            </Text>
+          </LinearGradient>
+        ) : (
+          <TouchableOpacity style={[styles.pointsBadge, { backgroundColor: getRankingColor(userProfile?.ranking) }]}>
+            <Text style={styles.pointsText}>{userProfile?.ranking || "Loading..."}</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Check if userRole is 'CUSTOMER' */}
