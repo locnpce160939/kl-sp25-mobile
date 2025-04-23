@@ -366,7 +366,7 @@ const ScheduleScreen = () => {
       <DateTimePicker
         value={dateType === "start" ? startDay : endDay}
         mode="date"
-        display="spinner" 
+        display="default" 
         onChange={onDateChange}
         locale="vi-VN"
       />

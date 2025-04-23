@@ -27,6 +27,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import { BASE_URL } from "../configUrl";
 import * as Location from "expo-location";
+import { useAlert } from "../components/CustomAlert";
 
 const { width } = Dimensions.get("window");
 const BRAND_COLOR = "#00b5ec";
@@ -80,6 +81,7 @@ const SocketNotification = () => {
   const [socket, setSocket] = useState(null);
   const [loading, setLoading] = useState(false);
   const [location, setLocation] = useState(null);
+  const { showAlert } = useAlert();
 
   const lastSendTime = useRef(0);
   const sendInterval = 10000;
@@ -300,12 +302,20 @@ const SocketNotification = () => {
       setLoading(true);
 
       if (!notification?.id) {
-        Alert.alert("Error", "No trip ID found in notification");
+        showAlert({
+          title: "Lỗi",
+          message: "Không tìm thấy ID chuyến đi",
+          type: "error",
+        });
         return;
       }
 
       if (role !== "DRIVER") {
-        Alert.alert("Error", "Only drivers can accept trips");
+        showAlert({
+          title: "Lỗi",
+          message: "Chỉ tài xế mới có thể nhận chuyến đi",
+          type: "error",
+        });
         return;
       }
 
@@ -314,7 +324,11 @@ const SocketNotification = () => {
       const token = userInfo?.data?.access_token;
 
       if (!token) {
-        Alert.alert("Error", "Authentication required");
+        showAlert({
+          title: "Lỗi",
+          message: "Vui lòng đăng nhập lại",
+          type: "error",
+        });
         return;
       }
 
@@ -330,15 +344,20 @@ const SocketNotification = () => {
 
       if (response.status === 200) {
         console.log("Trip accepted successfully:", response.data);
-        Alert.alert("Success", "Trip accepted successfully");
+        showAlert({
+          title: "Thành công",
+          message: "Nhận chuyến đi thành công",
+          type: "success",
+        });
         closeModal();
       }
     } catch (error) {
       console.error("Error accepting trip:", error);
-      Alert.alert(
-        "Error",
-        error.response?.data?.message || "Failed to accept trip"
-      );
+      showAlert({
+        title: "Lỗi",
+        message: error.response?.data?.message || "Không thể nhận chuyến đi",
+        type: "error",
+      });
     } finally {
       setLoading(false);
     }
