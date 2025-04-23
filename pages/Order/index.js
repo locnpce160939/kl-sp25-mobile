@@ -11,7 +11,6 @@ import {
   TextInput,
   KeyboardAvoidingView,
   TouchableWithoutFeedback,
-  Alert,
 } from "react-native";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -28,7 +27,11 @@ import {
   getAgreementStatusText,
   getPaymentStatusText,
 } from "../../components/StatusMapper";
+import { useAlert } from "../../components/CustomAlert";
+
 const Order = () => {
+  const { showAlert } = useAlert();
+  const navigation = useNavigation(); // add at the top of your Order component body
   const [bookings, setBookings] = useState([]);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
@@ -185,6 +188,17 @@ const Order = () => {
       style={styles.card}
       onPress={() => fetchBookingDetails(booking.bookingId)}
     >
+      {/* Updated dot icon with onPress navigation */}
+      <TouchableOpacity
+        style={styles.dotIcon}
+        onPress={() =>
+          navigation.navigate("Insurance", { bookingId: booking.bookingId })
+        }
+      >
+        {booking.status === "ORDER_COMPLETED" && (
+          <Icon name="error-outline" size={16} color="#ff6b6b" />
+        )}
+      </TouchableOpacity>
       <View style={styles.cardHeader}>
         <Text style={styles.status}>
           {getTripBookingStatusText(booking.status)}
@@ -210,6 +224,14 @@ const Order = () => {
         <Text style={styles.date}>
           Ngày đặt: {formatDate(booking.bookingDate)}
         </Text>
+        {booking.status === "ARRANGING_DRIVER" && (
+          <TouchableOpacity
+            style={styles.cancelButton}
+            onPress={() => handleCancelBooking(booking.bookingId)}
+          >
+            <Text style={styles.cancelButtonText}>Hủy chuyến đi</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -249,12 +271,21 @@ const Order = () => {
       if (response.data.code === 200) {
         setComment("");
         setRating(1);
-        Alert.alert("Rating submitted successfully!");
+        showAlert({
+          title: "Thành công",
+          message: "Đánh giá đã được gửi thành công!",
+          type: "success"
+        });
         setModalVisible(false);
         fetchBookings();
       }
     } catch (err) {
-      console.error("Error rating booking:", err);
+      console.log("Error rating booking:", err);
+      showAlert({
+        title: "Lỗi",
+        message: "Mỗi chuyến đi chỉ đánh giá được 1 lần",
+        type: "error"
+      });
     }
   };
 
@@ -306,6 +337,62 @@ const Order = () => {
       ))}
     </View>
   );
+
+  const handleCancelBooking = async (bookingId) => {
+    if (!bookingId) {
+      showAlert({
+        title: "Lỗi",
+        message: "Không tìm thấy ID chuyến đi để hủy.",
+        type: "error",
+      });
+      return;
+    }
+
+    showAlert({
+      title: "Xác nhận",
+      message: "Bạn có chắc chắn muốn hủy chuyến đi này?",
+      showCancelButton: true,
+      confirmText: "Có",
+      cancelText: "Không",
+      type: "warning",
+      onConfirm: async () => {
+        try {
+          const token = await AsyncStorage.getItem("token");
+          const response = await axios.put(
+            `${BASE_URL}/api/tripBookings/cancel/${bookingId}`,
+            {},
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+              },
+            }
+          );
+          if (response.data.code === 200) {
+            showAlert({
+              title: "Thành công",
+              message: "Chuyến đi đã được hủy thành công",
+              type: "success",
+            });
+            fetchBookings(); // Refresh the list
+          } else {
+            showAlert({
+              title: "Lỗi",
+              message: response.data.message || "Không thể hủy chuyến đi.",
+              type: "error",
+            });
+          }
+        } catch (error) {
+          console.error("Lỗi khi hủy đơn hàng:", error);
+          showAlert({
+            title: "Lỗi",
+            message: "Có lỗi khi hủy chuyến đi, vui lòng thử lại.",
+            type: "error",
+          });
+        }
+      },
+    });
+  };
 
   const renderDetailModal = () => {
     const navigation = useNavigation();
@@ -1057,6 +1144,24 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flex: 1,
+  },
+  cancelButton: {
+    backgroundColor: "#ff6b6b",
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+    marginVertical: 16,
+  },
+  cancelButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  dotIcon: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    zIndex: 1,
   },
 });
 export default Order;

@@ -511,13 +511,11 @@ const TripBooking = () => {
       const priceData = res.data.data;
       console.log("Dữ liệu từ API:", priceData);
 
-      // Cập nhật danh sách bảo hiểm
       const newInsurances = Array.isArray(priceData.insurances)
         ? priceData.insurances
         : [];
       setInsurances(newInsurances);
 
-      // Cập nhật giá
       setTotalPrice({
         price: priceData.price || 0,
         expectedDistance: priceData.expectedDistance || 0,
@@ -526,7 +524,6 @@ const TripBooking = () => {
       setFinalPrice(priceData.price || 0);
       setDiscountAmount(0);
 
-      // Cập nhật lại selectedInsuranceId để giữ trạng thái checkbox
       if (
         insuranceId &&
         newInsurances.some((ins) => ins.insurancePolicyId === insuranceId)
@@ -623,6 +620,8 @@ const TripBooking = () => {
           notes,
           voucherCode: voucherCode || undefined,
           recipientPhoneNumber,
+          selectedInsurancePolicyId: selectedInsuranceId || undefined,
+          useInsurance: selectedInsuranceId != null ? true : undefined,
         },
         {
           headers: {

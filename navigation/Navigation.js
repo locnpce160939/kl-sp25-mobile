@@ -31,6 +31,7 @@ import MyVouchers from "../pages/Voucher/MyVouchers";
 import Withdraw from "../pages/Withdraw";
 import BonusScreen from "../pages/BonusDriver/Bonus";
 import RedeemableVoucher from "../pages/Voucher/RedeemableVoucher";
+import Insurance from "../pages/Insurance";
 const Stack = createNativeStackNavigator();
 
 const Navigation = () => {
@@ -146,6 +147,7 @@ const Navigation = () => {
             />
             <Stack.Screen name="Payment" component={PaymentScreen} />
             <Stack.Screen name="Withdraw" component={Withdraw} />
+            <Stack.Screen name="Insurance" component={Insurance} />
           </>
         ) : (
           <>
