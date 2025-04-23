@@ -95,7 +95,6 @@ const ScheduleScreen = () => {
   });
 
   const [startDay, setStartDay] = useState(new Date());
-  const [endDay, setEndDay] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [dateType, setDateType] = useState(null); // 'start' or 'end'
   const [availableCapacity, setAvailableCapacity] = useState("");
@@ -113,7 +112,6 @@ const ScheduleScreen = () => {
     startLocation: false,
     endLocation: false,
     startDay: false,
-    endDay: false,
     capacity: false,
     vehicle: false,
   });
@@ -122,7 +120,6 @@ const ScheduleScreen = () => {
     startLocation: "",
     endLocation: "",
     startDay: "",
-    endDay: "",
     capacity: "",
   });
 
@@ -145,11 +142,7 @@ const ScheduleScreen = () => {
   const onDateChange = (event, selectedDate) => {
     setShowDatePicker(false);
     if (event.type === "set" && selectedDate) {
-      if (dateType === "start") {
-        setStartDay(selectedDate);
-      } else {
-        setEndDay(selectedDate);
-      }
+      setStartDay(selectedDate);
     }
   };
 
@@ -165,12 +158,6 @@ const ScheduleScreen = () => {
 
     if (!startDay) {
       newErrors.startDay = "Vui lòng chọn ngày bắt đầu";
-    }
-    if (!endDay) {
-      newErrors.endDay = "Vui lòng chọn ngày kết thúc";
-    }
-    if (startDay && endDay && startDay > endDay) {
-      newErrors.endDay = "Ngày kết thúc phải sau ngày bắt đầu";
     }
 
     if (!availableCapacity) {
@@ -242,11 +229,9 @@ const ScheduleScreen = () => {
         startLocation: true,
         endLocation: true,
         startDay: true,
-        endDay: true,
         capacity: true,
         vehicle: true,
       });
-      // Hiển thị lỗi trong giao diện, không dùng Alert
       return;
     }
 
@@ -262,7 +247,6 @@ const ScheduleScreen = () => {
           startLocation: startLocationString,
           endLocation: endLocationString,
           startDate: startDay,
-          endDate: endDay,
           availableCapacity: availableCapacity,
           startLocationAddress: startLocationAddress,
           endLocationAddress: endLocationAddress,
@@ -364,7 +348,7 @@ const ScheduleScreen = () => {
     if (!showDatePicker) return null;
     return (
       <DateTimePicker
-        value={dateType === "start" ? startDay : endDay}
+        value={dateType === "start" ? startDay : null}
         mode="date"
         display="default" 
         onChange={onDateChange}
@@ -493,21 +477,6 @@ const ScheduleScreen = () => {
               </TouchableOpacity>
               {touched.startDay && errors.startDay && (
                 <Text style={styles.errorText}>{errors.startDay}</Text>
-              )}
-
-              <Text style={styles.label}>Ngày kết thúc *</Text>
-              <TouchableOpacity
-                style={[
-                  styles.input,
-                  touched.endDay && errors.endDay && styles.errorInput,
-                ]}
-                onPress={() => showPicker("end")}
-              >
-                <Ionicons name="calendar-outline" size={24} color="#00b5ec" style={styles.inputIcon} />
-                <Text style={styles.inputText}>{formatDate(endDay)}</Text>
-              </TouchableOpacity>
-              {touched.endDay && errors.endDay && (
-                <Text style={styles.errorText}>{errors.endDay}</Text>
               )}
             </View>
 

@@ -32,7 +32,6 @@ const TripBooking = () => {
   // Form state
   const [bookingType, setBookingType] = useState("");
   const [bookingDate, setBookingDate] = useState(new Date());
-  const [expirationDate, setExpirationDate] = useState(new Date());
   const [pickupLocation, setPickupLocation] = useState(null);
   const [dropoffLocation, setDropoffLocation] = useState(null);
   const [capacity, setCapacity] = useState("");
@@ -45,8 +44,6 @@ const TripBooking = () => {
   const [titlePickup, setTitlePickup] = useState("");
   const [titleDropoff, setTitleDropoff] = useState("");
   const [showBookingDatePicker, setShowBookingDatePicker] = useState(false);
-  const [showExpirationDatePicker, setShowExpirationDatePicker] =
-    useState(false);
   const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [activeLocationField, setActiveLocationField] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
@@ -187,7 +184,6 @@ const TripBooking = () => {
   // Error states
   const [errors, setErrors] = useState({
     bookingDate: "",
-    expirationDate: "",
     pickupLocation: "",
     dropoffLocation: "",
     capacity: "",
@@ -222,7 +218,6 @@ const TripBooking = () => {
     let isValid = true;
     const newErrors = {
       bookingDate: "",
-      expirationDate: "",
       pickupLocation: "",
       dropoffLocation: "",
       capacity: "",
@@ -234,14 +229,6 @@ const TripBooking = () => {
       isValid = false;
     } else if (bookingDate < new Date()) {
       newErrors.bookingDate = "Ngày đặt xe không thể là quá khứ";
-      isValid = false;
-    }
-
-    if (!expirationDate) {
-      newErrors.expirationDate = "Ngày hết hạn là bắt buộc";
-      isValid = false;
-    } else if (expirationDate <= bookingDate) {
-      newErrors.expirationDate = "Ngày hết hạn phải sau ngày đặt xe";
       isValid = false;
     }
 
@@ -268,7 +255,8 @@ const TripBooking = () => {
       newErrors.recipientPhoneNumber = "Số điện thoại người nhận là bắt buộc";
       isValid = false;
     } else if (!validatePhoneNumber(recipientPhoneNumber)) {
-      newErrors.recipientPhoneNumber = "Số điện thoại không hợp lệ (phải bắt đầu bằng số 0 và có 10 số)";
+      newErrors.recipientPhoneNumber =
+        "Số điện thoại không hợp lệ (phải bắt đầu bằng số 0 và có 10 số)";
       isValid = false;
     }
 
@@ -277,29 +265,17 @@ const TripBooking = () => {
   };
 
   // Date picker handlers
-  const showDatePicker = (type) => {
-    if (type === "booking") {
-      setShowBookingDatePicker(true);
-    } else {
-      setShowExpirationDatePicker(true);
-    }
+  const showDatePicker = () => {
+    setShowBookingDatePicker(true);
   };
 
-  const onDateChange = (type) => (event, selectedDate) => {
-    const isBooking = type === "booking";
+  const onDateChange = (event, selectedDate) => {
     if (Platform.OS === "android") {
-      isBooking
-        ? setShowBookingDatePicker(false)
-        : setShowExpirationDatePicker(false);
+      setShowBookingDatePicker(false);
     }
     if (selectedDate) {
-      if (isBooking) {
-        setBookingDate(selectedDate);
-        setErrors((prev) => ({ ...prev, bookingDate: "" }));
-      } else {
-        setExpirationDate(selectedDate);
-        setErrors((prev) => ({ ...prev, expirationDate: "" }));
-      }
+      setBookingDate(selectedDate);
+      setErrors((prev) => ({ ...prev, bookingDate: "" }));
     }
   };
 
@@ -411,18 +387,27 @@ const TripBooking = () => {
     } catch (error) {
       console.error("Lỗi khi tìm kiếm:", error);
       setResultLocation([]);
-      
+
       if (error.response) {
         // Xử lý các mã lỗi cụ thể
         switch (error.response.status) {
           case 409:
-            Alert.alert("Thông báo", "Vui lòng nhập ít nhất 3 ký tự để tìm kiếm.");
+            Alert.alert(
+              "Thông báo",
+              "Vui lòng nhập ít nhất 3 ký tự để tìm kiếm."
+            );
             break;
           case 401:
-            Alert.alert("Lỗi", "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+            Alert.alert(
+              "Lỗi",
+              "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại."
+            );
             break;
           case 429:
-            Alert.alert("Thông báo", "Bạn đã tìm kiếm quá nhiều lần. Vui lòng thử lại sau.");
+            Alert.alert(
+              "Thông báo",
+              "Bạn đã tìm kiếm quá nhiều lần. Vui lòng thử lại sau."
+            );
             break;
           default:
             Alert.alert(
@@ -430,10 +415,13 @@ const TripBooking = () => {
               "Không thể tìm kiếm địa điểm. Vui lòng thử lại sau."
             );
         }
-      } else if (error.code === 'ECONNABORTED') {
+      } else if (error.code === "ECONNABORTED") {
         Alert.alert("Lỗi", "Kết nối quá chậm. Vui lòng thử lại.");
       } else {
-        Alert.alert("Lỗi", "Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng.");
+        Alert.alert(
+          "Lỗi",
+          "Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng."
+        );
       }
     }
   };
@@ -611,7 +599,6 @@ const TripBooking = () => {
         {
           bookingType,
           bookingDate,
-          expirationDate,
           pickupLocation: pickupLocationString,
           dropoffLocation: dropoffLocationString,
           capacity: parseInt(capacity),
@@ -694,8 +681,6 @@ const TripBooking = () => {
       if (params.paymentMethod) setPaymentMethod(params.paymentMethod);
       if (params.bookingType) setBookingType(params.bookingType);
       if (params.bookingDate) setBookingDate(new Date(params.bookingDate));
-      if (params.expirationDate)
-        setExpirationDate(new Date(params.expirationDate));
       if (params.startLocationAddress)
         setStartLocationAddress(params.startLocationAddress);
       if (params.endLocationAddress)
@@ -703,7 +688,8 @@ const TripBooking = () => {
       if (params.titlePickup) setTitlePickup(params.titlePickup);
       if (params.titleDropoff) setTitleDropoff(params.titleDropoff);
       if (params.notes) setNotes(params.notes);
-      if (params.recipientPhoneNumber) setRecipientPhoneNumber(params.recipientPhoneNumber);
+      if (params.recipientPhoneNumber)
+        setRecipientPhoneNumber(params.recipientPhoneNumber);
       if (params.selectedInsuranceId) {
         setSelectedInsuranceId(params.selectedInsuranceId);
         setInsuranceName(params.insuranceName || "");
@@ -715,7 +701,14 @@ const TripBooking = () => {
       }
     });
     return unsubscribe;
-  }, [navigation, route.params, totalPrice.price, pickupLocation, dropoffLocation, capacity]);
+  }, [
+    navigation,
+    route.params,
+    totalPrice.price,
+    pickupLocation,
+    dropoffLocation,
+    capacity,
+  ]);
 
   useEffect(() => {
     if (voucherCode && totalPrice.price > 0) {
@@ -732,7 +725,7 @@ const TripBooking = () => {
 
   const loadSavedAddresses = async () => {
     try {
-      const savedAddressesString = await AsyncStorage.getItem('savedAddresses');
+      const savedAddressesString = await AsyncStorage.getItem("savedAddresses");
       if (savedAddressesString) {
         const addresses = JSON.parse(savedAddressesString);
         setSavedAddresses(addresses);
@@ -744,7 +737,7 @@ const TripBooking = () => {
 
   const saveAddress = async (address) => {
     try {
-      const savedAddressesString = await AsyncStorage.getItem('savedAddresses');
+      const savedAddressesString = await AsyncStorage.getItem("savedAddresses");
       let addresses = [];
       if (savedAddressesString) {
         addresses = JSON.parse(savedAddressesString);
@@ -769,7 +762,7 @@ const TripBooking = () => {
       };
 
       addresses.push(newAddress);
-      await AsyncStorage.setItem('savedAddresses', JSON.stringify(addresses));
+      await AsyncStorage.setItem("savedAddresses", JSON.stringify(addresses));
       setSavedAddresses(addresses);
       showAlert({
         title: "Thành công",
@@ -784,11 +777,11 @@ const TripBooking = () => {
 
   const deleteAddress = async (addressId) => {
     try {
-      const savedAddressesString = await AsyncStorage.getItem('savedAddresses');
+      const savedAddressesString = await AsyncStorage.getItem("savedAddresses");
       if (savedAddressesString) {
         let addresses = JSON.parse(savedAddressesString);
-        addresses = addresses.filter(address => address.id !== addressId);
-        await AsyncStorage.setItem('savedAddresses', JSON.stringify(addresses));
+        addresses = addresses.filter((address) => address.id !== addressId);
+        await AsyncStorage.setItem("savedAddresses", JSON.stringify(addresses));
         setSavedAddresses(addresses);
         showAlert({
           title: "Thành công",
@@ -803,54 +796,31 @@ const TripBooking = () => {
   };
 
   // Render helpers
-  const renderDatePicker = (type) => {
-    const isBooking = type === "booking";
-    const show = isBooking ? showBookingDatePicker : showExpirationDatePicker;
-    const date = isBooking ? bookingDate : expirationDate;
-
-    if (!show) return null;
-
+  const renderDatePicker = () => {
+    if (!showBookingDatePicker) return null;
+  
     if (Platform.OS === "ios") {
       return (
-        <Modal visible={show} transparent animationType="slide">
-          <TouchableWithoutFeedback
-            onPress={() =>
-              isBooking
-                ? setShowBookingDatePicker(false)
-                : setShowExpirationDatePicker(false)
-            }
-          >
-            <View style={styles.modalOverlay}>              <TouchableWithoutFeedback>
+        <Modal visible={showBookingDatePicker} transparent animationType="slide">
+          <TouchableWithoutFeedback onPress={() => setShowBookingDatePicker(false)}>
+            <View style={styles.modalOverlay}>
+              <TouchableWithoutFeedback>
                 <View style={styles.datePickerContainer}>
                   <View style={styles.pickerHeader}>
-                    <TouchableOpacity
-                      onPress={() =>
-                        isBooking
-                          ? setShowBookingDatePicker(false)
-                          : setShowExpirationDatePicker(false)
-                      }
-                    >
+                    <TouchableOpacity onPress={() => setShowBookingDatePicker(false)}>
                       <Text style={styles.cancelText}>Hủy</Text>
                     </TouchableOpacity>
-                    <Text style={styles.pickerTitle}>
-                      {isBooking ? "Chọn ngày đặt" : "Chọn ngày hết hạn"}
-                    </Text>
-                    <TouchableOpacity
-                      onPress={() =>
-                        isBooking
-                          ? setShowBookingDatePicker(false)
-                          : setShowExpirationDatePicker(false)
-                      }
-                    >
+                    <Text style={styles.pickerTitle}>Chọn ngày đặt</Text>
+                    <TouchableOpacity onPress={() => setShowBookingDatePicker(false)}>
                       <Text style={styles.doneText}>Xong</Text>
                     </TouchableOpacity>
                   </View>
                   <DateTimePicker
-                    value={date}
+                    value={bookingDate}
                     mode="date"
                     display="spinner"
-                    onChange={onDateChange(type)}
-                    minimumDate={isBooking ? new Date() : bookingDate}
+                    onChange={onDateChange}
+                    minimumDate={new Date()}
                   />
                 </View>
               </TouchableWithoutFeedback>
@@ -859,14 +829,14 @@ const TripBooking = () => {
         </Modal>
       );
     }
-
+  
     return (
       <DateTimePicker
-        value={date}
+        value={bookingDate}
         mode="date"
         display="default"
-        onChange={onDateChange(type)}
-        minimumDate={isBooking ? new Date() : bookingDate}
+        onChange={onDateChange}
+        minimumDate={new Date()}
       />
     );
   };
@@ -911,7 +881,9 @@ const TripBooking = () => {
         </View>
         <View style={styles.locationDetails}>
           <Text style={styles.locationMainText}>
-            {item.name || item.address_components?.[0]?.long_name || "Không có tên"}
+            {item.name ||
+              item.address_components?.[0]?.long_name ||
+              "Không có tên"}
           </Text>
           <Text style={styles.locationSubText} numberOfLines={2}>
             {item.formatted_address}
@@ -970,7 +942,6 @@ const TripBooking = () => {
       paymentMethod,
       bookingType,
       bookingDate: bookingDate.toISOString(),
-      expirationDate: expirationDate.toISOString(),
       startLocationAddress,
       endLocationAddress,
       titlePickup,
@@ -978,7 +949,7 @@ const TripBooking = () => {
       notes,
       selectedInsuranceId,
       insuranceName,
-      insuranceDescription
+      insuranceDescription,
     });
   };
 
@@ -1004,7 +975,10 @@ const TripBooking = () => {
   );
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
       <StatusBar barStyle="dark-content" backgroundColor="#f5f7fa" />
       <View style={styles.headerContainer}>
         <TouchableOpacity
@@ -1038,21 +1012,6 @@ const TripBooking = () => {
               </TouchableOpacity>
               {errors.bookingDate && (
                 <Text style={styles.errorText}>{errors.bookingDate}</Text>
-              )}
-            </View>
-            <View style={[styles.inputGroup, styles.dateInput]}>
-              <Text style={styles.label}>Ngày hết hạn</Text>
-              <TouchableOpacity
-                style={styles.dateButton}
-                onPress={() => showDatePicker("expiration")}
-              >
-                <Text style={styles.dateText}>
-                  {expirationDate.toLocaleDateString("vi-VN")}
-                </Text>
-                <Ionicons name="calendar-outline" size={20} color="#666" />
-              </TouchableOpacity>
-              {errors.expirationDate && (
-                <Text style={styles.errorText}>{errors.expirationDate}</Text>
               )}
             </View>
           </View>
@@ -1203,7 +1162,9 @@ const TripBooking = () => {
               maxLength={10}
             />
             {errors.recipientPhoneNumber && (
-              <Text style={styles.errorText}>{errors.recipientPhoneNumber}</Text>
+              <Text style={styles.errorText}>
+                {errors.recipientPhoneNumber}
+              </Text>
             )}
           </View>
 
@@ -1370,7 +1331,6 @@ const TripBooking = () => {
       </ScrollView>
 
       {renderDatePicker("booking")}
-      {renderDatePicker("expiration")}
 
       <Modal
         visible={showLocationPicker}
@@ -1397,7 +1357,9 @@ const TripBooking = () => {
                 <View style={styles.savedAddressesContainer}>
                   <View style={styles.savedAddressesHeader}>
                     <Text style={styles.savedAddressesTitle}>
-                      {activeLocationField === "pickup" ? "Chọn điểm đón" : "Chọn điểm giao"}
+                      {activeLocationField === "pickup"
+                        ? "Chọn điểm đón"
+                        : "Chọn điểm giao"}
                     </Text>
                     <TouchableOpacity
                       onPress={() => setShowSavedAddressesView(false)}
@@ -1451,7 +1413,9 @@ const TripBooking = () => {
                 <MapView
                   style={styles.map}
                   initialRegion={initialRegion}
-                  onPress={(e) => handleLocationSelect(e.nativeEvent.coordinate)}
+                  onPress={(e) =>
+                    handleLocationSelect(e.nativeEvent.coordinate)
+                  }
                 >
                   {pickupLocation && activeLocationField === "pickup" && (
                     <Marker coordinate={pickupLocation} title="Điểm đón" />
@@ -1469,7 +1433,11 @@ const TripBooking = () => {
                 </TouchableOpacity>
 
                 {!isSearching && (
-                  <BottomSheet ref={bottomSheetRef} index={0} snapPoints={["50%"]}>
+                  <BottomSheet
+                    ref={bottomSheetRef}
+                    index={0}
+                    snapPoints={["50%"]}
+                  >
                     <BottomSheetView>
                       <FlatList
                         data={locationState}
@@ -1511,21 +1479,21 @@ const TripBooking = () => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f5f7fa" },
   headerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  //  paddingTop: Platform.OS === 'ios' ? 50 : StatusBar.currentHeight + 10,
+    flexDirection: "row",
+    alignItems: "center",
+    //  paddingTop: Platform.OS === 'ios' ? 50 : StatusBar.currentHeight + 10,
     paddingHorizontal: 16,
     paddingBottom: 16,
-    backgroundColor: '#f5f7fa',
+    backgroundColor: "#f5f7fa",
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: "#e0e0e0",
   },
   backButton: {
     padding: 8,
     marginRight: 16,
     borderRadius: 8,
-    backgroundColor: '#fff',
-    shadowColor: '#000',
+    backgroundColor: "#fff",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -1720,14 +1688,14 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   searchInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: "#e0e0e0",
     elevation: 5,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
@@ -1872,14 +1840,14 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   searchInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: "#e0e0e0",
     elevation: 5,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
@@ -1887,11 +1855,11 @@ const styles = StyleSheet.create({
   savedAddressesButton: {
     padding: 12,
     borderLeftWidth: 1,
-    borderLeftColor: '#e0e0e0',
+    borderLeftColor: "#e0e0e0",
   },
   locationItemContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
     padding: 12,
   },
@@ -1903,40 +1871,40 @@ const styles = StyleSheet.create({
   },
   savedAddressesOverlay: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
   },
   savedAddressesContainer: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
   },
   savedAddressesHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-    backgroundColor: '#fff',
+    borderBottomColor: "#e0e0e0",
+    backgroundColor: "#fff",
   },
   savedAddressesTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
   },
   savedAddressesList: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     padding: 16,
   },
   savedAddressItem: {
-    backgroundColor: '#f9f9f9',
+    backgroundColor: "#f9f9f9",
     borderRadius: 12,
     marginBottom: 12,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   savedAddressContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 16,
   },
   savedAddressDetails: {
@@ -1945,24 +1913,22 @@ const styles = StyleSheet.create({
   },
   savedAddressName: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: "600",
+    color: "#333",
     marginBottom: 4,
   },
   savedAddressText: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
   },
   deleteAddressButton: {
     padding: 8,
   },
   noAddressesText: {
-    textAlign: 'center',
-    color: '#666',
+    textAlign: "center",
+    color: "#666",
     padding: 20,
   },
 });
 
 export default TripBooking;
-
-
