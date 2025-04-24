@@ -281,13 +281,6 @@ const BalanceDriverScreen = ({ navigation }) => {
         <View style={styles.balanceActions}>
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => navigation.navigate("Deposit")}
-          >
-            <Ionicons name="add-circle-outline" size={18} color="#fff" />
-            <Text style={styles.actionButtonText}>Nạp tiền</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.actionButton}
             onPress={() => navigation.navigate("Withdraw")}
           >
             <Ionicons name="cash-outline" size={20} color="#fff" />

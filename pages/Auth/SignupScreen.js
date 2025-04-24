@@ -36,10 +36,10 @@ export default Signup = () => {
 
     // Validate Username
     if (!username.trim()) {
-      setUsernameError("Username không được để trống");
+      setUsernameError("Tên đăng nhập không được để trống");
       isValid = false;
     } else if (username.length < 3) {
-      setUsernameError("Username phải có ít nhất 3 ký tự");
+      setUsernameError("Tên đăng nhập phải có ít nhất 3 ký tự");
       isValid = false;
     } else {
       setUsernameError("");
@@ -47,13 +47,13 @@ export default Signup = () => {
 
     // Validate Full Name
     if (!fullName.trim()) {
-      setFullNameError("Full Name không được để trống");
+      setFullNameError("Họ và tên không được để trống");
       isValid = false;
     } else if (fullName.length < 2) {
-      setFullNameError("Full Name phải có ít nhất 2 ký tự");
+      setFullNameError("Họ và tên phải có ít nhất 2 ký tự");
       isValid = false;
     } else if (!/^[a-zA-ZÀ-ỹ\s]+$/.test(fullName)) {
-      setFullNameError("Full Name chỉ được chứa chữ cái và khoảng trắng");
+      setFullNameError("Họ và tên chỉ được chứa chữ cái và khoảng trắng");
       isValid = false;
     } else {
       setFullNameError("");
@@ -62,10 +62,10 @@ export default Signup = () => {
     // Validate Phone
     const phoneRegex = /^[0-9]{10}$/;
     if (!phone.trim()) {
-      setPhoneError("Phone Number không được để trống");
+      setPhoneError("Số điện thoại không được để trống");
       isValid = false;
     } else if (!phoneRegex.test(phone)) {
-      setPhoneError("Phone Number phải là số và đúng định dạng 10 số");
+      setPhoneError("Số phải là số và đúng định dạng 10 số");
       isValid = false;
     } else {
       setPhoneError("");
@@ -85,10 +85,10 @@ export default Signup = () => {
 
     // Validate Password
     if (!password.trim()) {
-      setPasswordError("Password không được để trống");
+      setPasswordError("Mật khẩu không được để trống");
       isValid = false;
     } else if (password.length < 6) {
-      setPasswordError("Password phải có ít nhất 6 ký tự");
+      setPasswordError("Mật khẩu phải có ít nhất 6 ký tự");
       isValid = false;
     } else {
       setPasswordError("");
