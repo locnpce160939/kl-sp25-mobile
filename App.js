@@ -5,10 +5,12 @@ import HomeNavigation from "./navigation/HomeNavigation";
 import SocketNotification from "./components/SocketNotification";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AlertProvider } from "./components/CustomAlert";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 export default function App() {
   return (
-    <SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
       <AlertProvider>
       <AuthProvider>
         <AlertProvider>
@@ -18,5 +20,7 @@ export default function App() {
       </AuthProvider>
       </AlertProvider>
     </SafeAreaProvider>
+    </GestureHandlerRootView>
+    
   );
 }

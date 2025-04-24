@@ -177,19 +177,20 @@ const ImageCameraField = ({
       onImageSelect(imageData);
     } catch (error) {
       console.error(`[${label}] Lỗi khi quét ảnh:`, {
-        message: error.message,
+      //  message: error.message,
         stack: error.stack,
         response: error.response,
       });
 
-      let errorMessage = "Không thể quét thông tin từ ảnh. Vui lòng thử lại.";
+      // let errorMessage = "Không thể quét thông tin từ ảnh. Vui lòng thử lại.";
       if (error.message.includes("timeout")) {
         errorMessage = "Kết nối quá thời gian. Vui lòng kiểm tra mạng.";
       } else if (error.message.includes("Network")) {
         errorMessage = "Lỗi kết nối mạng. Vui lòng thử lại.";
-      } else if (error.message.includes("HTTP error")) {
-        errorMessage = "Lỗi kết nối với máy chủ OCR. Vui lòng thử lại sau.";
-      }
+      } 
+      // else if (error.message.includes("HTTP error")) {
+      //  // errorMessage = "Lỗi kết nối với máy chủ OCR. Vui lòng thử lại sau.";
+      // }
 
       Alert.alert("Lỗi", errorMessage, [{ text: "OK" }]);
 
@@ -1377,6 +1378,7 @@ const formatDate = (dateString) => {
         image={formData.backFile}
         onImageSelect={(file) => handleInputChange("backFile", file)}
         error={errors.backFile}
+        scanEnabled={false}
       />
     </View>
   );
@@ -1843,4 +1845,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default CreateDriverIdentificationScreen; 
+export default CreateDriverIdentificationScreen;

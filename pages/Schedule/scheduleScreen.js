@@ -24,6 +24,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { Ionicons } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
 import { useNavigation } from "@react-navigation/native";
+import { useAlert } from "../../components/CustomAlert";
 
 const VehicleItem = ({ vehicle, onSelect, isSelected }) => (
   <TouchableOpacity 
@@ -89,6 +90,7 @@ const VehicleSelectionModal = ({ visible, onClose, vehicles, selectedVehicle, on
 
 const ScheduleScreen = () => {
   const navigation = useNavigation();
+  const { showAlert } = useAlert();
   const [locations, setLocations] = useState({
     startLocation: null,
     endLocation: null,
@@ -260,7 +262,13 @@ const ScheduleScreen = () => {
         }
       );
       if (res.status === 200) {
-        Alert.alert("Thành công", res.data.message);
+        showAlert({
+          title: "Thành công",
+          message: "Tao lịch trình thành công",
+          type: "success",
+          autoClose: true,
+          autoCloseTime: 3000,
+        });
       }
     } catch (error) {
       const responseData = error.response?.data;

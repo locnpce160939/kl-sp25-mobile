@@ -66,10 +66,9 @@ export const AuthProvider = ({ children }) => {
         }
       }
     } catch (error) {
-      const message = error.response?.data?.message || "Đăng ký thất bại";
       showAlert({
         title: "Lỗi",
-        message: message,
+        message: "OTP không đúng",
         type: "error",
       });
     } finally {
@@ -465,15 +464,14 @@ export const AuthProvider = ({ children }) => {
           setIsLoading(false);
           showAlert({
             title: "Lỗi",
-            message: userInfo.message || "Xác nhận OTP thất bại.",
+            message: "OTP không đúng",
             type: "error",
           });
         }
       })
       .catch((error) => {
         setIsLoading(false);
-        console.error("OTP Confirmation Error:", error.response?.data || error);
-        const errorMessage = error.response?.data?.message || "Xác nhận OTP thất bại";
+        const errorMessage = "OTP không đúng";
         showAlert({
           title: "Lỗi",
           message: errorMessage,

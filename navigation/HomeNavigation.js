@@ -24,11 +24,10 @@ const HomeNavigation = () => {
             iconName = focused
               ? "person" // filled person icon when focused
               : "person-outline"; // outline person icon when not focused
-          }
-          else if (route.name === "Balance") {
+          } else if (route.name === "Balance") {
             iconName = focused
               ? "wallet" // filled person icon when focused
-              : "wallet-outline"; // outline person icon when not focused; 
+              : "wallet-outline"; // outline person icon when not focused;
           }
 
           // You can return any component that you like here!
@@ -44,29 +43,28 @@ const HomeNavigation = () => {
       <Tab.Screen
         name="Home"
         component={HomeScreen}
-        options={{ 
+        options={{
           headerShown: false,
-          tabBarLabel: "Trang chủ"
-        }}
-      />
-      <Tab.Screen
-        name="Profile"
-        component={profileScreen}
-        options={{ 
-          headerShown: false,
-          tabBarLabel: "Hồ sơ"
+          tabBarLabel: "Trang chủ",
         }}
       />
       <Tab.Screen
         name="Balance"
         component={BalanceDriverScreen}
-        options={{ 
+        options={{
           headerShown: false,
-          tabBarLabel: "ví"
+          tabBarLabel: "ví",
+        }}
+      />
+      <Tab.Screen
+        name="Profile"
+        component={profileScreen}
+        options={{
+          headerShown: false,
+          tabBarLabel: "Hồ sơ",
         }}
       />
     </Tab.Navigator>
-    
   );
 };
 
