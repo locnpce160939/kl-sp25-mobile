@@ -16,9 +16,11 @@ import { BASE_URL } from "../../configUrl";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import { getTripBookingStatusText } from "../../components/StatusMapper";
 import { useNavigation } from "@react-navigation/native";
+import { useAlert } from "../../components/CustomAlert";
 
 const RightTrip = () => {
   const navigation = useNavigation();
+  const { showAlert } = useAlert();
   const [tripData, setTripData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -67,14 +69,25 @@ const RightTrip = () => {
         }
       );
       if (response.status === 200) {
-        alert("Success", response.data.data);
+        showAlert({
+          title: "Thành công",
+          message: response.data.data,
+          type: "success"
+        });
         fetchTripData();
       } else {
-        alert("Failed to accept trip");
-        fet;
+        showAlert({
+          title: "Lỗi",
+          message: "Không thể chấp nhận chuyến đi",
+          type: "error"
+        });
       }
     } catch (err) {
-      alert(err.response?.data?.message || "Error accepting trip");
+      showAlert({
+        title: "Lỗi",
+        message: err.response?.data?.message || "Lỗi khi chấp nhận chuyến đi",
+        type: "error"
+      });
     }
   };
 
@@ -112,10 +125,10 @@ const RightTrip = () => {
       </View>
       <View style={styles.tripInfo}>
         <Text style={styles.locationText} numberOfLines={1}>
-          From: {trip.customerStartLocationAddress}
+          Từ: {trip.customerStartLocationAddress}
         </Text>
         <Text style={styles.locationText} numberOfLines={1}>
-          To: {trip.customerEndLocationAddress}
+          Đến: {trip.customerEndLocationAddress}
         </Text>
       </View>
     </TouchableOpacity>

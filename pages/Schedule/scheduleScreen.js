@@ -35,7 +35,7 @@ const VehicleItem = ({ vehicle, onSelect, isSelected }) => (
     onPress={() => onSelect(vehicle)}
   >
     <View style={styles.vehicleIconContainer}>
-      <Ionicons name="car" size={24} color={isSelected ? "#fff" : "#00b5ec"} />
+      <Ionicons name="car" size={28} color={isSelected ? "#fff" : "#00b5ec"} />
     </View>
     <View style={styles.vehicleInfo}>
       <Text style={[styles.vehicleName, isSelected && styles.vehicleTextSelected]}>
@@ -44,6 +44,20 @@ const VehicleItem = ({ vehicle, onSelect, isSelected }) => (
       <Text style={[styles.vehiclePlate, isSelected && styles.vehicleTextSelected]}>
         {vehicle.licensePlate}
       </Text>
+      <View style={styles.vehicleDetails}>
+        <View style={styles.vehicleDetailItem}>
+          <Ionicons name="cube-outline" size={16} color={isSelected ? "#fff" : "#7f8c8d"} />
+          <Text style={[styles.vehicleDetailText, isSelected && styles.vehicleTextSelected]}>
+            {vehicle.capacity} kg
+          </Text>
+        </View>
+        <View style={styles.vehicleDetailItem}>
+          <Ionicons name="speedometer-outline" size={16} color={isSelected ? "#fff" : "#7f8c8d"} />
+          <Text style={[styles.vehicleDetailText, isSelected && styles.vehicleTextSelected]}>
+            {vehicle.fuelType}
+          </Text>
+        </View>
+      </View>
     </View>
     {isSelected && (
       <View style={styles.checkmarkContainer}>
@@ -59,32 +73,43 @@ const VehicleSelectionModal = ({ visible, onClose, vehicles, selectedVehicle, on
     transparent={true}
     animationType="slide"
   >
-    <View style={styles.modalOverlay}>
-      <View style={styles.modalContent}>
-        <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>Chọn phương tiện</Text>
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Ionicons name="close" size={24} color="#34495e" />
-          </TouchableOpacity>
-        </View>
-        
-        <FlatList
-          data={vehicles}
-          keyExtractor={(item) => item.vehicleId.toString()}
-          renderItem={({ item }) => (
-            <VehicleItem
-              vehicle={item}
-              onSelect={(vehicle) => {
-                onSelect(vehicle.vehicleId);
-                onClose();
-              }}
-              isSelected={selectedVehicle === item.vehicleId}
+    <TouchableWithoutFeedback onPress={onClose}>
+      <View style={styles.modalOverlay}>
+        <TouchableWithoutFeedback>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <View style={styles.headerLeft} />
+              <Text style={styles.modalTitle}>Chọn phương tiện</Text>
+              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                <Ionicons name="close" size={24} color="#34495e" />
+              </TouchableOpacity>
+            </View>
+            
+            <FlatList
+              data={vehicles}
+              keyExtractor={(item) => item.vehicleId.toString()}
+              renderItem={({ item }) => (
+                <VehicleItem
+                  vehicle={item}
+                  onSelect={(vehicle) => {
+                    onSelect(vehicle.vehicleId);
+                    onClose();
+                  }}
+                  isSelected={selectedVehicle === item.vehicleId}
+                />
+              )}
+              contentContainerStyle={styles.vehicleList}
+              ListEmptyComponent={() => (
+                <View style={styles.emptyContainer}>
+                  <Ionicons name="car-outline" size={48} color="#bdc3c7" />
+                  <Text style={styles.emptyText}>Không có phương tiện nào khả dụng</Text>
+                </View>
+              )}
             />
-          )}
-          contentContainerStyle={styles.vehicleList}
-        />
+          </View>
+        </TouchableWithoutFeedback>
       </View>
-    </View>
+    </TouchableWithoutFeedback>
   </Modal>
 );
 
@@ -129,6 +154,13 @@ const ScheduleScreen = () => {
   const [selectingPoint, setSelectingPoint] = useState(null);
   const bottomSheetRef = useRef(null);
   const [showVehicleModal, setShowVehicleModal] = useState(false);
+
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchText, setSearchText] = useState("");
+  const [resultLocation, setResultLocation] = useState([]);
+
+  const [savedAddresses, setSavedAddresses] = useState([]);
+  const [showSavedAddressesView, setShowSavedAddressesView] = useState(false);
 
   // Platform specific date picker handling
   const showPicker = (type) => {
@@ -196,6 +228,10 @@ const ScheduleScreen = () => {
       await getNearLocation(coordinate);
     }
     handleBlur(selectingPoint + "Location");
+    // Reset search state when selecting on map
+    setSearchText("");
+    setResultLocation([]);
+    setIsSearching(false);
   };
 
   const getNearLocation = async (coordinate) => {
@@ -264,10 +300,8 @@ const ScheduleScreen = () => {
       if (res.status === 200) {
         showAlert({
           title: "Thành công",
-          message: "Tao lịch trình thành công",
+          message: res.data.message,
           type: "success",
-          autoClose: true,
-          autoCloseTime: 3000,
         });
       }
     } catch (error) {
@@ -277,9 +311,17 @@ const ScheduleScreen = () => {
         responseData?.message === "Validation failed"
       ) {
         const validationMessages = Object.values(responseData.data).join("\n");
-        Alert.alert("Lỗi xác thực", validationMessages);
+        showAlert({
+          title: "Lỗi xác thực",
+          message: validationMessages,
+          type: "error",
+        });
       } else {
-        Alert.alert("Lỗi", error.response?.data?.message || "Đã xảy ra lỗi!");
+        showAlert({
+          title: "Lỗi",
+          message: error.response?.data?.message || "Đã xảy ra lỗi!",
+          type: "error",
+        });
       }
     }
   };
@@ -351,6 +393,140 @@ const ScheduleScreen = () => {
     })();
   }, []);
 
+  useEffect(() => {
+    loadSavedAddresses();
+  }, []);
+
+  const loadSavedAddresses = async () => {
+    try {
+      const savedAddressesString = await AsyncStorage.getItem("savedAddressesSchedule");
+      if (savedAddressesString) {
+        const addresses = JSON.parse(savedAddressesString);
+        setSavedAddresses(addresses);
+      }
+    } catch (error) {
+      console.error("Error loading saved addresses:", error);
+    }
+  };
+
+  const saveAddress = async (address) => {
+    try {
+      const savedAddressesString = await AsyncStorage.getItem("savedAddressesSchedule");
+      let addresses = [];
+      if (savedAddressesString) {
+        addresses = JSON.parse(savedAddressesString);
+      }
+
+      const isDuplicate = addresses.some(
+        (saved) => saved.address === address.formatted_address
+      );
+
+      if (isDuplicate) {
+        showAlert({
+          title: "Thông báo",
+          message: "Địa chỉ này đã được lưu!",
+          type: "warning",
+        });
+        return;
+      }
+
+      const newAddress = {
+        id: Date.now().toString(),
+        name: address.name || address.formatted_address,
+        address: address.formatted_address,
+        latitude: address.geometry.location.lat,
+        longitude: address.geometry.location.lng,
+      };
+
+      addresses.push(newAddress);
+      await AsyncStorage.setItem("savedAddressesSchedule", JSON.stringify(addresses));
+      setSavedAddresses(addresses);
+      showAlert({
+        title: "Thành công",
+        message: "Đã lưu địa chỉ thành công",
+        type: "success",
+      });
+    } catch (error) {
+      console.error("Error saving address:", error);
+      showAlert({
+        title: "Lỗi",
+        message: "Không thể lưu địa chỉ. Vui lòng thử lại.",
+        type: "error",
+      });
+    }
+  };
+
+  const deleteAddress = async (addressId) => {
+    try {
+      const savedAddressesString = await AsyncStorage.getItem("savedAddressesSchedule");
+      if (savedAddressesString) {
+        let addresses = JSON.parse(savedAddressesString);
+        addresses = addresses.filter((address) => address.id !== addressId);
+        await AsyncStorage.setItem("savedAddressesSchedule", JSON.stringify(addresses));
+        setSavedAddresses(addresses);
+        showAlert({
+          title: "Thành công",
+          message: "Đã xóa địa chỉ thành công",
+          type: "success",
+        });
+      }
+    } catch (error) {
+      console.error("Error deleting address:", error);
+      showAlert({
+        title: "Lỗi",
+        message: "Không thể xóa địa chỉ. Vui lòng thử lại.",
+        type: "error",
+      });
+    }
+  };
+
+  const handleSavedAddressSelect = (savedAddress) => {
+    const location = {
+      latitude: savedAddress.latitude,
+      longitude: savedAddress.longitude,
+    };
+
+    if (selectingPoint === "start") {
+      setLocations((prev) => ({
+        ...prev,
+        startLocation: location,
+      }));
+      setTitlePickup(savedAddress.address);
+      setStartLocationAddress(savedAddress.address);
+    } else {
+      setLocations((prev) => ({
+        ...prev,
+        endLocation: location,
+      }));
+      setTitleDropoff(savedAddress.address);
+      setEndLocationAddress(savedAddress.address);
+    }
+
+    setShowSavedAddressesView(false);
+    setIsMapVisible(false);
+  };
+
+  const renderSavedAddressItem = ({ item }) => (
+    <TouchableOpacity
+      style={styles.savedAddressItem}
+      onPress={() => handleSavedAddressSelect(item)}
+    >
+      <View style={styles.savedAddressContent}>
+        <Ionicons name="location" size={24} color="#00b5ec" />
+        <View style={styles.savedAddressDetails}>
+          <Text style={styles.savedAddressName}>{item.name}</Text>
+          <Text style={styles.savedAddressText}>{item.address}</Text>
+        </View>
+        <TouchableOpacity
+          style={styles.deleteAddressButton}
+          onPress={() => deleteAddress(item.id)}
+        >
+          <Ionicons name="trash-outline" size={20} color="#ff4444" />
+        </TouchableOpacity>
+      </View>
+    </TouchableOpacity>
+  );
+
   // Render date picker based on platform
   const renderDatePicker = () => {
     if (!showDatePicker) return null;
@@ -386,7 +562,6 @@ const ScheduleScreen = () => {
       }));
       setTitlePickup(item.formatted_address);
       setStartLocationAddress(item.formatted_address);
-      handleBlur("startLocation"); // Thêm dòng này
     } else {
       setLocations((prev) => ({
         ...prev,
@@ -394,7 +569,6 @@ const ScheduleScreen = () => {
       }));
       setTitleDropoff(item.formatted_address);
       setEndLocationAddress(item.formatted_address);
-      handleBlur("endLocation"); // Thêm dòng này
     }
   };
 
@@ -414,6 +588,182 @@ const ScheduleScreen = () => {
           : "Chọn phương tiện"}
       </Text>
       <Ionicons name="chevron-down" size={24} color="#95a5a6" style={styles.inputIcon} />
+    </TouchableOpacity>
+  );
+
+  const findLocation = async () => {
+    try {
+      if (!searchText || searchText.trim().length < 3) {
+        setResultLocation([]);
+        return;
+      }
+
+      let token = await AsyncStorage.getItem("token");
+      if (!token) {
+        showAlert({
+          title: "Lỗi",
+          message: "Vui lòng đăng nhập lại",
+          type: "error",
+        });
+        return;
+      }
+
+      const res = await axios.get(
+        `${BASE_URL}/api/location/address-geocode?address=${encodeURIComponent(
+          searchText.trim()
+        )}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          timeout: 10000,
+        }
+      );
+
+      if (res.data && res.data.data && res.data.data.results) {
+        const result = res.data.data.results;
+        if (!result || result.length === 0) {
+          setResultLocation([]);
+          showAlert({
+            title: "Thông báo",
+            message: "Không tìm thấy địa điểm nào.",
+            type: "warning",
+          });
+          return;
+        }
+        setResultLocation(result);
+      } else {
+        setResultLocation([]);
+        showAlert({
+          title: "Thông báo",
+          message: "Không tìm thấy địa điểm nào.",
+          type: "warning",
+        });
+      }
+    } catch (error) {
+      console.error("Lỗi khi tìm kiếm:", error);
+      setResultLocation([]);
+
+      if (error.response) {
+        switch (error.response.status) {
+          case 409:
+            showAlert({
+              title: "Thông báo",
+              message: "Vui lòng nhập ít nhất 3 ký tự để tìm kiếm.",
+              type: "warning",
+            });
+            break;
+          case 401:
+            showAlert({
+              title: "Lỗi",
+              message: "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
+              type: "error",
+            });
+            break;
+          case 429:
+            showAlert({
+              title: "Thông báo",
+              message: "Bạn đã tìm kiếm quá nhiều lần. Vui lòng thử lại sau.",
+              type: "warning",
+            });
+            break;
+          default:
+            showAlert({
+              title: "Lỗi",
+              message: "Không thể tìm kiếm địa điểm. Vui lòng thử lại sau.",
+              type: "error",
+            });
+        }
+      } else if (error.code === "ECONNABORTED") {
+        showAlert({
+          title: "Lỗi",
+          message: "Kết nối quá chậm. Vui lòng thử lại.",
+          type: "error",
+        });
+      } else {
+        showAlert({
+          title: "Lỗi",
+          message: "Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng.",
+          type: "error",
+        });
+      }
+    }
+  };
+
+  const handleSearchChange = (text) => {
+    setSearchText(text);
+    setIsSearching(true);
+    // Clear locationState when searching
+    setLocationState([]);
+    if (text.length >= 3) {
+      findLocation();
+    } else {
+      setResultLocation([]);
+    }
+  };
+
+  const renderLocationItem = ({ item }) => (
+    <TouchableOpacity
+      style={styles.locationItem}
+      onPress={() => {
+        if (!item.geometry?.location?.lat || !item.geometry?.location?.lng) {
+          console.error("Dữ liệu tọa độ không hợp lệ:", item);
+          showAlert({
+            title: "Lỗi",
+            message: "Địa điểm này không có tọa độ hợp lệ.",
+            type: "error",
+          });
+          return;
+        }
+        const newLocation = {
+          latitude: item.geometry.location.lat,
+          longitude: item.geometry.location.lng,
+        };
+        if (selectingPoint === "start") {
+          setLocations((prev) => ({
+            ...prev,
+            startLocation: newLocation,
+          }));
+          setTitlePickup(item.formatted_address);
+          setStartLocationAddress(item.formatted_address);
+        } else {
+          setLocations((prev) => ({
+            ...prev,
+            endLocation: newLocation,
+          }));
+          setTitleDropoff(item.formatted_address);
+          setEndLocationAddress(item.formatted_address);
+        }
+        // Clear search state after selecting location
+        setSearchText("");
+        setResultLocation([]);
+        setIsSearching(false);
+        setIsMapVisible(false);
+      }}
+    >
+      <View style={styles.locationItemContent}>
+        <View style={styles.locationIconContainer}>
+          <Ionicons name="location-outline" size={20} color="#00b5ec" />
+        </View>
+        <View style={styles.locationDetails}>
+          <Text style={styles.locationMainText}>
+            {item.name || item.address_components?.[0]?.long_name || "Không có tên"}
+          </Text>
+          <Text style={styles.locationSubText} numberOfLines={2}>
+            {item.formatted_address}
+          </Text>
+        </View>
+        <TouchableOpacity
+          style={styles.saveAddressButton}
+          onPress={(e) => {
+            e.stopPropagation(); // Prevent triggering parent onPress
+            saveAddress(item);
+          }}
+        >
+          <Ionicons name="bookmark-outline" size={20} color="#00b5ec" />
+        </TouchableOpacity>
+      </View>
     </TouchableOpacity>
   );
 
@@ -536,75 +886,126 @@ const ScheduleScreen = () => {
       </KeyboardAvoidingView>
 
       <Modal visible={isMapVisible} animationType="slide">
-        <GestureHandlerRootView>
-          <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalHeaderText}>
-                {selectingPoint === "start"
-                  ? "Chọn điểm bắt đầu"
-                  : "Chọn điểm kết thúc"}
-              </Text>
-            </View>
+        <GestureHandlerRootView style={styles.modalContainer}>
+          <View style={styles.mapContainer}>
             <MapView
               style={styles.map}
               initialRegion={initialRegion}
-              onPress={handleMapPress}
-              showsUserLocation={true}
+              onPress={(e) => handleMapPress(e)}
             >
               {locations.startLocation && selectingPoint === "start" && (
-                <Marker
-                  coordinate={locations.startLocation}
-                  title="Điểm bắt đầu"
-                  pinColor="green"
-                />
+                <Marker coordinate={locations.startLocation} title="Điểm bắt đầu" />
               )}
               {locations.endLocation && selectingPoint === "end" && (
-                <Marker
-                  coordinate={locations.endLocation}
-                  title="Điểm kết thúc"
-                  pinColor="red"
-                />
+                <Marker coordinate={locations.endLocation} title="Điểm kết thúc" />
               )}
             </MapView>
+
             <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => setIsMapVisible(false)}
+              style={styles.mapBackButton}
+              onPress={() => {
+                setIsMapVisible(false);
+                setShowSavedAddressesView(false);
+              }}
             >
-              <Ionicons name="arrow-back-outline" size={24}></Ionicons>
+              <Ionicons name="arrow-back" size={24} color="#333" />
             </TouchableOpacity>
-            <BottomSheet
-              ref={bottomSheetRef}
-              index={0}
-              snapPoints={["50%"]}
-            >
-              <BottomSheetView>
-                <FlatList
-                  data={locationState}
-                  keyExtractor={(item, index) => index.toString()}
-                  renderItem={({ item }) => (
+
+            {showSavedAddressesView ? (
+              <View style={styles.savedAddressesOverlay}>
+                <View style={styles.savedAddressesContainer}>
+                  <View style={styles.savedAddressesHeader}>
+                    <Text style={styles.savedAddressesTitle}>
+                      {selectingPoint === "start" ? "Chọn điểm bắt đầu" : "Chọn điểm kết thúc"}
+                    </Text>
                     <TouchableOpacity
-                      style={styles.locationItem}
-                      onPress={() => handleNearLocationPress(item)}
+                      onPress={() => setShowSavedAddressesView(false)}
+                      style={styles.closeModalButton}
                     >
-                      <Ionicons
-                        name="location-outline"
-                        size={24}
-                        color="black"
-                      />
-                      <Text>{item.formatted_address}</Text>
+                      <Ionicons name="close" size={24} color="#333" />
                     </TouchableOpacity>
+                  </View>
+                  <FlatList
+                    data={savedAddresses}
+                    renderItem={renderSavedAddressItem}
+                    keyExtractor={(item) => item.id}
+                    style={styles.savedAddressesList}
+                    ListEmptyComponent={() => (
+                      <Text style={styles.noAddressesText}>
+                        Chưa có địa chỉ nào được lưu
+                      </Text>
+                    )}
+                  />
+                </View>
+              </View>
+            ) : (
+              <>
+                <View style={styles.searchContainer}>
+                  <View style={styles.searchInputContainer}>
+                    <TextInput
+                      style={styles.searchInput}
+                      placeholder="Tìm kiếm địa điểm..."
+                      onFocus={() => setIsSearching(true)}
+                      value={searchText}
+                      onChangeText={handleSearchChange}
+                    />
+                    <TouchableOpacity
+                      style={styles.savedAddressesButton}
+                      onPress={() => setShowSavedAddressesView(true)}
+                    >
+                      <Ionicons name="bookmark" size={24} color="#00b5ec" />
+                    </TouchableOpacity>
+                  </View>
+                  {isSearching && resultLocation && resultLocation.length > 0 && (
+                    <View style={styles.searchResults}>
+                      <FlatList
+                        data={resultLocation}
+                        renderItem={renderLocationItem}
+                        keyExtractor={(item) => item.place_id}
+                        keyboardShouldPersistTaps="handled"
+                      />
+                    </View>
                   )}
-                />
-                <TouchableOpacity
-                  style={styles.confirmLocation}
-                  onPress={() => {
-                    setIsMapVisible(false);
-                  }}
-                >
-                  <Text style={styles.confirmText}>Xác nhận </Text>
-                </TouchableOpacity>
-              </BottomSheetView>
-            </BottomSheet>
+                </View>
+
+                {!isSearching && locationState && locationState.length > 0 && (
+                  <BottomSheet ref={bottomSheetRef} index={0} snapPoints={["30%"]}>
+                    <BottomSheetView>
+                      <View style={styles.nearbyLocationsHeader}>
+                        <Text style={styles.nearbyLocationsTitle}>Địa điểm gần đó</Text>
+                      </View>
+                      <FlatList
+                        data={locationState}
+                        keyExtractor={(item, index) => index.toString()}
+                        renderItem={({ item }) => (
+                          <TouchableOpacity
+                            style={styles.locationItem}
+                            onPress={() => handleNearLocationPress(item)}
+                          >
+                            <View style={styles.locationItemContent}>
+                              <View style={styles.locationIconContainer}>
+                                <Ionicons name="location-outline" size={20} color="#00b5ec" />
+                              </View>
+                              <View style={styles.locationDetails}>
+                                <Text style={styles.locationMainText}>
+                                  {item.formatted_address}
+                                </Text>
+                              </View>
+                            </View>
+                          </TouchableOpacity>
+                        )}
+                      />
+                      <TouchableOpacity
+                        style={styles.confirmButton}
+                        onPress={() => setIsMapVisible(false)}
+                      >
+                        <Text style={styles.confirmButtonText}>Xác nhận vị trí</Text>
+                      </TouchableOpacity>
+                    </BottomSheetView>
+                  </BottomSheet>
+                )}
+              </>
+            )}
           </View>
         </GestureHandlerRootView>
       </Modal>
@@ -746,73 +1147,229 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     flex: 1,
+    backgroundColor: '#fff',
   },
-  modalHeader: {
-    backgroundColor: "#f5f5f5",
-    alignItems: "center",
-  },
-  modalHeaderText: {
-    fontSize: 16,
-    fontWeight: "bold",
+  mapContainer: {
+    flex: 1,
+    position: 'relative',
   },
   map: {
     flex: 1,
+    width: '100%',
+    height: '100%',
   },
-  resetButton: {
-    position: "absolute",
-    backgroundColor: "#FF3B30",
-    height: 50,
-    alignItems: "center",
-    justifyContent: "center",
-    margin: 20,
-    bottom: 10,
-    padding: 10,
-    borderRadius: 10,
-  },
-  resetButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
+  searchContainer: {
+    position: 'absolute',
+    top: 60,
+    left: 16,
+    right: 16,
+    zIndex: 10,
   },
   closeButton: {
-    position: "absolute",
-    backgroundColor: "#00b5ec",
-    height: 50,
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 8,
+    zIndex: 10,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  savedAddressesOverlay: {
+    position: 'absolute',
+    top:60,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#fff',
+    zIndex: 20,
+  },
+  savedAddressesContainer: {
+    flex: 1,
+    backgroundColor: '#fff',
+    marginTop: 50,
+  },
+  savedAddressesHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
-    justifyContent: "center",
-    margin: 20,
-    bottom: 10,
-    right: 10,
-    padding: 10,
-    borderRadius: 10,
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e0e0e0",
+    backgroundColor: "#fff",
   },
-  closeButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: 600,
-    fontSize: 16,
-  },
-  confirmLocation: {
-    backgroundColor: "#00b5ec",
-    height: 50,
-    alignItems: "center",
-    justifyContent: "center",
-    margin: 20,
-    borderRadius: 10,
-  },
-  confirmText: {
-    fontWeight: 600,
+  savedAddressesTitle: {
     fontSize: 18,
-    color: "#fff",
+    fontWeight: "bold",
+    color: "#333",
+  },
+  savedAddressesList: {
+    flex: 1,
+    backgroundColor: "#fff",
+    padding: 16,
+  },
+  savedAddressItem: {
+    backgroundColor: "#f9f9f9",
+    borderRadius: 12,
+    marginBottom: 12,
+    overflow: "hidden",
+  },
+  savedAddressContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+  },
+  savedAddressDetails: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  savedAddressName: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 4,
+  },
+  savedAddressText: {
+    fontSize: 14,
+    color: "#666",
+  },
+  deleteAddressButton: {
+    padding: 8,
+  },
+  noAddressesText: {
+    textAlign: "center",
+    color: "#666",
+    padding: 20,
+  },
+  savedAddressesButton: {
+    padding: 12,
+    borderLeftWidth: 1,
+    borderLeftColor: "#e0e0e0",
+  },
+  closeModalButton: {
+    padding: 8,
+  },
+  nearbyLocationsHeader: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e0e0e0",
+  },
+  nearbyLocationsTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#333",
   },
   locationItem: {
-    flex: 1,
-    flexDirection: "row",
-    height: 50,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
   },
-  vehicleContainer: {
-    backgroundColor: "#f5f5f5",
-    borderRadius: 8,
+  locationItemContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  locationIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#f0f8ff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  locationDetails: {
+    flex: 1,
+  },
+  locationMainText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333',
+    marginBottom: 4,
+  },
+  locationSubText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  saveAddressButton: {
+    padding: 8,
+    marginLeft: 8,
+  },
+  searchInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  searchInput: {
+    flex: 1,
+    padding: 12,
+    fontSize: 16,
+  },
+  searchResults: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    marginTop: 8,
+    maxHeight: 300,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  confirmButton: {
+    backgroundColor: '#00b5ec',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginVertical: 8,
+  },
+  confirmButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#fff',  
+    borderBottomWidth: 1,
+    borderBottomColor: '#e9ecef',
+  },
+  backButton: {
+    padding: 8,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#2c3e50',
+  },
+  headerRight: {
+    width: 40, // Same width as backButton for alignment
   },
   modalOverlay: {
     flex: 1,
@@ -831,12 +1388,23 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
+    borderBottomColor: '#e0e0e0',
+  },
+  headerLeft: {
+    width: 40,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#2c3e50',
+    flex: 1,
+    textAlign: 'center',
+  },
+  closeButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   vehicleList: {
     padding: 16,
@@ -844,25 +1412,25 @@ const styles = StyleSheet.create({
   vehicleItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
     backgroundColor: '#f8f9fa',
     borderRadius: 12,
+    padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#e9ecef',
+    borderColor: '#e0e0e0',
   },
   vehicleItemSelected: {
     backgroundColor: '#00b5ec',
     borderColor: '#00b5ec',
   },
   vehicleIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#fff',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#e8f4f8',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 16,
   },
   vehicleInfo: {
     flex: 1,
@@ -876,33 +1444,55 @@ const styles = StyleSheet.create({
   vehiclePlate: {
     fontSize: 14,
     color: '#7f8c8d',
+    marginBottom: 8,
+  },
+  vehicleDetails: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  vehicleDetailItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  vehicleDetailText: {
+    fontSize: 12,
+    color: '#7f8c8d',
+    marginLeft: 4,
   },
   vehicleTextSelected: {
     color: '#fff',
   },
   checkmarkContainer: {
-    marginLeft: 12,
+    marginLeft: 8,
   },
-  header: {
-    flexDirection: 'row',
+  emptyContainer: {
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    justifyContent: 'center',
+    padding: 32,
+  },
+  emptyText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#7f8c8d',
+    textAlign: 'center',
+  },
+  mapBackButton: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
     backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
-  },
-  backButton: {
+    borderRadius: 8,
     padding: 8,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#2c3e50',
-  },
-  headerRight: {
-    width: 40, // Same width as backButton for alignment
+    zIndex: 10,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
 });
 
