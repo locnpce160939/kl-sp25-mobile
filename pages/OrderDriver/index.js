@@ -72,6 +72,7 @@ const OrderDriver = ({ route }) => {
 
       if (response.data.code === 200) {
         setBookings(Array.isArray(response.data.data) ? response.data.data : []);
+        console.log(response.data.data)
       } else {
         throw new Error("Dữ liệu từ server không đúng định dạng");
       }
@@ -240,9 +241,11 @@ const OrderDriver = ({ route }) => {
     >
       <View style={styles.cardHeader}>
         <Text style={styles.bookingId}>Booking #{booking.bookingId}</Text>
-        <Text style={styles.status}>
-          {getTripBookingStatusText(booking.status)} {/* Áp dụng hàm ánh xạ */}
-        </Text>
+        <View>
+          <Text style={styles.status}>
+            {getTripBookingStatusText(booking.status)}
+          </Text>
+        </View>
       </View>
       <View style={styles.cardContent}>
         <View style={styles.locationContainer}>
@@ -303,7 +306,7 @@ const OrderDriver = ({ route }) => {
                   Booking #{selectedBooking.bookingId}
                 </Text>
                 <Text style={styles.bookingType}>
-                  {selectedBooking.bookingType || "N/A"}
+                  {selectedBooking.notes || "N/A"}
                 </Text>
               </View>
             </View>
@@ -417,13 +420,6 @@ const OrderDriver = ({ route }) => {
                   <Text style={styles.dateLabel}>Ngày đặt hàng</Text>
                   <Text style={styles.dateValue}>
                     {formatDate(selectedBooking.bookingDate)}
-                  </Text>
-                </View>
-                <View style={styles.dateItem}>
-                  <Icon name="event-busy" size={20} color="#dc3545" />
-                  <Text style={styles.dateLabel}>Ngày hết hạn</Text>
-                  <Text style={styles.dateValue}>
-                    {formatDate(selectedBooking.expirationDate)}
                   </Text>
                 </View>
                 <View style={styles.dateItem}>
@@ -621,6 +617,11 @@ const styles = StyleSheet.create({
     color: "#0066cc",
     fontWeight: "500",
   },
+  note: {
+    fontSize: 12,
+    color: "#999",
+    marginTop: 2,
+  },
   cardContent: {
     gap: 8,
   },
@@ -695,9 +696,7 @@ const styles = StyleSheet.create({
     color: "#0066cc",
   },
   bookingMeta: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: "columns",
   },
   bookingType: {
     fontSize: 14,
@@ -812,7 +811,7 @@ const styles = StyleSheet.create({
   },
   dateGrid: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "space-around",
     flexWrap: "wrap",
   },
   dateItem: {
