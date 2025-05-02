@@ -68,6 +68,8 @@ const ImageCameraField = ({
   error,
   onScanComplete,
   scanEnabled = true,
+  isFront = true,
+  setFormData,
 }) => {
   const [isLoading, setIsLoading] = useState(false);
 
@@ -94,7 +96,7 @@ const ImageCameraField = ({
         const imageData = {
           uri,
           type: "image/jpeg",
-          name: `photo_${Date.now()}.jpg`,
+          name: isFront ? "front.jpg" : "back.jpg",
         };
         onImageSelect(imageData);
         return;
@@ -102,103 +104,90 @@ const ImageCameraField = ({
 
       const formData = new FormData();
       formData.append("file", {
-        uri,
+        uri: uri,
         type: "image/jpeg",
-        name: `photo_${Date.now()}.jpg`,
+        name: `scan_${Date.now()}.jpg`,
       });
 
-      // Thử endpoint chính
-      let response;
-      try {
-        console.log(`[${label}] Thử endpoint chính: https://scan-id.ftcs.online/uploader`);
-        response = await fetch(
-          "https://scan-id.ftcs.online/uploader",
-          {
-            method: "POST",
-            body: formData,
-            headers: {
-              "Content-Type": "multipart/form-data",
-              Accept: "application/json",
-            },
-            timeout: 30000,
-          }
-        );
-      } catch (error) {
-        console.log(`[${label}] Lỗi endpoint chính:`, error);
-        // Thử endpoint dự phòng
-        console.log(`[${label}] Thử endpoint dự phòng: https://api.ftcs.online/ocr`);
-        response = await fetch(
-          "https://api.ftcs.online/ocr",
-          {
-            method: "POST",
-            body: formData,
-            headers: {
-              "Content-Type": "multipart/form-data",
-              Accept: "application/json",
-            },
-            timeout: 30000,
-          }
-        );
+      console.log('Gửi request đến API OCR');
+      const response = await fetch("https://scan.ftcs.online/id_card", {
+        method: "POST",
+        body: formData,
+        headers: {
+          "Content-Type": "multipart/form-data",
+          Accept: "application/json",
+        },
+      });
+
+      console.log('Response status:', response.status);
+      const data = await response.json();
+      console.log('Dữ liệu OCR nhận được:', JSON.stringify(data, null, 2));
+
+      if (!data || !data.text_results) {
+        throw new Error("Không thể đọc thông tin từ ảnh");
       }
 
-      console.log(`[${label}] Response status:`, response.status);
-      console.log(`[${label}] Response headers:`, response.headers);
+      let scannedData = {};
+      
+      if (isFront) {
+        scannedData = {
+          idNumber: data.text_results.id || "",
+          fullName: data.text_results.name || "",
+          birthday: data.text_results.dob ? formatDateForInput(data.text_results.dob) : "",
+          gender: data.text_results.gender || "",
+          country: data.text_results.nationality || "",
+          permanentStreetAddress: data.text_results.current_place || "",
+          temporaryStreetAddress: data.text_results.origin_place || "",
+          expiryDate: data.text_results.expire_date ? formatDateForInput(data.text_results.expire_date) : "",
+        };
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        if (setFormData) {
+          setFormData(prev => ({
+            ...prev,
+            idNumber: scannedData.idNumber || prev.idNumber,
+            fullName: scannedData.fullName || prev.fullName,
+            birthday: scannedData.birthday || prev.birthday,
+            gender: scannedData.gender || prev.gender,
+            country: scannedData.country || prev.country,
+            permanentStreetAddress: scannedData.permanentStreetAddress || prev.permanentStreetAddress,
+            temporaryStreetAddress: scannedData.temporaryStreetAddress || prev.temporaryStreetAddress,
+            expiryDate: scannedData.expiryDate || prev.expiryDate,
+          }));
+        }
+      } else {
+        scannedData = {
+          issueDate: data.text_results.issue_date ? formatDateForInput(data.text_results.issue_date) : "",
+          issuedBy: data.text_results.place_of_issue || "",
+        };
+
+        if (setFormData) {
+          setFormData(prev => ({
+            ...prev,
+            issueDate: scannedData.issueDate || prev.issueDate,
+            issuedBy: scannedData.issuedBy || prev.issuedBy,
+          }));
+        }
       }
-
-      const responseData = await response.json();
-      console.log(`[${label}] Response data:`, responseData);
-
-      // Xử lý dữ liệu OCR từ cả hai endpoint
-      const scannedData = {
-        idNumber: responseData.id_number || responseData.idNumber || "",
-        fullName: responseData.full_name || responseData.fullName || "",
-        birthday: responseData.dob || responseData.birthday ? formatDateForInput(responseData.dob || responseData.birthday) : "",
-        gender: responseData.gender || "",
-        country: responseData.nationality || responseData.country || "",
-        permanentStreetAddress: responseData.residence || responseData.address || "",
-        expiryDate: responseData.expiry_date || responseData.expiryDate ? formatDateForInput(responseData.expiry_date || responseData.expiryDate) : "",
-      };
-
-      console.log(`[${label}] Dữ liệu đã xử lý:`, scannedData);
 
       if (onScanComplete) {
-        console.log(`[${label}] Gọi onScanComplete với dữ liệu:`, scannedData);
         onScanComplete(scannedData);
       }
 
       const imageData = {
         uri,
         type: "image/jpeg",
-        name: `photo_${Date.now()}.jpg`,
+        name: isFront ? "front.jpg" : "back.jpg",
       };
       onImageSelect(imageData);
     } catch (error) {
-      console.error(`[${label}] Lỗi khi quét ảnh:`, {
-      //  message: error.message,
-        stack: error.stack,
-        response: error.response,
-      });
-
-      // let errorMessage = "Không thể quét thông tin từ ảnh. Vui lòng thử lại.";
-      if (error.message.includes("timeout")) {
-        errorMessage = "Kết nối quá thời gian. Vui lòng kiểm tra mạng.";
-      } else if (error.message.includes("Network")) {
-        errorMessage = "Lỗi kết nối mạng. Vui lòng thử lại.";
-      } 
-      // else if (error.message.includes("HTTP error")) {
-      //  // errorMessage = "Lỗi kết nối với máy chủ OCR. Vui lòng thử lại sau.";
-      // }
-
-      Alert.alert("Lỗi", errorMessage, [{ text: "OK" }]);
+      console.error(`[${label}] Lỗi khi quét ảnh:`, error);
+      Alert.alert("Lỗi", "Không thể quét thông tin từ ảnh. Vui lòng thử lại.");
 
       // Vẫn cho phép chọn ảnh dù scan thất bại
       const imageData = {
         uri,
         type: "image/jpeg",
-        name: `photo_${Date.now()}.jpg`,
+        name: isFront ? "front.jpg" : "back.jpg",
       };
       onImageSelect(imageData);
     } finally {
@@ -980,42 +969,19 @@ const CreateDriverIdentificationScreen = ({ navigation, initialData }) => {
         throw new Error("Access token not found");
       }
 
-      // Prepare form data
-      const formDataToSend = new FormData();
-
-      // Append files if they exist
-      if (formData.frontFile) {
-        formDataToSend.append("frontFile", {
-          uri: formData.frontFile.uri,
-          type: "image/jpeg",
-          name: "front.jpeg",
-        });
-      }
-
-      if (formData.backFile) {
-        formDataToSend.append("backFile", {
-          uri: formData.backFile.uri,
-          type: "image/jpeg",
-          name: "back.jpeg",
-        });
-      }
-
-      // Format dates properly
-     // Format dates properly
-const formatDate = (dateString) => {
-  if (!dateString) return "";
-  try {
-    const date = new Date(dateString);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    
-    return `${year}-${month}-${day}T00:00:00`;
-  } catch (error) {
-    console.warn("Error formatting date:", error);
-    return "";
-  }
-};
+      const formatDate = (dateString) => {
+        if (!dateString) return "";
+        try {
+          const date = new Date(dateString);
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}T00:00:00`;
+        } catch (error) {
+          console.warn("Error formatting date:", error);
+          return "";
+        }
+      };
 
       // Create requestDTO object with proper formatting
       const requestDTO = {
@@ -1034,19 +1000,59 @@ const formatDate = (dateString) => {
         temporaryStreetAddress: formData.temporaryStreetAddress?.trim() || "",
         issueDate: formatDate(formData.issueDate),
         expiryDate: formatDate(formData.expiryDate),
-        issuedBy: formData.issuedBy?.trim() || ""
+        issuedBy: formData.issuedBy?.trim() || "",
       };
 
-      // Append requestDTO as JSON string
-      formDataToSend.append("requestDTO", JSON.stringify(requestDTO));
+      console.log('\n========== API REQUEST DATA ==========');
+      console.log('API URL:', `${BASE_URL}/api/registerDriver/identification`);
+      console.log('Method: POST');
+      console.log('Content-Type: multipart/form-data');
+      
+      console.log('\n1. requestDTO:');
+      console.log(JSON.stringify(requestDTO, null, 2));
+      
+      console.log('\n2. Headers:');
+      console.log({
+        'Authorization': `Bearer ${accessToken.trim()}`,
+        'Content-Type': 'multipart/form-data'
+      });
+
+      const submitFormData = new FormData();
+      submitFormData.append("requestDTO", JSON.stringify(requestDTO));
+
+      // Add images
+      if (formData.frontFile) {
+        const frontFile = {
+          uri: formData.frontFile.uri,
+          type: "image/jpeg",
+          name: "front.jpg"
+        };
+        submitFormData.append("frontFile", frontFile);
+        console.log('Front image file:', frontFile);
+      }
+
+      if (formData.backFile) {
+        const backFile = {
+          uri: formData.backFile.uri,
+          type: "image/jpeg",
+          name: "back.jpg"
+        };
+        submitFormData.append("backFile", backFile);
+        console.log('Back image file:', backFile);
+      }
+
+      console.log('FormData entries:');
+      for (let [key, value] of submitFormData.entries()) {
+        console.log(key, value);
+      }
 
       // Call update API
       const response = await axios.post(
         `${BASE_URL}/api/registerDriver/identification`,
-        formDataToSend,
+        submitFormData,
         {
           headers: {
-            Authorization: `Bearer ${accessToken}`,
+            Authorization: `Bearer ${accessToken.trim()}`,
             "Content-Type": "multipart/form-data",
           },
         }
@@ -1059,12 +1065,18 @@ const formatDate = (dateString) => {
           type: "success",
           autoClose: true,
         });
-    //    navigation.navigate("Home");
+        navigation.goBack();
       }
     } catch (error) {
       console.error("Error during form submission:", error);
-      const errorMessage =
-        error.response?.data?.message || "Có lỗi xảy ra khi xử lý yêu cầu";
+      let errorMessage = "Có lỗi xảy ra khi xử lý yêu cầu";
+      
+      if (error.response?.status === 403) {
+        errorMessage = "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.";
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      
       Alert.alert("Lỗi", errorMessage);
     } finally {
       setIsLoading(false);
@@ -1074,94 +1086,275 @@ const formatDate = (dateString) => {
   const handleScanPress = () => {
     Alert.alert(
       "Quét CCCD",
-      "Bạn có muốn quét CCCD để tự động điền thông tin?",
+      "Vui lòng chọn mặt CCCD cần quét",
       [
         {
           text: "Hủy",
           style: "cancel"
         },
         {
-          text: "Chụp ảnh",
+          text: "Quét mặt trước",
           onPress: () => {
-            // Show camera picker
-            ImagePicker.launchCameraAsync({
-              mediaTypes: ImagePicker.MediaTypeOptions.Images,
-              allowsEditing: true,
-              aspect: [4, 3],
-              quality: 0.5,
-            }).then((result) => {
-              if (!result.canceled && result.assets?.[0]?.uri) {
-                processScanImage(result.assets[0].uri);
-              }
-            });
+            Alert.alert(
+              "Quét mặt trước CCCD",
+              "Vui lòng chọn cách thức quét",
+              [
+                {
+                  text: "Hủy",
+                  style: "cancel"
+                },
+                {
+                  text: "Chụp ảnh",
+                  onPress: async () => {
+                    const hasPermission = await requestPermissions();
+                    if (!hasPermission) return;
+
+                    const result = await ImagePicker.launchCameraAsync({
+                      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                      allowsEditing: true,
+                      aspect: [4, 3],
+                      quality: 0.5,
+                    });
+
+                    if (!result.canceled && result.assets?.[0]?.uri) {
+                      try {
+                        const imageData = {
+                          uri: result.assets[0].uri,
+                          type: "image/jpeg",
+                          name: "front.jpg",
+                        };
+                        handleInputChange("frontFile", imageData);
+
+                        const formData = new FormData();
+                        formData.append("file", {
+                          uri: result.assets[0].uri,
+                          type: "image/jpeg",
+                          name: `scan_${Date.now()}.jpg`,
+                        });
+
+                        const response = await fetch("https://scan.ftcs.online/id_card", {
+                          method: "POST",
+                          body: formData,
+                          headers: {
+                            "Content-Type": "multipart/form-data",
+                            Accept: "application/json",
+                          },
+                        });
+
+                        const data = await response.json();
+                        if (data && data.text_results) {
+                          setFormData(prev => ({
+                            ...prev,
+                            idNumber: data.text_results.id || prev.idNumber,
+                            fullName: data.text_results.name || prev.fullName,
+                            birthday: data.text_results.dob ? formatDateForInput(data.text_results.dob) : prev.birthday,
+                            gender: data.text_results.gender || prev.gender,
+                            country: data.text_results.nationality || prev.country,
+                            permanentStreetAddress: data.text_results.current_place || prev.permanentStreetAddress,
+                            temporaryStreetAddress: data.text_results.origin_place || prev.temporaryStreetAddress,
+                            expiryDate: data.text_results.expire_date ? formatDateForInput(data.text_results.expire_date) : prev.expiryDate,
+                          }));
+                        }
+                      } catch (error) {
+                        console.error("Error scanning front:", error);
+                        Alert.alert("Lỗi", "Không thể quét thông tin từ ảnh. Vui lòng thử lại.");
+                      }
+                    }
+                  }
+                },
+                {
+                  text: "Chọn từ thư viện",
+                  onPress: async () => {
+                    const result = await ImagePicker.launchImageLibraryAsync({
+                      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                      allowsEditing: true,
+                      aspect: [4, 3],
+                      quality: 0.5,
+                    });
+
+                    if (!result.canceled && result.assets?.[0]?.uri) {
+                      try {
+                        const imageData = {
+                          uri: result.assets[0].uri,
+                          type: "image/jpeg",
+                          name: "front.jpg",
+                        };
+                        handleInputChange("frontFile", imageData);
+
+                        const formData = new FormData();
+                        formData.append("file", {
+                          uri: result.assets[0].uri,
+                          type: "image/jpeg",
+                          name: `scan_${Date.now()}.jpg`,
+                        });
+
+                        const response = await fetch("https://scan.ftcs.online/id_card", {
+                          method: "POST",
+                          body: formData,
+                          headers: {
+                            "Content-Type": "multipart/form-data",
+                            Accept: "application/json",
+                          },
+                        });
+
+                        const data = await response.json();
+                        if (data && data.text_results) {
+                          setFormData(prev => ({
+                            ...prev,
+                            idNumber: data.text_results.id || prev.idNumber,
+                            fullName: data.text_results.name || prev.fullName,
+                            birthday: data.text_results.dob ? formatDateForInput(data.text_results.dob) : prev.birthday,
+                            gender: data.text_results.gender || prev.gender,
+                            country: data.text_results.nationality || prev.country,
+                            permanentStreetAddress: data.text_results.current_place || prev.permanentStreetAddress,
+                            temporaryStreetAddress: data.text_results.origin_place || prev.temporaryStreetAddress,
+                            expiryDate: data.text_results.expire_date ? formatDateForInput(data.text_results.expire_date) : prev.expiryDate,
+                          }));
+                        }
+                      } catch (error) {
+                        console.error("Error scanning front:", error);
+                        Alert.alert("Lỗi", "Không thể quét thông tin từ ảnh. Vui lòng thử lại.");
+                      }
+                    }
+                  }
+                }
+              ]
+            );
           }
         },
         {
-          text: "Chọn từ thư viện",
+          text: "Quét mặt sau",
           onPress: () => {
-            // Show library picker
-            ImagePicker.launchImageLibraryAsync({
-              mediaTypes: ImagePicker.MediaTypeOptions.Images,
-              allowsEditing: true,
-              aspect: [4, 3],
-              quality: 0.5,
-            }).then((result) => {
-              if (!result.canceled && result.assets?.[0]?.uri) {
-                processScanImage(result.assets[0].uri);
-              }
-            });
+            Alert.alert(
+              "Quét mặt sau CCCD",
+              "Vui lòng chọn cách thức quét",
+              [
+                {
+                  text: "Hủy",
+                  style: "cancel"
+                },
+                {
+                  text: "Chụp ảnh",
+                  onPress: async () => {
+                    const hasPermission = await requestPermissions();
+                    if (!hasPermission) return;
+
+                    const result = await ImagePicker.launchCameraAsync({
+                      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                      allowsEditing: true,
+                      aspect: [4, 3],
+                      quality: 0.5,
+                    });
+
+                    if (!result.canceled && result.assets?.[0]?.uri) {
+                      try {
+                        const imageData = {
+                          uri: result.assets[0].uri,
+                          type: "image/jpeg",
+                          name: "back.jpg",
+                        };
+                        handleInputChange("backFile", imageData);
+
+                        const formData = new FormData();
+                        formData.append("file", {
+                          uri: result.assets[0].uri,
+                          type: "image/jpeg",
+                          name: `scan_${Date.now()}.jpg`,
+                        });
+
+                        const response = await fetch("https://scan.ftcs.online/id_card", {
+                          method: "POST",
+                          body: formData,
+                          headers: {
+                            "Content-Type": "multipart/form-data",
+                            Accept: "application/json",
+                          },
+                        });
+
+                        const data = await response.json();
+                        if (data && data.text_results) {
+                          setFormData(prev => ({
+                            ...prev,
+                            issueDate: data.text_results.issue_date ? formatDateForInput(data.text_results.issue_date) : prev.issueDate,
+                            issuedBy: data.text_results.place_of_issue || prev.issuedBy,
+                          }));
+                        }
+                      } catch (error) {
+                        console.error("Error scanning back:", error);
+                        Alert.alert("Lỗi", "Không thể quét thông tin từ ảnh. Vui lòng thử lại.");
+                      }
+                    }
+                  }
+                },
+                {
+                  text: "Chọn từ thư viện",
+                  onPress: async () => {
+                    const result = await ImagePicker.launchImageLibraryAsync({
+                      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                      allowsEditing: true,
+                      aspect: [4, 3],
+                      quality: 0.5,
+                    });
+
+                    if (!result.canceled && result.assets?.[0]?.uri) {
+                      try {
+                        const imageData = {
+                          uri: result.assets[0].uri,
+                          type: "image/jpeg",
+                          name: "back.jpg",
+                        };
+                        handleInputChange("backFile", imageData);
+
+                        const formData = new FormData();
+                        formData.append("file", {
+                          uri: result.assets[0].uri,
+                          type: "image/jpeg",
+                          name: `scan_${Date.now()}.jpg`,
+                        });
+
+                        const response = await fetch("https://scan.ftcs.online/id_card", {
+                          method: "POST",
+                          body: formData,
+                          headers: {
+                            "Content-Type": "multipart/form-data",
+                            Accept: "application/json",
+                          },
+                        });
+
+                        const data = await response.json();
+                        if (data && data.text_results) {
+                          setFormData(prev => ({
+                            ...prev,
+                            issueDate: data.text_results.issue_date ? formatDateForInput(data.text_results.issue_date) : prev.issueDate,
+                            issuedBy: data.text_results.place_of_issue || prev.issuedBy,
+                          }));
+                        }
+                      } catch (error) {
+                        console.error("Error scanning back:", error);
+                        Alert.alert("Lỗi", "Không thể quét thông tin từ ảnh. Vui lòng thử lại.");
+                      }
+                    }
+                  }
+                }
+              ]
+            );
           }
         }
       ]
     );
   };
 
-  const processScanImage = async (uri) => {
-    try {
-      // Process the image
-      const formData = new FormData();
-      formData.append("file", {
-        uri: uri,
-        type: "image/jpeg",
-        name: `scan_${Date.now()}.jpg`,
-      });
-
-      // Call OCR API
-      const response = await fetch("https://scan-id.ftcs.online/uploader", {
-        method: "POST",
-        body: formData,
-        headers: {
-          "Content-Type": "multipart/form-data",
-          Accept: "application/json",
-        },
-      });
-
-      const data = await response.json();
-
-      // Process scanned data similar to ImageCameraField
-      const scannedData = {
-        idNumber: data.id_number || data.idNumber || "",
-        fullName: data.full_name || data.fullName || "",
-        birthday: data.dob || data.birthday ? formatDateForInput(data.dob || data.birthday) : "",
-        gender: data.gender || "",
-        country: data.nationality || data.country || "",
-        permanentStreetAddress: data.residence || data.address || "",
-        expiryDate: data.expiry_date || data.expiryDate ? formatDateForInput(data.expiry_date || data.expiryDate) : "",
-      };
-
-      // Update form data with scanned information
-      if (scannedData) {
-        handleInputChange("idNumber", scannedData.idNumber);
-        handleInputChange("fullName", scannedData.fullName);
-        handleInputChange("birthday", scannedData.birthday);
-        handleInputChange("gender", scannedData.gender);
-        handleInputChange("country", scannedData.country);
-        handleInputChange("permanentStreetAddress", scannedData.permanentStreetAddress);
-        setShowScanNotification(false); // Hide notification after successful scan
-      }
-    } catch (error) {
-      Alert.alert("Lỗi", "Không thể quét thông tin từ ảnh. Vui lòng thử lại.");
+  const requestPermissions = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert(
+        "Quyền truy cập bị từ chối",
+        "Cần quyền camera để sử dụng tính năng này",
+        [{ text: "OK" }]
+      );
+      return false;
     }
+    return true;
   };
 
   const renderPersonalInfo = () => (
@@ -1368,17 +1561,28 @@ const formatDate = (dateString) => {
             handleInputChange("gender", data.gender);
             handleInputChange("country", data.country);
             handleInputChange("permanentStreetAddress", data.permanentStreetAddress);
+            handleInputChange("temporaryStreetAddress", data.temporaryStreetAddress);
+            handleInputChange("expiryDate", data.expiryDate);
           }
         }}
         error={errors.frontFile}
+        isFront={true}
+        setFormData={setFormData}
       />
 
       <ImageCameraField
         label="Ảnh mặt sau CCCD"
         image={formData.backFile}
         onImageSelect={(file) => handleInputChange("backFile", file)}
+        onScanComplete={(data) => {
+          if (data) {
+            handleInputChange("issueDate", data.issueDate);
+            handleInputChange("issuedBy", data.issuedBy);
+          }
+        }}
         error={errors.backFile}
-        scanEnabled={false}
+        isFront={false}
+        setFormData={setFormData}
       />
     </View>
   );

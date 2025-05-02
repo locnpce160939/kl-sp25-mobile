@@ -68,6 +68,8 @@ const ImageCameraField = ({
   error,
   onScanComplete,
   scanEnabled = true,
+  isFront = true,
+  setFormData,
 }) => {
   const [isLoading, setIsLoading] = useState(false);
 
@@ -84,6 +86,28 @@ const ImageCameraField = ({
     return true;
   };
 
+  const formatDateForInput = (dateString) => {
+    if (!dateString) return "";
+    try {
+      if (dateString.includes("/")) {
+        // Xử lý ngày dạng "DD/MM/YYYY"
+        const [day, month, year] = dateString.split("/");
+        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T00:00:00`;
+      }
+      
+      // Xử lý trường hợp dateString là chuỗi ngày tháng thông thường
+      const date = new Date(dateString);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      
+      return `${year}-${month}-${day}T00:00:00`;
+    } catch (error) {
+      console.warn(`[${label}] Lỗi định dạng ngày:`, dateString);
+      return "";
+    }
+  };
+
   const processImage = async (uri) => {
     try {
       setIsLoading(true);
@@ -94,7 +118,7 @@ const ImageCameraField = ({
         const imageData = {
           uri,
           type: "image/jpeg",
-          name: `photo_${Date.now()}.jpg`,
+          name: isFront ? "front.jpg" : "back.jpg",
         };
         onImageSelect(imageData);
         return;
@@ -104,15 +128,15 @@ const ImageCameraField = ({
       formData.append("file", {
         uri,
         type: "image/jpeg",
-        name: `photo_${Date.now()}.jpg`,
+        name: `scan_${Date.now()}.jpg`,
       });
 
       // Thử endpoint chính
       let response;
       try {
-        console.log(`[${label}] Thử endpoint chính: https://scan-id.ftcs.online/uploader`);
+        console.log(`[${label}] Thử endpoint chính: https://scan.ftcs.online/id_card`);
         response = await fetch(
-          "https://scan-id.ftcs.online/uploader",
+          "https://scan.ftcs.online/id_card",
           {
             method: "POST",
             body: formData,
@@ -126,9 +150,9 @@ const ImageCameraField = ({
       } catch (error) {
         console.log(`[${label}] Lỗi endpoint chính:`, error);
         // Thử endpoint dự phòng
-        console.log(`[${label}] Thử endpoint dự phòng: https://api.ftcs.online/ocr`);
+        console.log(`[${label}] Thử endpoint dự phòng: https://scan.ftcs.online/id_card`);
         response = await fetch(
-          "https://api.ftcs.online/ocr",
+          "https://scan.ftcs.online/id_card",
           {
             method: "POST",
             body: formData,
@@ -151,16 +175,54 @@ const ImageCameraField = ({
       const responseData = await response.json();
       console.log(`[${label}] Response data:`, responseData);
 
+      // Kiểm tra xem responseData có chứa text_results không
+      if (!responseData || !responseData.text_results) {
+        throw new Error("Không thể đọc thông tin từ ảnh");
+      }
+
       // Xử lý dữ liệu OCR từ cả hai endpoint
-      const scannedData = {
-        idNumber: responseData.id_number || responseData.idNumber || "",
-        fullName: responseData.full_name || responseData.fullName || "",
-        birthday: responseData.dob || responseData.birthday ? formatDateForInput(responseData.dob || responseData.birthday) : "",
-        gender: responseData.gender || "",
-        country: responseData.nationality || responseData.country || "",
-        permanentStreetAddress: responseData.residence || responseData.address || "",
-        expiryDate: responseData.expiry_date || responseData.expiryDate ? formatDateForInput(responseData.expiry_date || responseData.expiryDate) : "",
-      };
+      let scannedData = {};
+      
+      if (isFront) {
+        scannedData = {
+          idNumber: responseData.text_results.id || "",
+          fullName: responseData.text_results.name || "",
+          birthday: responseData.text_results.dob ? formatDateForInput(responseData.text_results.dob) : "",
+          gender: responseData.text_results.gender || "",
+          country: responseData.text_results.nationality || "",
+          permanentStreetAddress: responseData.text_results.current_place || "",
+          temporaryStreetAddress: responseData.text_results.origin_place || "",
+          issueDate: "",
+          expiryDate: responseData.text_results.expire_date ? formatDateForInput(responseData.text_results.expire_date) : "",
+        };
+
+        if (setFormData) {
+          setFormData(prev => ({
+            ...prev,
+            idNumber: scannedData.idNumber || prev.idNumber,
+            fullName: scannedData.fullName || prev.fullName,
+            birthday: scannedData.birthday || prev.birthday,
+            gender: scannedData.gender || prev.gender,
+            country: scannedData.country || prev.country,
+            permanentStreetAddress: scannedData.permanentStreetAddress || prev.permanentStreetAddress,
+            temporaryStreetAddress: scannedData.temporaryStreetAddress || prev.temporaryStreetAddress,
+            expiryDate: scannedData.expiryDate || prev.expiryDate,
+          }));
+        }
+      } else {
+        scannedData = {
+          issueDate: responseData.text_results.issue_date ? formatDateForInput(responseData.text_results.issue_date) : "",
+          issuedBy: responseData.text_results.place_of_issue || "",
+        };
+
+        if (setFormData) {
+          setFormData(prev => ({
+            ...prev,
+            issueDate: scannedData.issueDate || prev.issueDate,
+            issuedBy: scannedData.issuedBy || prev.issuedBy,
+          }));
+        }
+      }
 
       console.log(`[${label}] Dữ liệu đã xử lý:`, scannedData);
 
@@ -172,7 +234,7 @@ const ImageCameraField = ({
       const imageData = {
         uri,
         type: "image/jpeg",
-        name: `photo_${Date.now()}.jpg`,
+        name: isFront ? "front.jpg" : "back.jpg",
       };
       onImageSelect(imageData);
     } catch (error) {
@@ -197,33 +259,11 @@ const ImageCameraField = ({
       const imageData = {
         uri,
         type: "image/jpeg",
-        name: `photo_${Date.now()}.jpg`,
+        name: isFront ? "front.jpg" : "back.jpg",
       };
       onImageSelect(imageData);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const formatDateForInput = (dateString) => {
-    if (!dateString) return "";
-    try {
-      if (dateString.includes("/")) {
-        // Xử lý ngày dạng "DD/MM/YYYY"
-        const [day, month, year] = dateString.split("/");
-        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T00:00:00`;
-      }
-      
-      // Xử lý trường hợp dateString là chuỗi ngày tháng thông thường
-      const date = new Date(dateString);
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      
-      return `${year}-${month}-${day}T00:00:00`;
-    } catch (error) {
-      console.warn(`[${label}] Lỗi định dạng ngày:`, dateString);
-      return "";
     }
   };
 
@@ -849,44 +889,23 @@ const UpdateDriverIdentificationScreen = ({ navigation, initialData }) => {
         throw new Error("Access token not found");
       }
 
-      // Prepare form data
-      const formDataToSend = new FormData();
-
-      // Append files if they exist
-      if (formData.frontFile) {
-        formDataToSend.append("frontFile", {
-          uri: formData.frontFile.uri,
-          type: "image/jpeg",
-          name: "front.jpeg",
-        });
-      }
-
-      if (formData.backFile) {
-        formDataToSend.append("backFile", {
-          uri: formData.backFile.uri,
-          type: "image/jpeg",
-          name: "back.jpeg",
-        });
-      }
-
       // Format dates properly
-    // Format dates properly
-const formatDate = (dateString) => {
-  if (!dateString) return "";
-  try {
-    const date = new Date(dateString);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    
-    return `${year}-${month}-${day}T00:00:00`;
-  } catch (error) {
-    console.warn("Error formatting date:", error);
-    return "";
-  }
-};
+      const formatDate = (dateString) => {
+        if (!dateString) return "";
+        try {
+          const date = new Date(dateString);
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          
+          return `${year}-${month}-${day}T00:00:00`;
+        } catch (error) {
+          console.warn("Error formatting date:", error);
+          return "";
+        }
+      };
 
-      // Create requestDTO object with proper formatting
+      // Create requestDTO object
       const requestDTO = {
         idNumber: formData.idNumber.trim(),
         fullName: formData.fullName.trim(),
@@ -906,10 +925,39 @@ const formatDate = (dateString) => {
         issuedBy: formData.issuedBy?.trim() || ""
       };
 
-      // Append requestDTO as JSON string
-      formDataToSend.append("requestDTO", JSON.stringify(requestDTO));
+      // Create FormData
+      const formDataToSend = new FormData();
 
-      // Call update API
+      // Append requestDTO as string
+      formDataToSend.append('requestDTO', JSON.stringify(requestDTO));
+
+      // Append files if they exist
+      if (formData.frontFile?.uri) {
+        // For front file, we'll always send the file data
+        formDataToSend.append('frontFile', {
+          uri: formData.frontFile.uri,
+          type: 'image/jpeg',
+          name: `front_${Date.now()}.jpeg`
+        });
+      }
+
+      if (formData.backFile?.uri) {
+        // For back file, we'll always send the file data
+        formDataToSend.append('backFile', {
+          uri: formData.backFile.uri,
+          type: 'image/jpeg',
+          name: `back_${Date.now()}.jpeg`
+        });
+      }
+
+      // Log the data being sent
+      console.log('Request DTO:', requestDTO);
+      console.log('FormData entries:');
+      for (let [key, value] of formDataToSend.entries()) {
+        console.log(key, value);
+      }
+
+      // Use axios with PUT method
       const response = await axios.put(
         `${BASE_URL}/api/registerDriver/identification`,
         formDataToSend,
@@ -928,12 +976,27 @@ const formatDate = (dateString) => {
           type: "success",
           autoClose: true,
         });
-        // navigation.navigate("Home");
+        navigation.goBack();
       }
     } catch (error) {
-      console.error("Error during form submission:", error);
-      const errorMessage =
-        error.response?.data?.message || "Có lỗi xảy ra khi xử lý yêu cầu";
+      console.error("Error during form submission:", {
+        message: error.message,
+        stack: error.stack,
+        response: error.response?.data
+      });
+
+      let errorMessage = "Có lỗi xảy ra khi xử lý yêu cầu";
+      
+      if (error.message.includes("Network Error")) {
+        errorMessage = "Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng.";
+      } else if (error.message.includes("timeout")) {
+        errorMessage = "Yêu cầu quá thời gian. Vui lòng thử lại.";
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else {
+        errorMessage = error.message || "Có lỗi xảy ra khi xử lý yêu cầu";
+      }
+
       Alert.alert("Lỗi", errorMessage);
     } finally {
       setIsLoading(false);
@@ -1135,16 +1198,28 @@ const formatDate = (dateString) => {
             handleInputChange("gender", data.gender);
             handleInputChange("country", data.country);
             handleInputChange("permanentStreetAddress", data.permanentStreetAddress);
+            handleInputChange("temporaryStreetAddress", data.temporaryStreetAddress);
+            handleInputChange("expiryDate", data.expiryDate);
           }
         }}
         error={errors.frontFile}
+        isFront={true}
+        setFormData={setFormData}
       />
 
       <ImageCameraField
         label="Ảnh mặt sau CCCD"
         image={formData.backFile}
         onImageSelect={(file) => handleInputChange("backFile", file)}
+        onScanComplete={(data) => {
+          if (data) {
+            handleInputChange("issueDate", data.issueDate);
+            handleInputChange("issuedBy", data.issuedBy);
+          }
+        }}
         error={errors.backFile}
+        isFront={false}
+        setFormData={setFormData}
       />
     </View>
   );

@@ -304,10 +304,14 @@ const LicenseScreen = () => {
               quality: 0.5,
             });
             if (!result.canceled) {
-              setLicenseDetails((prev) => ({
-                ...prev,
-                [view]: result.assets[0].uri,
-              }));
+              if (view === "frontView") {
+                await processImage(result.assets[0].uri);
+              } else {
+                setLicenseDetails((prev) => ({
+                  ...prev,
+                  [view]: result.assets[0].uri,
+                }));
+              }
               setErrors((prev) => ({ ...prev, [view]: null }));
             }
           },
@@ -322,10 +326,14 @@ const LicenseScreen = () => {
               quality: 0.5,
             });
             if (!result.canceled) {
-              setLicenseDetails((prev) => ({
-                ...prev,
-                [view]: result.assets[0].uri,
-              }));
+              if (view === "frontView") {
+                await processImage(result.assets[0].uri);
+              } else {
+                setLicenseDetails((prev) => ({
+                  ...prev,
+                  [view]: result.assets[0].uri,
+                }));
+              }
               setErrors((prev) => ({ ...prev, [view]: null }));
             }
           },
@@ -334,6 +342,116 @@ const LicenseScreen = () => {
       ],
       { cancelable: true }
     );
+  };
+
+  const processImage = async (uri) => {
+    try {
+      setLoading(true);
+      console.log("Bắt đầu xử lý ảnh bằng lái:", uri);
+
+      const formData = new FormData();
+      formData.append("file", {
+        uri,
+        type: "image/jpeg",
+        name: `license_${Date.now()}.jpg`,
+      });
+
+      console.log("Đang gửi request OCR...");
+      
+      const response = await fetch("https://scan.ftcs.online/license", {
+        method: "POST",
+        body: formData,
+        headers: {
+          "Content-Type": "multipart/form-data",
+          Accept: "application/json",
+        },
+        timeout: 30000,
+      });
+
+      console.log("Response status:", response.status);
+      console.log("Response headers:", response.headers);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const responseData = await response.json();
+      console.log("Dữ liệu quét được:", responseData);
+
+      // Xử lý dữ liệu quét được
+      const scannedData = {
+        licenseNumber: responseData.id?.trim() || "",
+        licenseType: responseData.type_lisence?.trim() || "",
+        issuedDate: responseData.year ? `${responseData.year}-${responseData.month}-${responseData.day}` : "",
+        expiryDate: responseData.thoi_han ? formatDateForInput(responseData.thoi_han) : "",
+        issuingAuthority: responseData.province?.trim() || "",
+      };
+
+      console.log("Dữ liệu đã xử lý:", scannedData);
+
+      // Cập nhật form với dữ liệu quét được
+      setLicenseDetails(prev => ({
+        ...prev,
+        ...scannedData,
+        frontView: uri
+      }));
+
+    } catch (error) {
+      console.error("Lỗi khi quét ảnh:", {
+        message: error.message,
+        stack: error.stack,
+        response: error.response,
+      });
+
+      let errorMessage = "Không thể quét thông tin từ ảnh. Vui lòng thử lại.";
+      
+      if (error.message.includes("timeout")) {
+        errorMessage = "Kết nối quá thời gian. Vui lòng kiểm tra mạng.";
+      } else if (error.message.includes("Network")) {
+        errorMessage = "Lỗi kết nối mạng. Vui lòng thử lại.";
+      } else if (error.message.includes("HTTP error")) {
+        errorMessage = "Lỗi kết nối với máy chủ OCR. Vui lòng thử lại sau.";
+      }
+
+      Alert.alert(
+        "Lỗi",
+        errorMessage,
+        [
+          {
+            text: "Thử lại",
+            onPress: () => selectImage("frontView")
+          },
+          {
+            text: "Bỏ qua",
+            onPress: () => {
+              setLicenseDetails(prev => ({
+                ...prev,
+                frontView: uri
+              }));
+            }
+          }
+        ]
+      );
+
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatDateForInput = (dateString) => {
+    if (!dateString) return "";
+    try {
+      // Xử lý các định dạng ngày khác nhau
+      if (dateString.includes("/")) {
+        const [day, month, year] = dateString.split("/");
+        return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+      }
+      // Nếu đã ở định dạng ISO
+      return new Date(dateString).toISOString().split("T")[0];
+    } catch (error) {
+      console.warn("Lỗi định dạng ngày:", dateString);
+      return "";
+    }
   };
 
   const updateLicenseDetails = async () => {
@@ -354,6 +472,8 @@ const LicenseScreen = () => {
         issuingAuthority: licenseDetails.issuingAuthority,
       };
 
+      console.log('Request DTO:', JSON.stringify(requestDTO, null, 2));
+
       const formData = new FormData();
       formData.append("requestDTO", JSON.stringify(requestDTO));
 
@@ -365,6 +485,7 @@ const LicenseScreen = () => {
           name: "front.jpg",
         };
         formData.append("frontFile", frontFile);
+        console.log('Front image file:', frontFile);
       }
 
       if (licenseDetails.backView) {
@@ -374,6 +495,12 @@ const LicenseScreen = () => {
           name: "back.jpg",
         };
         formData.append("backFile", backFile);
+        console.log('Back image file:', backFile);
+      }
+
+      console.log('FormData entries:');
+      for (let [key, value] of formData.entries()) {
+        console.log(key, value);
       }
 
       const { data, status } = await axios.put(
@@ -423,6 +550,8 @@ const LicenseScreen = () => {
         issuingAuthority: licenseDetails.issuingAuthority,
       };
 
+      console.log('Request DTO:', JSON.stringify(requestDTO, null, 2));
+
       const formData = new FormData();
       formData.append("requestDTO", JSON.stringify(requestDTO));
 
@@ -433,6 +562,7 @@ const LicenseScreen = () => {
           name: "front.jpg",
         };
         formData.append("frontFile", frontFile);
+        console.log('Front image file:', frontFile);
       }
 
       if (licenseDetails.backView) {
@@ -442,6 +572,12 @@ const LicenseScreen = () => {
           name: "back.jpg",
         };
         formData.append("backFile", backFile);
+        console.log('Back image file:', backFile);
+      }
+
+      console.log('FormData entries:');
+      for (let [key, value] of formData.entries()) {
+        console.log(key, value);
       }
 
       // Gửi request
