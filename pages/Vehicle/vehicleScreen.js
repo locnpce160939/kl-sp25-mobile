@@ -29,8 +29,8 @@ const VALIDATION_RULES = {
   licensePlate: {
     label: "Biển số",
     required: "Biển số xe là bắt buộc.",
-    pattern: /^\d{2}[A-Z]-\d{3,5}\d{2}$/,
-    patternError: "Biển số xe không hợp lệ (VD: 51A-12345).",
+    pattern: /^\d{2}[A-Z]-\d{3}(\.\d{2})?$|^\d{2}[A-Z]-\d{5}$/,
+    patternError: "Biển số xe không hợp lệ (VD: 36C-220.52 hoặc 36C-22052).",
     maxLength: 10,
     lengthError: "Biển số xe không được vượt quá 10 ký tự.",
   },
@@ -356,12 +356,15 @@ const VehicleScreen = () => {
       {formData[field] ? (
         <View style={styles.imageWrapper}>
           <Image source={{ uri: formData[field] }} style={styles.vehicleImage} />
-          <TouchableOpacity
-            style={styles.retakeButton}
-            onPress={() => selectImage(field)}
-          >
-            <Text style={styles.retakeButtonText}>Chụp lại</Text>
-          </TouchableOpacity>
+          <View style={styles.imageButtons}>
+            <TouchableOpacity
+              style={styles.retakeButton}
+              onPress={() => selectImage(field)}
+            >
+              <Text style={styles.retakeButtonText}>Chụp lại</Text>
+            </TouchableOpacity>
+
+          </View>
         </View>
       ) : (
         <TouchableOpacity
@@ -493,6 +496,116 @@ const VehicleScreen = () => {
     }
   };
 
+  const processVehicleImage = async (uri) => {
+    try {
+      setLoading(true);
+      console.log("Bắt đầu xử lý ảnh giấy đăng kiểm:", uri);
+
+      const formData = new FormData();
+      formData.append("file", {
+        uri,
+        type: "image/jpeg",
+        name: `vehicle_${Date.now()}.jpg`,
+      });
+
+      console.log("Đang gửi request OCR...");
+      
+      const response = await fetch("https://scan.ftcs.online/vehicle", {
+        method: "POST",
+        body: formData,
+        headers: {
+          "Content-Type": "multipart/form-data",
+          Accept: "application/json",
+        },
+        timeout: 30000,
+      });
+
+      console.log("Response status:", response.status);
+      console.log("Response headers:", response.headers);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const responseData = await response.json();
+      console.log("Dữ liệu quét được:", responseData);
+
+      // Xử lý dữ liệu quét được từ cấu trúc text_results
+      const textResults = responseData.text_results || {};
+      const scannedData = {
+        licensePlate: textResults.license_plate?.trim() || "",
+        vehicleType: textResults.type?.trim() || "",
+        make: textResults.mark?.trim() || "",
+        model: "", // API không trả về model
+        year: textResults.year_of_manufacture?.toString() || "",
+        capacity: textResults.cargo_volume?.split('/')[0]?.trim() || "",
+        dimensions: textResults.size?.trim() || "",
+        registrationExpiryDate: textResults.expiration_date ? formatDateForInput(textResults.expiration_date) : "",
+      };
+
+      console.log("Dữ liệu đã xử lý:", scannedData);
+
+      // Cập nhật form với dữ liệu quét được, không bao gồm ảnh
+      setFormData(prev => ({
+        ...prev,
+        ...scannedData
+      }));
+
+      showNotification("Đã quét thông tin giấy đăng kiểm thành công!", "success");
+
+    } catch (error) {
+      console.error("Lỗi khi quét ảnh:", {
+        message: error.message,
+        stack: error.stack,
+        response: error.response,
+      });
+
+      let errorMessage = "Không thể quét thông tin từ ảnh. Vui lòng thử lại.";
+      
+      if (error.message.includes("timeout")) {
+        errorMessage = "Kết nối quá thời gian. Vui lòng kiểm tra mạng.";
+      } else if (error.message.includes("Network")) {
+        errorMessage = "Lỗi kết nối mạng. Vui lòng thử lại.";
+      } else if (error.message.includes("HTTP error")) {
+        errorMessage = "Lỗi kết nối với máy chủ OCR. Vui lòng thử lại sau.";
+      }
+
+      Alert.alert(
+        "Lỗi",
+        errorMessage,
+        [
+          {
+            text: "Thử lại",
+            onPress: () => selectRegistrationImage()
+          },
+          {
+            text: "Bỏ qua",
+            onPress: () => {}
+          }
+        ]
+      );
+
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatDateForInput = (dateString) => {
+    if (!dateString) return "";
+    try {
+      // Xử lý các định dạng ngày khác nhau
+      if (dateString.includes("/")) {
+        const [day, month, year] = dateString.split("/");
+        return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+      }
+      // Nếu đã ở định dạng ISO
+      return new Date(dateString).toISOString().split("T")[0];
+    } catch (error) {
+      console.warn("Lỗi định dạng ngày:", dateString);
+      return "";
+    }
+  };
+
   // Render Functions
   const renderList = () => (
     <View style={styles.listContainer}>
@@ -536,6 +649,12 @@ const VehicleScreen = () => {
         <Text style={styles.headerTitle}>
           {vehicleId ? "Cập nhật thông tin xe" : "Tạo mới thông tin xe"}
         </Text>
+        <TouchableOpacity 
+          style={styles.scanButton}
+          onPress={() => selectRegistrationImage()}
+        >
+          <Ionicons name="scan-outline" size={28} color="#00b5ec" />
+        </TouchableOpacity>
       </View>
 
       {/* Thông tin cơ bản */}
@@ -610,12 +729,12 @@ const VehicleScreen = () => {
         </View>
       </View>
 
-      {/* Hình ảnh */}
+      {/* Hình ảnh xe */}
       <View style={styles.sectionContainer}>
         <Text style={styles.sectionTitle}>Hình ảnh xe</Text>
         <View style={styles.sectionContent}>
-          <ImageSection field="frontView" label={VALIDATION_RULES.frontView.label} />
-          <ImageSection field="backView" label={VALIDATION_RULES.backView.label} />
+          <ImageSection field="frontView" label="Ảnh mặt trước xe" />
+          <ImageSection field="backView" label="Ảnh mặt sau xe" />
         </View>
       </View>
 
@@ -685,6 +804,62 @@ const VehicleScreen = () => {
     </ScrollView>
   );
 
+  // Thêm hàm mới để xử lý chụp ảnh giấy đăng kiểm
+  const selectRegistrationImage = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== "granted") {
+        showNotification("Cần quyền truy cập camera để sử dụng tính năng này!", "error");
+        return;
+      }
+
+      Alert.alert("Chọn nguồn ảnh", "Chọn nguồn ảnh", [
+        {
+          text: "Chụp ảnh",
+          onPress: async () => {
+            try {
+              const result = await ImagePicker.launchCameraAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                aspect: [4, 3],
+                quality: 0.5,
+              });
+              if (!result.canceled) {
+                await processVehicleImage(result.assets[0].uri);
+              }
+            } catch (error) {
+              showNotification("Không thể mở camera. Vui lòng thử lại!", "error");
+            }
+          },
+        },
+        {
+          text: "Thư viện",
+          onPress: async () => {
+            try {
+              const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                aspect: [4, 3],
+                quality: 0.5,
+              });
+              if (!result.canceled) {
+                await processVehicleImage(result.assets[0].uri);
+              }
+            } catch (error) {
+              showNotification("Không thể mở thư viện ảnh. Vui lòng thử lại!", "error");
+            }
+          },
+        },
+        {
+          text: "Hủy",
+          style: "cancel",
+        },
+      ]);
+    } catch (error) {
+      showNotification("Đã xảy ra lỗi khi chọn ảnh. Vui lòng thử lại!", "error");
+    }
+  };
+
   return viewMode === "list" ? renderList() : renderForm();
 };
 
@@ -725,9 +900,11 @@ const styles = StyleSheet.create({
     color: "#00b5ec",
   },
   headerTitle: {
-    fontSize: 24,
+    flex: 1,
+    fontSize: 18,
     fontWeight: "bold",
     color: "#333",
+    textAlign: 'center',
   },
   vehicleItem: {
     flexDirection: "row",
@@ -1145,6 +1322,28 @@ const styles = StyleSheet.create({
   picker: {
     height: 60,
     width: "100%",
+  },
+  imageButtons: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 10,
+    marginTop: 10,
+  },
+  scanButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#00b5ec',
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
+  },
+  scanButtonText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '500',
   },
 });
 
