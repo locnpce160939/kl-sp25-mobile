@@ -82,9 +82,16 @@ const Insurance = ({route}) => {
       const imageBlob = await response.blob();
       // Append file image
       formData.append("images", imageBlob, "image.jpg");
+
+      // Log the form data being sent
+      console.log('Form Data being sent:', {
+        description: description.trim(),
+        imageUri: image.uri,
+        imageBlob: imageBlob
+      });
   
       const responsePost = await axios.post(
-        `${BASE_URL}/api/tripBookings/insuranceClaim/${bookingId}`, // Corrected endpoint
+        `${BASE_URL}/api/tripBookings/insuranceClaim/${bookingId}`,
         formData,
         {
           headers: {
@@ -92,14 +99,27 @@ const Insurance = ({route}) => {
           },
         }
       );
+
+      // Log the successful response
+      console.log('API Response:', {
+        status: responsePost.status,
+        data: responsePost.data,
+        headers: responsePost.headers
+      });
+
       Alert.alert("Success", "Image and description submitted successfully!");
-      console.log(responsePost.data);
       setImage(null);
       setDescription("");
     } catch (error) {
+      // Log detailed error information
+      console.log('Error Details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        headers: error.response?.headers
+      });
+      
       Alert.alert("Error", `Failed to submit data: ${error.message}`);
-      console.error("Full error:", error);
-      console.error("Error response data:", error.response?.data || "No response data");
     }
   };
   
