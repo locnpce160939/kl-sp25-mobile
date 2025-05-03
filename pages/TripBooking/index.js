@@ -94,8 +94,10 @@ const TripBooking = () => {
       // Update the data array for the dropdown
       setData(formattedData);
 
-      // Set default value if available
-      if (formattedData.length > 0) {
+      // Đảm bảo setBookingType sau khi setData
+      if (route.params?.bookingType !== undefined) {
+        setBookingType(Number(route.params.bookingType));
+      } else if (formattedData.length > 0) {
         setBookingType(formattedData[0].value);
       }
     } catch (error) {
@@ -523,6 +525,12 @@ const TripBooking = () => {
         );
         setInsuranceName(selectedInsurance?.insuranceName || "");
         setInsuranceDescription(selectedInsurance?.insuranceDescription || "");
+      } else if (selectedInsuranceId && newInsurances.some((ins) => ins.insurancePolicyId === selectedInsuranceId)) {
+        const selectedInsurance = newInsurances.find(
+          (ins) => ins.insurancePolicyId === selectedInsuranceId
+        );
+        setInsuranceName(selectedInsurance?.insuranceName || "");
+        setInsuranceDescription(selectedInsurance?.insuranceDescription || "");
       } else {
         setSelectedInsuranceId(null);
         setInsuranceName("");
@@ -671,30 +679,29 @@ const TripBooking = () => {
     const unsubscribe = navigation.addListener("focus", () => {
       const params = route.params || {};
       console.log("Params khi quay lại từ VoucherScreen:", params);
-      if (params.voucherCode) {
+      if (params.voucherCode !== undefined) {
         setVoucherCode(params.voucherCode);
         if (totalPrice.price > 0) calculateDiscount(params.voucherCode);
       }
-      if (params.pickupLocation) setPickupLocation(params.pickupLocation);
-      if (params.dropoffLocation) setDropoffLocation(params.dropoffLocation);
-      if (params.capacity) setCapacity(params.capacity);
-      if (params.paymentMethod) setPaymentMethod(params.paymentMethod);
-      if (params.bookingType) setBookingType(params.bookingType);
-      if (params.bookingDate) setBookingDate(new Date(params.bookingDate));
-      if (params.startLocationAddress)
+      if (params.pickupLocation !== undefined) setPickupLocation(params.pickupLocation);
+      if (params.dropoffLocation !== undefined) setDropoffLocation(params.dropoffLocation);
+      if (params.capacity !== undefined) setCapacity(params.capacity);
+      if (params.paymentMethod !== undefined) setPaymentMethod(params.paymentMethod);
+      if (params.bookingType !== undefined) setBookingType(Number(params.bookingType));
+      if (params.bookingDate !== undefined) setBookingDate(new Date(params.bookingDate));
+      if (params.startLocationAddress !== undefined)
         setStartLocationAddress(params.startLocationAddress);
       if (params.endLocationAddress)
         setEndLocationAddress(params.endLocationAddress);
-      if (params.titlePickup) setTitlePickup(params.titlePickup);
-      if (params.titleDropoff) setTitleDropoff(params.titleDropoff);
-      if (params.notes) setNotes(params.notes);
-      if (params.recipientPhoneNumber)
+      if (params.titlePickup !== undefined) setTitlePickup(params.titlePickup);
+      if (params.titleDropoff !== undefined) setTitleDropoff(params.titleDropoff);
+      if (params.notes !== undefined) setNotes(params.notes);
+      if (params.recipientPhoneNumber !== undefined)
         setRecipientPhoneNumber(params.recipientPhoneNumber);
-      if (params.selectedInsuranceId) {
+      if (params.selectedInsuranceId !== undefined && params.selectedInsuranceId !== null) {
         setSelectedInsuranceId(params.selectedInsuranceId);
         setInsuranceName(params.insuranceName || "");
         setInsuranceDescription(params.insuranceDescription || "");
-        // Gọi getPrice với selectedInsuranceId để cập nhật lại danh sách insurance và trạng thái checkbox
         if (pickupLocation && dropoffLocation && capacity) {
           getPrice(params.selectedInsuranceId);
         }

@@ -29,8 +29,8 @@ const VALIDATION_RULES = {
   licensePlate: {
     label: "Biển số",
     required: "Biển số xe là bắt buộc.",
-    pattern: /^\d{2}[A-Z]-\d{3,5}\d{2}$/,
-    patternError: "Biển số xe không hợp lệ (VD: 51A-12345).",
+    pattern: /^\d{2}[A-Z]-\d{3}(\.\d{2})?$|^\d{2}[A-Z]-\d{5}$/,
+    patternError: "Biển số xe không hợp lệ (VD: 36C-220.52 hoặc 36C-22052).",
     maxLength: 10,
     lengthError: "Biển số xe không được vượt quá 10 ký tự.",
   },
@@ -128,6 +128,9 @@ const VehicleScreen = () => {
   const [notification, setNotification] = useState({ visible: false, message: "", type: "" });
   const notificationOpacity = new Animated.Value(0);
   const { showAlert } = useAlert();
+  // Thêm state cho overlay scan giấy đăng kiểm
+  const [isScanningVehicle, setIsScanningVehicle] = useState(false);
+  const [scanningText, setScanningText] = useState("");
 
   // Effects
   useEffect(() => {
@@ -356,12 +359,15 @@ const VehicleScreen = () => {
       {formData[field] ? (
         <View style={styles.imageWrapper}>
           <Image source={{ uri: formData[field] }} style={styles.vehicleImage} />
-          <TouchableOpacity
-            style={styles.retakeButton}
-            onPress={() => selectImage(field)}
-          >
-            <Text style={styles.retakeButtonText}>Chụp lại</Text>
-          </TouchableOpacity>
+          <View style={styles.imageButtons}>
+            <TouchableOpacity
+              style={styles.retakeButton}
+              onPress={() => selectImage(field)}
+            >
+              <Text style={styles.retakeButtonText}>Chụp lại</Text>
+            </TouchableOpacity>
+
+          </View>
         </View>
       ) : (
         <TouchableOpacity
@@ -493,6 +499,120 @@ const VehicleScreen = () => {
     }
   };
 
+  const processVehicleImage = async (uri) => {
+    try {
+      setIsScanningVehicle(true);
+      setScanningText("Đang quét thông tin...");
+      setLoading(true);
+      console.log("Bắt đầu xử lý ảnh giấy đăng kiểm:", uri);
+
+      const formData = new FormData();
+      formData.append("file", {
+        uri,
+        type: "image/jpeg",
+        name: `vehicle_${Date.now()}.jpg`,
+      });
+
+      console.log("Đang gửi request OCR...");
+      
+      const response = await fetch("https://scan.ftcs.online/vehicle", {
+        method: "POST",
+        body: formData,
+        headers: {
+          "Content-Type": "multipart/form-data",
+          Accept: "application/json",
+        },
+        timeout: 30000,
+      });
+
+      console.log("Response status:", response.status);
+      console.log("Response headers:", response.headers);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const responseData = await response.json();
+      console.log("Dữ liệu quét được:", responseData);
+
+      // Xử lý dữ liệu quét được từ cấu trúc text_results
+      const textResults = responseData.text_results || {};
+      const scannedData = {
+        licensePlate: textResults.license_plate?.trim() || "",
+        vehicleType: textResults.type?.trim() || "",
+        make: textResults.mark?.trim() || "",
+        model: "", // API không trả về model
+        year: textResults.year_of_manufacture?.toString() || "",
+        capacity: textResults.cargo_volume?.split('/')[0]?.trim() || "",
+        dimensions: textResults.size?.trim() || "",
+        registrationExpiryDate: textResults.expiration_date ? formatDateForInput(textResults.expiration_date) : "",
+      };
+
+      console.log("Dữ liệu đã xử lý:", scannedData);
+
+      // Cập nhật form với dữ liệu quét được, không bao gồm ảnh
+      setFormData(prev => ({
+        ...prev,
+        ...scannedData
+      }));
+
+      showNotification("Đã quét thông tin giấy đăng kiểm thành công!", "success");
+
+    } catch (error) {
+      console.error("Lỗi khi quét ảnh:", {
+        message: error.message,
+        stack: error.stack,
+        response: error.response,
+      });
+
+      let errorMessage = "Không thể quét thông tin từ ảnh. Vui lòng thử lại.";
+      
+      if (error.message.includes("timeout")) {
+        errorMessage = "Kết nối quá thời gian. Vui lòng kiểm tra mạng.";
+      } else if (error.message.includes("Network")) {
+        errorMessage = "Lỗi kết nối mạng. Vui lòng thử lại.";
+      } else if (error.message.includes("HTTP error")) {
+        errorMessage = "Lỗi kết nối với máy chủ OCR. Vui lòng thử lại sau.";
+      }
+
+      Alert.alert(
+        "Lỗi",
+        errorMessage,
+        [
+          {
+            text: "Thử lại",
+            onPress: () => selectRegistrationImage()
+          },
+          {
+            text: "Bỏ qua",
+            onPress: () => {}
+          }
+        ]
+      );
+
+    } finally {
+      setLoading(false);
+      setIsScanningVehicle(false);
+      setScanningText("");
+    }
+  };
+
+  const formatDateForInput = (dateString) => {
+    if (!dateString) return "";
+    try {
+      // Xử lý các định dạng ngày khác nhau
+      if (dateString.includes("/")) {
+        const [day, month, year] = dateString.split("/");
+        return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+      }
+      // Nếu đã ở định dạng ISO
+      return new Date(dateString).toISOString().split("T")[0];
+    } catch (error) {
+      console.warn("Lỗi định dạng ngày:", dateString);
+      return "";
+    }
+  };
+
   // Render Functions
   const renderList = () => (
     <View style={styles.listContainer}>
@@ -528,162 +648,235 @@ const VehicleScreen = () => {
   );
 
   const renderForm = () => (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => setViewMode("list")}>
-          <Ionicons name="arrow-back" size={24} color="#00b5ec" style={styles.backIcon} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          {vehicleId ? "Cập nhật thông tin xe" : "Tạo mới thông tin xe"}
-        </Text>
-      </View>
-
-      {/* Thông tin cơ bản */}
-      <View style={styles.sectionContainer}>
-        <Text style={styles.sectionTitle}>Thông tin cơ bản</Text>
-        <View style={styles.sectionContent}>
-          {["licensePlate", "vehicleType", "make", "model"].map((field) => (
-            <View key={field} style={styles.inputContainer}>
-              <Text style={styles.label}>{VALIDATION_RULES[field].label}</Text>
-              <TextInput
-                style={[styles.input, errors[field] && styles.inputError]}
-                placeholder={`Nhập ${VALIDATION_RULES[field].label.toLowerCase()}`}
-                value={formData[field]}
-                onChangeText={(text) => handleInputChange(field, text)}
-              />
-              {errors[field] && <Text style={styles.errorText}>{errors[field]}</Text>}
-            </View>
-          ))}
-        </View>
-      </View>
-
-      {/* Thông số kỹ thuật */}
-      <View style={styles.sectionContainer}>
-        <Text style={styles.sectionTitle}>Thông số kỹ thuật</Text>
-        <View style={styles.sectionContent}>
-          {["year", "capacity", "dimensions"].map((field) => (
-            <View key={field} style={styles.inputContainer}>
-              <Text style={styles.label}>{VALIDATION_RULES[field].label}</Text>
-              <TextInput
-                style={[styles.input, errors[field] && styles.inputError]}
-                placeholder={`Nhập ${VALIDATION_RULES[field].label.toLowerCase()}`}
-                value={formData[field]}
-                keyboardType={field === "year" || field === "capacity" ? "numeric" : "default"}
-                onChangeText={(text) => handleInputChange(field, text)}
-              />
-              {errors[field] && <Text style={styles.errorText}>{errors[field]}</Text>}
-            </View>
-          ))}
-        </View>
-      </View>
-
-      {/* Thông tin pháp lý */}
-      <View style={styles.sectionContainer}>
-        <Text style={styles.sectionTitle}>Thông tin pháp lý</Text>
-        <View style={styles.sectionContent}>
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>{VALIDATION_RULES.insuranceStatus.label}</Text>
-            <View style={[styles.selectContainer, errors.insuranceStatus && styles.inputError]}>
-              <Picker
-                selectedValue={formData.insuranceStatus}
-                onValueChange={(value) => handleInputChange("insuranceStatus", value)}
-                style={styles.picker}
-              >
-                {VALIDATION_RULES.insuranceStatus.options.map((option) => (
-                  <Picker.Item key={option} label={option} value={option} />
-                ))}
-              </Picker>
-            </View>
-            {errors.insuranceStatus && <Text style={styles.errorText}>{errors.insuranceStatus}</Text>}
-          </View>
-
-          <View style={styles.inputContainer}>
-            <DatePickerField
-              label={VALIDATION_RULES.registrationExpiryDate.label}
-              value={formData.registrationExpiryDate}
-              onChange={(value) => handleInputChange("registrationExpiryDate", value)}
-              field="registrationExpiryDate"
-              error={errors.registrationExpiryDate}
-              style={[styles.input, errors.registrationExpiryDate && styles.inputError]}
-            />
-          </View>
-        </View>
-      </View>
-
-      {/* Hình ảnh */}
-      <View style={styles.sectionContainer}>
-        <Text style={styles.sectionTitle}>Hình ảnh xe</Text>
-        <View style={styles.sectionContent}>
-          <ImageSection field="frontView" label={VALIDATION_RULES.frontView.label} />
-          <ImageSection field="backView" label={VALIDATION_RULES.backView.label} />
-        </View>
-      </View>
-
-      <TouchableOpacity 
-        style={[styles.button, isUpdating && styles.buttonDisabled]} 
-        onPress={createOrUpdateVehicle}
-        disabled={isUpdating}
-      >
-        {isUpdating ? (
-          <ActivityIndicator color="#fff" size="small" />
-        ) : (
-          <Text style={styles.buttonText}>
-            {vehicleId ? "Cập nhật" : "Tạo mới"}
+    <View style={{flex:1}}>
+      <ScrollView contentContainerStyle={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => setViewMode("list")}> 
+            <Ionicons name="arrow-back" size={24} color="#00b5ec" style={styles.backIcon} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>
+            {vehicleId ? "Cập nhật thông tin xe" : "Tạo mới thông tin xe"}
           </Text>
-        )}
-      </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.scanButton}
+            onPress={() => selectRegistrationImage()}
+          >
+            <Ionicons name="scan-outline" size={28} color="#00b5ec" />
+          </TouchableOpacity>
+        </View>
 
-      {/* Loading Overlay */}
-      <Modal
-        transparent={true}
-        visible={isUpdating}
-        animationType="fade"
-      >
-        <View style={styles.loadingOverlay}>
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#00b5ec" />
-            <Text style={styles.loadingText}>
-              {vehicleId ? "Đang cập nhật thông tin xe..." : "Đang thêm xe mới..."}
-            </Text>
+        {/* Thông tin cơ bản */}
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionTitle}>Thông tin cơ bản</Text>
+          <View style={styles.sectionContent}>
+            {["licensePlate", "vehicleType", "make", "model"].map((field) => (
+              <View key={field} style={styles.inputContainer}>
+                <Text style={styles.label}>{VALIDATION_RULES[field].label}</Text>
+                <TextInput
+                  style={[styles.input, errors[field] && styles.inputError]}
+                  placeholder={`Nhập ${VALIDATION_RULES[field].label.toLowerCase()}`}
+                  value={formData[field]}
+                  onChangeText={(text) => handleInputChange(field, text)}
+                />
+                {errors[field] && <Text style={styles.errorText}>{errors[field]}</Text>}
+              </View>
+            ))}
           </View>
         </View>
-      </Modal>
 
-      {/* Notification */}
-      {notification.visible && (
-        <Animated.View 
-          style={[
-            styles.notification,
-            { opacity: notificationOpacity },
-            notification.type === "success" ? styles.notificationSuccess : styles.notificationError
-          ]}
+        {/* Thông số kỹ thuật */}
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionTitle}>Thông số kỹ thuật</Text>
+          <View style={styles.sectionContent}>
+            {["year", "capacity", "dimensions"].map((field) => (
+              <View key={field} style={styles.inputContainer}>
+                <Text style={styles.label}>{VALIDATION_RULES[field].label}</Text>
+                <TextInput
+                  style={[styles.input, errors[field] && styles.inputError]}
+                  placeholder={`Nhập ${VALIDATION_RULES[field].label.toLowerCase()}`}
+                  value={formData[field]}
+                  keyboardType={field === "year" || field === "capacity" ? "numeric" : "default"}
+                  onChangeText={(text) => handleInputChange(field, text)}
+                />
+                {errors[field] && <Text style={styles.errorText}>{errors[field]}</Text>}
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* Thông tin pháp lý */}
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionTitle}>Thông tin pháp lý</Text>
+          <View style={styles.sectionContent}>
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>{VALIDATION_RULES.insuranceStatus.label}</Text>
+              <View style={[styles.selectContainer, errors.insuranceStatus && styles.inputError]}>
+                <Picker
+                  selectedValue={formData.insuranceStatus}
+                  onValueChange={(value) => handleInputChange("insuranceStatus", value)}
+                  style={styles.picker}
+                >
+                  {VALIDATION_RULES.insuranceStatus.options.map((option) => (
+                    <Picker.Item key={option} label={option} value={option} />
+                  ))}
+                </Picker>
+              </View>
+              {errors.insuranceStatus && <Text style={styles.errorText}>{errors.insuranceStatus}</Text>}
+            </View>
+
+            <View style={styles.inputContainer}>
+              <DatePickerField
+                label={VALIDATION_RULES.registrationExpiryDate.label}
+                value={formData.registrationExpiryDate}
+                onChange={(value) => handleInputChange("registrationExpiryDate", value)}
+                field="registrationExpiryDate"
+                error={errors.registrationExpiryDate}
+                style={[styles.input, errors.registrationExpiryDate && styles.inputError]}
+              />
+            </View>
+          </View>
+        </View>
+
+        {/* Hình ảnh xe */}
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionTitle}>Hình ảnh xe</Text>
+          <View style={styles.sectionContent}>
+            <ImageSection field="frontView" label="Ảnh mặt trước xe" />
+            <ImageSection field="backView" label="Ảnh mặt sau xe" />
+          </View>
+        </View>
+
+        <TouchableOpacity 
+          style={[styles.button, isUpdating && styles.buttonDisabled]} 
+          onPress={createOrUpdateVehicle}
+          disabled={isUpdating}
         >
-          <View style={[
-            styles.notificationIconContainer,
-            notification.type === "success" ? styles.notificationSuccessIcon : styles.notificationErrorIcon
-          ]}>
-            <Ionicons 
-              name={notification.type === "success" ? "checkmark-circle" : "alert-circle"} 
-              size={24} 
-              style={[
-                styles.notificationIcon,
-                notification.type === "success" ? styles.notificationSuccessIconColor : styles.notificationErrorIconColor
-              ]}
-            />
-          </View>
-          <View style={styles.notificationContent}>
-            <Text style={[
-              styles.notificationTitle,
-              notification.type === "success" ? styles.notificationSuccessTitle : styles.notificationErrorTitle
-            ]}>
-              {notification.type === "success" ? "Thành công" : "Lỗi"}
+          {isUpdating ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <Text style={styles.buttonText}>
+              {vehicleId ? "Cập nhật" : "Tạo mới"}
             </Text>
-            <Text style={styles.notificationMessage}>{notification.message}</Text>
+          )}
+        </TouchableOpacity>
+
+        {/* Loading Overlay */}
+        <Modal
+          transparent={true}
+          visible={isUpdating}
+          animationType="fade"
+        >
+          <View style={styles.loadingOverlay}>
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#00b5ec" />
+              <Text style={styles.loadingText}>
+                {vehicleId ? "Đang cập nhật thông tin xe..." : "Đang thêm xe mới..."}
+              </Text>
+            </View>
           </View>
-        </Animated.View>
+        </Modal>
+
+        {/* Notification */}
+        {notification.visible && (
+          <Animated.View 
+            style={[
+              styles.notification,
+              { opacity: notificationOpacity },
+              notification.type === "success" ? styles.notificationSuccess : styles.notificationError
+            ]}
+          >
+            <View style={[
+              styles.notificationIconContainer,
+              notification.type === "success" ? styles.notificationSuccessIcon : styles.notificationErrorIcon
+            ]}>
+              <Ionicons 
+                name={notification.type === "success" ? "checkmark-circle" : "alert-circle"} 
+                size={24} 
+                style={[
+                  styles.notificationIcon,
+                  notification.type === "success" ? styles.notificationSuccessIconColor : styles.notificationErrorIconColor
+                ]}
+              />
+            </View>
+            <View style={styles.notificationContent}>
+              <Text style={[
+                styles.notificationTitle,
+                notification.type === "success" ? styles.notificationSuccessTitle : styles.notificationErrorTitle
+              ]}>
+                {notification.type === "success" ? "Thành công" : "Lỗi"}
+              </Text>
+              <Text style={styles.notificationMessage}>{notification.message}</Text>
+            </View>
+          </Animated.View>
+        )}
+      </ScrollView>
+      {/* Loading Overlay khi scan giấy đăng kiểm đặt ngoài ScrollView */}
+      {isScanningVehicle && (
+        <View style={styles.scanningOverlay}>
+          <View style={styles.scanningContent}>
+            <ActivityIndicator size="large" color="#00b5ec" />
+            <Text style={styles.scanningText}>{scanningText}</Text>
+          </View>
+        </View>
       )}
-    </ScrollView>
+    </View>
   );
+
+  // Thêm hàm mới để xử lý chụp ảnh giấy đăng kiểm
+  const selectRegistrationImage = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== "granted") {
+        showNotification("Cần quyền truy cập camera để sử dụng tính năng này!", "error");
+        return;
+      }
+
+      Alert.alert("Chọn nguồn ảnh", "Chọn nguồn ảnh", [
+        {
+          text: "Chụp ảnh",
+          onPress: async () => {
+            try {
+              const result = await ImagePicker.launchCameraAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                aspect: [4, 3],
+                quality: 0.5,
+              });
+              if (!result.canceled) {
+                await processVehicleImage(result.assets[0].uri);
+              }
+            } catch (error) {
+              showNotification("Không thể mở camera. Vui lòng thử lại!", "error");
+            }
+          },
+        },
+        {
+          text: "Thư viện",
+          onPress: async () => {
+            try {
+              const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                aspect: [4, 3],
+                quality: 0.5,
+              });
+              if (!result.canceled) {
+                await processVehicleImage(result.assets[0].uri);
+              }
+            } catch (error) {
+              showNotification("Không thể mở thư viện ảnh. Vui lòng thử lại!", "error");
+            }
+          },
+        },
+        {
+          text: "Hủy",
+          style: "cancel",
+        },
+      ]);
+    } catch (error) {
+      showNotification("Đã xảy ra lỗi khi chọn ảnh. Vui lòng thử lại!", "error");
+    }
+  };
 
   return viewMode === "list" ? renderList() : renderForm();
 };
@@ -725,9 +918,11 @@ const styles = StyleSheet.create({
     color: "#00b5ec",
   },
   headerTitle: {
-    fontSize: 24,
+    flex: 1,
+    fontSize: 18,
     fontWeight: "bold",
     color: "#333",
+    textAlign: 'center',
   },
   vehicleItem: {
     flexDirection: "row",
@@ -1146,6 +1341,60 @@ const styles = StyleSheet.create({
     height: 60,
     width: "100%",
   },
+  imageButtons: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 10,
+    marginTop: 10,
+  },
+  scanButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#00b5ec',
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
+  },
+  scanButtonText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '500',
+  },
+  scanningOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  scanningContent: {
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  scanningText: {
+    marginTop: 12,
+    color: '#00b5ec',
+    fontSize: 16,
+    fontWeight: '500',
+  },
 });
 
 export default VehicleScreen;
+
