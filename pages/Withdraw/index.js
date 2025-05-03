@@ -449,7 +449,7 @@ const styles = StyleSheet.create({
     color: "#333",
   },
   withdrawButton: {
-    backgroundColor: "#007AFF",
+    backgroundColor: "#00b5ec",
     borderRadius: 8,
     height: 50,
     justifyContent: "center",

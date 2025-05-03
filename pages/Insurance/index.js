@@ -7,35 +7,41 @@ import {
   Alert,
   StyleSheet,
   TextInput,
+  ScrollView,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import axios from "axios";
 import { BASE_URL } from "../../configUrl";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-
-const Insurance = ({route}) => {
-  const [image, setImage] = useState(null);
-  const [description, setDescription] = useState("");
+const Insurance = ({ route }) => {
+  const [images, setImages] = useState([]);
+  const [claimDescription, setClaimDescription] = useState("");
   const [errors, setErrors] = useState({});
 
   const bookingId = route.params?.bookingId;
 
-  // Request permission on mount
+  // Yêu cầu quyền khi component được mount
   useEffect(() => {
     (async () => {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
         Alert.alert(
-          "Permission denied",
-          "Sorry, we need camera roll permissions to make this work!"
+          "Phản hồi bị từ chối",
+          "Xin lỗi, chúng tôi cần quyền truy cập thư viện ảnh để thực hiện chức năng này!"
         );
       }
     })();
   }, []);
 
-  console.log(bookingId)
+  console.log("Booking ID:", bookingId);
 
   const pickImageFromGallery = async () => {
+    if (images.length >= 5) {
+      Alert.alert("Giới hạn", "Bạn chỉ có thể chọn tối đa 5 ảnh!");
+      return;
+    }
+
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -44,111 +50,126 @@ const Insurance = ({route}) => {
       });
 
       if (!result.canceled) {
-        setImage(result.assets[0]);
+        setImages((prev) => [...prev, result.assets[0]]);
         setErrors((prev) => ({ ...prev, image: "" }));
       }
     } catch (error) {
-      console.log("Error picking image:", error);
-      Alert.alert("Error", "Failed to pick image. Please try again.");
+      console.log("Lỗi khi chọn ảnh:", error);
+      Alert.alert("Lỗi", "Không thể chọn ảnh. Vui lòng thử lại.");
     }
   };
 
-
-  // Hàm validate form
+  // Hàm xác thực form
   const validateForm = () => {
     const newErrors = {};
-    if (!description.trim()) {
-      newErrors.description = "Description is required";
+    if (!claimDescription.trim()) {
+      newErrors.claimDescription = "Mô tả yêu cầu là bắt buộc";
     }
-    if (!image) {
-      newErrors.image = "Please select an image";
+    if (images.length === 0) {
+      newErrors.image = "Vui lòng chọn ít nhất một ảnh";
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  // ...existing code...
   const submitForm = async () => {
     if (!validateForm()) return;
-  
+
     const formData = new FormData();
-  
-    // Append description directly as text
-    formData.append("description", description.trim());
-  
+
+    // Tạo phần data chứa claimDescription dưới dạng JSON
+    const data = {
+      claimDescription: claimDescription.trim(),
+    };
+    formData.append("data", JSON.stringify(data));
+
     try {
-      // Convert image URI to a blob (file)
-      const response = await fetch(image.uri);
-      const imageBlob = await response.blob();
-      // Append file image
-      formData.append("images", imageBlob, "image.jpg");
-  
+      // Lấy token nếu backend yêu cầu
+      const token = await AsyncStorage.getItem("token");
+      if (!token) {
+        throw new Error("Không tìm thấy token xác thực. Vui lòng đăng nhập.");
+      }
+
+      // Thêm tất cả ảnh vào formData
+      for (const [index, img] of images.entries()) {
+        const response = await fetch(img.uri);
+        const imageBlob = await response.blob();
+        formData.append("images[]", imageBlob, `image${index}.jpg`);
+      }
+
       const responsePost = await axios.post(
-        `${BASE_URL}/api/tripBookings/insuranceClaim/${bookingId}`, // Corrected endpoint
+        `${BASE_URL}/api/tripBookings/insuranceClaim/${bookingId}`,
         formData,
         {
           headers: {
             "Content-Type": "multipart/form-data",
+            Authorization: `Bearer ${token}`,
           },
         }
       );
-      Alert.alert("Success", "Image and description submitted successfully!");
-      console.log(responsePost.data);
-      setImage(null);
-      setDescription("");
+      Alert.alert("Thành công", "Yêu cầu bảo hiểm đã được tạo thành công!");
+      console.log("Dữ liệu phản hồi:", responsePost.data);
+      setImages([]);
+      setClaimDescription("");
     } catch (error) {
-      Alert.alert("Error", `Failed to submit data: ${error.message}`);
-      console.error("Full error:", error);
-      console.error("Error response data:", error.response?.data || "No response data");
+      console.log("Lỗi khi gửi form:", error.response ? error.response.data : error.message);
+      Alert.alert(
+        "Lỗi",
+        error.response?.status === 400
+          ? "Yêu cầu không hợp lệ: Kiểm tra lại dữ liệu gửi đi."
+          : error.response?.status === 403
+          ? "Bị cấm: Token không hợp lệ hoặc thiếu quyền."
+          : `Không thể gửi dữ liệu: ${error.message}`
+      );
     }
   };
-  
-  
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Insurance Claim Submission</Text>
+    <ScrollView contentContainerStyle={styles.container}>
+      <Text style={styles.title}>Gửi Yêu Cầu Bảo Hiểm</Text>
 
-      {/* Form nhập description */}
+      {/* Form nhập mô tả */}
       <View style={styles.inputContainer}>
-        <Text style={styles.label}>Description</Text>
+        <Text style={styles.label}>Mô Tả</Text>
         <TextInput
-          style={[styles.input, errors.description && styles.inputError]}
-          value={description}
+          style={[styles.input, errors.claimDescription && styles.inputError]}
+          value={claimDescription}
           onChangeText={(text) => {
-            setDescription(text);
-            setErrors((prev) => ({ ...prev, description: "" }));
+            setClaimDescription(text);
+            setErrors((prev) => ({ ...prev, claimDescription: "" }));
           }}
-          placeholder="Enter your description"
+          placeholder="Nhập mô tả của bạn"
           multiline
           numberOfLines={4}
         />
-        {errors.description && (
-          <Text style={styles.errorText}>{errors.description}</Text>
+        {errors.claimDescription && (
+          <Text style={styles.errorText}>{errors.claimDescription}</Text>
         )}
       </View>
 
       {/* Chọn ảnh */}
       <View style={styles.inputContainer}>
-        <Text style={styles.label}>Select Image</Text>
+        <Text style={styles.label}>Chọn Ảnh (Tối đa 5)</Text>
         <Button
-          title="Pick an image from gallery"
+          title="Chọn ảnh từ thư viện"
           onPress={pickImageFromGallery}
         />
-        {image && <Image source={{ uri: image.uri }} style={styles.image} />}
+        {images.map((img, index) => (
+          <Image key={index} source={{ uri: img.uri }} style={styles.image} />
+        ))}
         {errors.image && <Text style={styles.errorText}>{errors.image}</Text>}
       </View>
 
       {/* Nút gửi */}
       <Button title="Gửi" onPress={submitForm} />
-    </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     padding: 20,
-    flex: 1,
+    flexGrow: 1,
   },
   title: {
     fontSize: 20,
