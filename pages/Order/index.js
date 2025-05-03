@@ -168,7 +168,6 @@ const Order = () => {
   // Header component
 
   const renderHeader = () => {
-    const navigation = useNavigation(); // Lấy navigation trong header
     return (
       <View style={styles.header}>
         <TouchableOpacity
@@ -396,19 +395,18 @@ const Order = () => {
   };
 
   const renderDetailModal = () => {
-    const navigation = useNavigation();
     if (!selectedBooking) return null;
 
     const handleChatPress = () => {
       setModalVisible(false); // First close the modal
-      // Use setTimeout to ensure modal is closed before navigation
+      // Ensure modal is closed before navigation with a slight delay
       setTimeout(() => {
         navigation.navigate("ChatCustomer", {
           driverId: selectedBooking.driver.accountId,
           driverName: selectedBooking.driver.fullName,
           bookingId: selectedBooking.bookingId,
         });
-      }, 300); // Add a small delay to ensure smooth transition
+      }, 300);
     };
 
     return (

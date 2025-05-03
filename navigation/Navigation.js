@@ -147,7 +147,7 @@ const Navigation = () => {
             />
             <Stack.Screen name="Payment" component={PaymentScreen} />
             <Stack.Screen name="Withdraw" component={Withdraw} />
-            <Stack.Screen name="Insurance" component={Insurance} />
+            <Stack.Screen name="Insurance" component={Insurance} options={{ title: "Báo cáo" }}/>
           </>
         ) : (
           <>
