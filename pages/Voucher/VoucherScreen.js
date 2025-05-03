@@ -116,9 +116,9 @@ const VoucherScreen = () => {
       endLocationAddress,
       titlePickup,
       titleDropoff,
-      selectedInsuranceId,
-      insuranceName,
-      insuranceDescription
+      selectedInsuranceId: selectedInsuranceId ?? route.params?.selectedInsuranceId,
+      insuranceName: insuranceName ?? route.params?.insuranceName,
+      insuranceDescription: insuranceDescription ?? route.params?.insuranceDescription,
     });
   };
 
