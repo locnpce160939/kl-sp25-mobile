@@ -72,6 +72,7 @@ const ImageCameraField = ({
   setFormData,
 }) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [scanningText, setScanningText] = useState("");
 
   const requestPermissions = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -89,6 +90,7 @@ const ImageCameraField = ({
   const processImage = async (uri) => {
     try {
       setIsLoading(true);
+      setScanningText("Đang quét thông tin...");
       console.log(`[${label}] Bắt đầu xử lý ảnh:`, uri);
 
       if (!scanEnabled) {
@@ -127,6 +129,7 @@ const ImageCameraField = ({
         throw new Error("Không thể đọc thông tin từ ảnh");
       }
 
+      setScanningText("Đang điền thông tin...");
       let scannedData = {};
       
       if (isFront) {
@@ -192,6 +195,7 @@ const ImageCameraField = ({
       onImageSelect(imageData);
     } finally {
       setIsLoading(false);
+      setScanningText("");
     }
   };
 
@@ -313,7 +317,10 @@ const ImageCameraField = ({
     <View style={styles.imageContainer}>
       <Text style={styles.label}>{label}</Text>
       {isLoading ? (
-        <ActivityIndicator size="large" color="#007AFF" />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#00b5ec" />
+          <Text style={styles.scanningText}>{scanningText}</Text>
+        </View>
       ) : image ? (
         <View style={styles.imageWrapper}>
           <Image source={{ uri: image.uri }} style={styles.idImage} />
@@ -612,6 +619,8 @@ const CreateDriverIdentificationScreen = ({ navigation, initialData }) => {
   const { showAlert } = useAlert();
   const [isCreateMode, setIsCreateMode] = useState(false);
   const [showScanNotification, setShowScanNotification] = useState(true);
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanningText, setScanningText] = useState("");
 
   const formatDateForInput = (dateString) => {
     if (!dateString) return "";
@@ -1118,6 +1127,9 @@ const CreateDriverIdentificationScreen = ({ navigation, initialData }) => {
 
                     if (!result.canceled && result.assets?.[0]?.uri) {
                       try {
+                        setIsScanning(true);
+                        setScanningText("Đang quét thông tin...");
+                        
                         const imageData = {
                           uri: result.assets[0].uri,
                           type: "image/jpeg",
@@ -1143,6 +1155,7 @@ const CreateDriverIdentificationScreen = ({ navigation, initialData }) => {
 
                         const data = await response.json();
                         if (data && data.text_results) {
+                          setScanningText("Đang điền thông tin...");
                           setFormData(prev => ({
                             ...prev,
                             idNumber: data.text_results.id || prev.idNumber,
@@ -1158,6 +1171,9 @@ const CreateDriverIdentificationScreen = ({ navigation, initialData }) => {
                       } catch (error) {
                         console.error("Error scanning front:", error);
                         Alert.alert("Lỗi", "Không thể quét thông tin từ ảnh. Vui lòng thử lại.");
+                      } finally {
+                        setIsScanning(false);
+                        setScanningText("");
                       }
                     }
                   }
@@ -1174,6 +1190,9 @@ const CreateDriverIdentificationScreen = ({ navigation, initialData }) => {
 
                     if (!result.canceled && result.assets?.[0]?.uri) {
                       try {
+                        setIsScanning(true);
+                        setScanningText("Đang quét thông tin...");
+                        
                         const imageData = {
                           uri: result.assets[0].uri,
                           type: "image/jpeg",
@@ -1199,6 +1218,7 @@ const CreateDriverIdentificationScreen = ({ navigation, initialData }) => {
 
                         const data = await response.json();
                         if (data && data.text_results) {
+                          setScanningText("Đang điền thông tin...");
                           setFormData(prev => ({
                             ...prev,
                             idNumber: data.text_results.id || prev.idNumber,
@@ -1214,6 +1234,9 @@ const CreateDriverIdentificationScreen = ({ navigation, initialData }) => {
                       } catch (error) {
                         console.error("Error scanning front:", error);
                         Alert.alert("Lỗi", "Không thể quét thông tin từ ảnh. Vui lòng thử lại.");
+                      } finally {
+                        setIsScanning(false);
+                        setScanningText("");
                       }
                     }
                   }
@@ -1248,6 +1271,9 @@ const CreateDriverIdentificationScreen = ({ navigation, initialData }) => {
 
                     if (!result.canceled && result.assets?.[0]?.uri) {
                       try {
+                        setIsScanning(true);
+                        setScanningText("Đang quét thông tin...");
+                        
                         const imageData = {
                           uri: result.assets[0].uri,
                           type: "image/jpeg",
@@ -1273,6 +1299,7 @@ const CreateDriverIdentificationScreen = ({ navigation, initialData }) => {
 
                         const data = await response.json();
                         if (data && data.text_results) {
+                          setScanningText("Đang điền thông tin...");
                           setFormData(prev => ({
                             ...prev,
                             issueDate: data.text_results.issue_date ? formatDateForInput(data.text_results.issue_date) : prev.issueDate,
@@ -1282,6 +1309,9 @@ const CreateDriverIdentificationScreen = ({ navigation, initialData }) => {
                       } catch (error) {
                         console.error("Error scanning back:", error);
                         Alert.alert("Lỗi", "Không thể quét thông tin từ ảnh. Vui lòng thử lại.");
+                      } finally {
+                        setIsScanning(false);
+                        setScanningText("");
                       }
                     }
                   }
@@ -1298,6 +1328,9 @@ const CreateDriverIdentificationScreen = ({ navigation, initialData }) => {
 
                     if (!result.canceled && result.assets?.[0]?.uri) {
                       try {
+                        setIsScanning(true);
+                        setScanningText("Đang quét thông tin...");
+                        
                         const imageData = {
                           uri: result.assets[0].uri,
                           type: "image/jpeg",
@@ -1323,6 +1356,7 @@ const CreateDriverIdentificationScreen = ({ navigation, initialData }) => {
 
                         const data = await response.json();
                         if (data && data.text_results) {
+                          setScanningText("Đang điền thông tin...");
                           setFormData(prev => ({
                             ...prev,
                             issueDate: data.text_results.issue_date ? formatDateForInput(data.text_results.issue_date) : prev.issueDate,
@@ -1332,6 +1366,9 @@ const CreateDriverIdentificationScreen = ({ navigation, initialData }) => {
                       } catch (error) {
                         console.error("Error scanning back:", error);
                         Alert.alert("Lỗi", "Không thể quét thông tin từ ảnh. Vui lòng thử lại.");
+                      } finally {
+                        setIsScanning(false);
+                        setScanningText("");
                       }
                     }
                   }
@@ -1619,10 +1656,24 @@ const CreateDriverIdentificationScreen = ({ navigation, initialData }) => {
         <TouchableOpacity 
           style={styles.scanButton}
           onPress={handleScanPress}
+          disabled={isScanning}
         >
-          <Ionicons name="scan" size={24} color="#00b5ec" />
+          {isScanning ? (
+            <ActivityIndicator size="small" color="#00b5ec" />
+          ) : (
+            <Ionicons name="scan" size={24} color="#00b5ec" />
+          )}
         </TouchableOpacity>
       </View>
+
+      {isScanning && (
+        <View style={styles.scanningOverlay}>
+          <View style={styles.scanningContent}>
+            <ActivityIndicator size="large" color="#00b5ec" />
+            <Text style={styles.scanningText}>{scanningText}</Text>
+          </View>
+        </View>
+      )}
 
       <TabBar tabs={tabs} activeTab={activeTab} onTabPress={handleTabPress} />
       <ProgressBar progress={(activeTab + 1) * 25} />
@@ -2046,6 +2097,46 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 20,
     color: '#666',
+  },
+  loadingContainer: {
+    height: 200,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ced4da',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scanningOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  scanningContent: {
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  scanningText: {
+    marginTop: 12,
+    color: '#00b5ec',
+    fontSize: 16,
+    fontWeight: '500',
   },
 });
 
