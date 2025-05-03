@@ -15,6 +15,7 @@ import axios from "axios";
 import { BASE_URL } from "../../configUrl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Ionicons from "react-native-vector-icons/Ionicons";
+import { useAlert } from "../../components/CustomAlert";
 
 const ImageCameraField = ({
   label,
@@ -24,15 +25,17 @@ const ImageCameraField = ({
   maxImages = 5,
 }) => {
   const [isLoading, setIsLoading] = useState(false);
+  const { showAlert } = useAlert();
 
   const requestPermissions = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert(
-        "Quyền truy cập bị từ chối",
-        "Cần quyền truy cập thư viện ảnh để sử dụng tính năng này",
-        [{ text: "OK" }]
-      );
+      showAlert({
+        title: "Quyền truy cập bị từ chối",
+        message: "Cần quyền truy cập thư viện ảnh để sử dụng tính năng này",
+        type: "error",
+        confirmText: "OK"
+      });
       return false;
     }
     return true;
@@ -40,7 +43,11 @@ const ImageCameraField = ({
 
   const selectImage = async () => {
     if (images.length >= maxImages) {
-      Alert.alert("Giới hạn", `Bạn chỉ có thể chọn tối đa ${maxImages} ảnh!`);
+      showAlert({
+        title: "Giới hạn",
+        message: `Bạn chỉ có thể chọn tối đa ${maxImages} ảnh!`,
+        type: "warning"
+      });
       return;
     }
 
@@ -65,7 +72,11 @@ const ImageCameraField = ({
       }
     } catch (error) {
       console.log("Lỗi khi chọn ảnh:", error);
-      Alert.alert("Lỗi", "Không thể chọn ảnh. Vui lòng thử lại.");
+      showAlert({
+        title: "Lỗi",
+        message: "Không thể chọn ảnh. Vui lòng thử lại.",
+        type: "error"
+      });
     }
   };
 
@@ -117,6 +128,7 @@ const Insurance = ({ route }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [existingClaim, setExistingClaim] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
+  const { showAlert } = useAlert();
 
   const bookingId = route.params?.bookingId;
 
@@ -215,12 +227,14 @@ const Insurance = ({ route }) => {
         );
       }
 
-      Alert.alert(
-        "Thành công",
-        isEditing
+      showAlert({
+        title: "Thành công",
+        message: isEditing
           ? "Yêu cầu bảo hiểm đã được cập nhật thành công!"
-          : "Yêu cầu bảo hiểm đã được tạo thành công!"
-      );
+          : "Yêu cầu bảo hiểm đã được tạo thành công!",
+        type: "success",
+        autoClose: true
+      });
 
       // Fetch updated claim data
       const response = await axios.get(
@@ -243,14 +257,15 @@ const Insurance = ({ route }) => {
         "Lỗi khi gửi form:",
         error.response ? error.response.data : error.message
       );
-      Alert.alert(
-        "Lỗi",
-        error.response?.status === 400
+      showAlert({
+        title: "Lỗi",
+        message: error.response?.status === 400
           ? "Yêu cầu không hợp lệ: Kiểm tra lại dữ liệu gửi đi."
           : error.response?.status === 403
           ? "Bị cấm: Token không hợp lệ hoặc thiếu quyền."
-          : `Không thể gửi dữ liệu: ${error.message}`
-      );
+          : `Không thể gửi dữ liệu: ${error.message}`,
+        type: "error"
+      });
     } finally {
       setIsSubmitting(false);
     }
