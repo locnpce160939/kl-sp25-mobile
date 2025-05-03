@@ -70,6 +70,12 @@ const ImageCameraField = ({
   scanEnabled = true,
   isFront = true,
   setFormData,
+  getDistricts,
+  getWards,
+  setPermanentDistricts,
+  setPermanentWards,
+  setTemporaryDistricts,
+  setTemporaryWards,
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [scanningText, setScanningText] = useState("");
@@ -112,7 +118,7 @@ const ImageCameraField = ({
       });
 
       console.log('Gửi request đến API OCR');
-      const response = await fetch("https://scan.ftcs.online/id_card", {
+      const response = await fetch("http://192.168.2.103:5001/id_card", {
         method: "POST",
         body: formData,
         headers: {
@@ -133,29 +139,92 @@ const ImageCameraField = ({
       let scannedData = {};
       
       if (isFront) {
-        scannedData = {
-          idNumber: data.text_results.id || "",
-          fullName: data.text_results.name || "",
-          birthday: data.text_results.dob ? formatDateForInput(data.text_results.dob) : "",
-          gender: data.text_results.gender || "",
-          country: data.text_results.nationality || "",
-          permanentStreetAddress: data.text_results.current_place || "",
-          temporaryStreetAddress: data.text_results.origin_place || "",
-          expiryDate: data.text_results.expire_date ? formatDateForInput(data.text_results.expire_date) : "",
-        };
+        // Handle permanent address from address_info
+        if (data.address_info) {
+          try {
+            // Fetch districts for permanent address
+            const permanentDistricts = await getDistricts(data.address_info.province_id);
+            setPermanentDistricts(permanentDistricts);
 
-        if (setFormData) {
-          setFormData(prev => ({
-            ...prev,
-            idNumber: scannedData.idNumber || prev.idNumber,
-            fullName: scannedData.fullName || prev.fullName,
-            birthday: scannedData.birthday || prev.birthday,
-            gender: scannedData.gender || prev.gender,
-            country: scannedData.country || prev.country,
-            permanentStreetAddress: scannedData.permanentStreetAddress || prev.permanentStreetAddress,
-            temporaryStreetAddress: scannedData.temporaryStreetAddress || prev.temporaryStreetAddress,
-            expiryDate: scannedData.expiryDate || prev.expiryDate,
-          }));
+            // Fetch wards for permanent address
+            const permanentWards = await getWards(data.address_info.district_id);
+            setPermanentWards(permanentWards);
+
+            // Handle temporary address from address_info_origin
+            if (data.address_info_origin) {
+              // Fetch districts for temporary address
+              const temporaryDistricts = await getDistricts(data.address_info_origin.province_id);
+              setTemporaryDistricts(temporaryDistricts);
+
+              // Fetch wards for temporary address
+              const temporaryWards = await getWards(data.address_info_origin.district_id);
+              setTemporaryWards(temporaryWards);
+            }
+
+            // Create scannedData after fetching all address data
+            scannedData = {
+              idNumber: data.text_results.id || "",
+              fullName: data.text_results.name || "",
+              birthday: data.text_results.dob ? formatDateForInput(data.text_results.dob) : "",
+              gender: data.text_results.gender || "",
+              country: data.text_results.nationality || "",
+              permanentStreetAddress: data.text_results.current_place || "",
+              temporaryStreetAddress: data.text_results.origin_place || "",
+              expiryDate: data.text_results.expire_date ? formatDateForInput(data.text_results.expire_date) : "",
+              // Add address IDs from OCR results
+              permanentAddressProvince: data.address_info.province_id.toString(),
+              permanentAddressDistrict: data.address_info.district_id.toString(),
+              permanentAddressWard: data.address_info.ward_id.toString(),
+              temporaryAddressProvince: data.address_info_origin?.province_id?.toString() || "",
+              temporaryAddressDistrict: data.address_info_origin?.district_id?.toString() || "",
+              temporaryAddressWard: data.address_info_origin?.ward_id?.toString() || "",
+            };
+
+            // Update form data after all address data is fetched
+            if (setFormData) {
+              setFormData(prev => ({
+                ...prev,
+                ...scannedData
+              }));
+            }
+          } catch (error) {
+            console.error("Error fetching address data:", error);
+            // Still update other fields even if address fetching fails
+            scannedData = {
+              idNumber: data.text_results.id || "",
+              fullName: data.text_results.name || "",
+              birthday: data.text_results.dob ? formatDateForInput(data.text_results.dob) : "",
+              gender: data.text_results.gender || "",
+              country: data.text_results.nationality || "",
+              permanentStreetAddress: data.text_results.current_place || "",
+              temporaryStreetAddress: data.text_results.origin_place || "",
+              expiryDate: data.text_results.expire_date ? formatDateForInput(data.text_results.expire_date) : "",
+            };
+            if (setFormData) {
+              setFormData(prev => ({
+                ...prev,
+                ...scannedData
+              }));
+            }
+          }
+        } else {
+          // If no address info, just update basic fields
+          scannedData = {
+            idNumber: data.text_results.id || "",
+            fullName: data.text_results.name || "",
+            birthday: data.text_results.dob ? formatDateForInput(data.text_results.dob) : "",
+            gender: data.text_results.gender || "",
+            country: data.text_results.nationality || "",
+            permanentStreetAddress: data.text_results.current_place || "",
+            temporaryStreetAddress: data.text_results.origin_place || "",
+            expiryDate: data.text_results.expire_date ? formatDateForInput(data.text_results.expire_date) : "",
+          };
+          if (setFormData) {
+            setFormData(prev => ({
+              ...prev,
+              ...scannedData
+            }));
+          }
         }
       } else {
         scannedData = {
@@ -166,8 +235,7 @@ const ImageCameraField = ({
         if (setFormData) {
           setFormData(prev => ({
             ...prev,
-            issueDate: scannedData.issueDate || prev.issueDate,
-            issuedBy: scannedData.issuedBy || prev.issuedBy,
+            ...scannedData
           }));
         }
       }
@@ -1093,6 +1161,7 @@ const CreateDriverIdentificationScreen = ({ navigation, initialData }) => {
   };
 
   const handleScanPress = () => {
+    console.log('=== Bắt đầu quét CCCD ===');
     Alert.alert(
       "Quét CCCD",
       "Vui lòng chọn mặt CCCD cần quét",
@@ -1104,6 +1173,7 @@ const CreateDriverIdentificationScreen = ({ navigation, initialData }) => {
         {
           text: "Quét mặt trước",
           onPress: () => {
+            console.log('Đã chọn quét mặt trước CCCD');
             Alert.alert(
               "Quét mặt trước CCCD",
               "Vui lòng chọn cách thức quét",
@@ -1115,6 +1185,7 @@ const CreateDriverIdentificationScreen = ({ navigation, initialData }) => {
                 {
                   text: "Chụp ảnh",
                   onPress: async () => {
+                    console.log('Đã chọn chụp ảnh mặt trước');
                     const hasPermission = await requestPermissions();
                     if (!hasPermission) return;
 
@@ -1135,6 +1206,7 @@ const CreateDriverIdentificationScreen = ({ navigation, initialData }) => {
                           type: "image/jpeg",
                           name: "front.jpg",
                         };
+                        console.log('Dữ liệu ảnh:', imageData);
                         handleInputChange("frontFile", imageData);
 
                         const formData = new FormData();
@@ -1144,7 +1216,8 @@ const CreateDriverIdentificationScreen = ({ navigation, initialData }) => {
                           name: `scan_${Date.now()}.jpg`,
                         });
 
-                        const response = await fetch("https://scan.ftcs.online/id_card", {
+                        console.log('Gửi request OCR...');
+                        const response = await fetch("http://192.168.2.103:5001/id_card", {
                           method: "POST",
                           body: formData,
                           headers: {
@@ -1154,22 +1227,107 @@ const CreateDriverIdentificationScreen = ({ navigation, initialData }) => {
                         });
 
                         const data = await response.json();
+                        console.log('=== Dữ liệu OCR nhận được ===');
+                        console.log('Text results:', data.text_results);
+                        console.log('Address info:', data.address_info);
+                        console.log('Address info origin:', data.address_info_origin);
+
                         if (data && data.text_results) {
                           setScanningText("Đang điền thông tin...");
-                          setFormData(prev => ({
-                            ...prev,
-                            idNumber: data.text_results.id || prev.idNumber,
-                            fullName: data.text_results.name || prev.fullName,
-                            birthday: data.text_results.dob ? formatDateForInput(data.text_results.dob) : prev.birthday,
-                            gender: data.text_results.gender || prev.gender,
-                            country: data.text_results.nationality || prev.country,
-                            permanentStreetAddress: data.text_results.current_place || prev.permanentStreetAddress,
-                            temporaryStreetAddress: data.text_results.origin_place || prev.temporaryStreetAddress,
-                            expiryDate: data.text_results.expire_date ? formatDateForInput(data.text_results.expire_date) : prev.expiryDate,
-                          }));
+
+                          // Handle permanent address from address_info
+                          if (data.address_info) {
+                            try {
+                              console.log('Đang lấy thông tin địa chỉ thường trú...');
+                              // Fetch districts for permanent address
+                              const permanentDistricts = await getDistricts(data.address_info.province_id);
+                              console.log('Danh sách quận/huyện thường trú:', permanentDistricts);
+                              setPermanentDistricts(permanentDistricts);
+
+                              // Fetch wards for permanent address
+                              const permanentWards = await getWards(data.address_info.district_id);
+                              console.log('Danh sách phường/xã thường trú:', permanentWards);
+                              setPermanentWards(permanentWards);
+
+                              // Handle temporary address from address_info_origin
+                              if (data.address_info_origin) {
+                                console.log('Đang lấy thông tin địa chỉ tạm trú...');
+                                // Fetch districts for temporary address
+                                const temporaryDistricts = await getDistricts(data.address_info_origin.province_id);
+                                console.log('Danh sách quận/huyện tạm trú:', temporaryDistricts);
+                                setTemporaryDistricts(temporaryDistricts);
+
+                                // Fetch wards for temporary address
+                                const temporaryWards = await getWards(data.address_info_origin.district_id);
+                                console.log('Danh sách phường/xã tạm trú:', temporaryWards);
+                                setTemporaryWards(temporaryWards);
+                              }
+
+                              // Update form data with address information
+                              const updatedFormData = {
+                                idNumber: data.text_results.id || "",
+                                fullName: data.text_results.name || "",
+                                birthday: data.text_results.dob ? formatDateForInput(data.text_results.dob) : "",
+                                gender: data.text_results.gender || "",
+                                country: data.text_results.nationality || "",
+                                permanentStreetAddress: data.text_results.current_place || "",
+                                temporaryStreetAddress: data.text_results.origin_place || "",
+                                expiryDate: data.text_results.expire_date ? formatDateForInput(data.text_results.expire_date) : "",
+                                permanentAddressProvince: data.address_info.province_id.toString(),
+                                permanentAddressDistrict: data.address_info.district_id.toString(),
+                                permanentAddressWard: data.address_info.ward_id.toString(),
+                                temporaryAddressProvince: data.address_info_origin?.province_id?.toString() || "",
+                                temporaryAddressDistrict: data.address_info_origin?.district_id?.toString() || "",
+                                temporaryAddressWard: data.address_info_origin?.ward_id?.toString() || "",
+                              };
+                              console.log('=== Dữ liệu form sau khi cập nhật ===');
+                              console.log(updatedFormData);
+                              setFormData(prev => ({
+                                ...prev,
+                                ...updatedFormData
+                              }));
+                            } catch (error) {
+                              console.error("Lỗi khi lấy thông tin địa chỉ:", error);
+                              // Still update other fields even if address fetching fails
+                              const basicFormData = {
+                                idNumber: data.text_results.id || "",
+                                fullName: data.text_results.name || "",
+                                birthday: data.text_results.dob ? formatDateForInput(data.text_results.dob) : "",
+                                gender: data.text_results.gender || "",
+                                country: data.text_results.nationality || "",
+                                permanentStreetAddress: data.text_results.current_place || "",
+                                temporaryStreetAddress: data.text_results.origin_place || "",
+                                expiryDate: data.text_results.expire_date ? formatDateForInput(data.text_results.expire_date) : "",
+                              };
+                              console.log('=== Dữ liệu form cơ bản sau khi cập nhật ===');
+                              console.log(basicFormData);
+                              setFormData(prev => ({
+                                ...prev,
+                                ...basicFormData
+                              }));
+                            }
+                          } else {
+                            // If no address info, just update basic fields
+                            const basicFormData = {
+                              idNumber: data.text_results.id || "",
+                              fullName: data.text_results.name || "",
+                              birthday: data.text_results.dob ? formatDateForInput(data.text_results.dob) : "",
+                              gender: data.text_results.gender || "",
+                              country: data.text_results.nationality || "",
+                              permanentStreetAddress: data.text_results.current_place || "",
+                              temporaryStreetAddress: data.text_results.origin_place || "",
+                              expiryDate: data.text_results.expire_date ? formatDateForInput(data.text_results.expire_date) : "",
+                            };
+                            console.log('=== Dữ liệu form cơ bản sau khi cập nhật (không có thông tin địa chỉ) ===');
+                            console.log(basicFormData);
+                            setFormData(prev => ({
+                              ...prev,
+                              ...basicFormData
+                            }));
+                          }
                         }
                       } catch (error) {
-                        console.error("Error scanning front:", error);
+                        console.error("Lỗi khi quét mặt trước:", error);
                         Alert.alert("Lỗi", "Không thể quét thông tin từ ảnh. Vui lòng thử lại.");
                       } finally {
                         setIsScanning(false);
@@ -1181,6 +1339,7 @@ const CreateDriverIdentificationScreen = ({ navigation, initialData }) => {
                 {
                   text: "Chọn từ thư viện",
                   onPress: async () => {
+                    console.log('Đã chọn chọn ảnh từ thư viện mặt trước');
                     const result = await ImagePicker.launchImageLibraryAsync({
                       mediaTypes: ImagePicker.MediaTypeOptions.Images,
                       allowsEditing: true,
@@ -1198,6 +1357,7 @@ const CreateDriverIdentificationScreen = ({ navigation, initialData }) => {
                           type: "image/jpeg",
                           name: "front.jpg",
                         };
+                        console.log('Dữ liệu ảnh:', imageData);
                         handleInputChange("frontFile", imageData);
 
                         const formData = new FormData();
@@ -1207,7 +1367,8 @@ const CreateDriverIdentificationScreen = ({ navigation, initialData }) => {
                           name: `scan_${Date.now()}.jpg`,
                         });
 
-                        const response = await fetch("https://scan.ftcs.online/id_card", {
+                        console.log('Gửi request OCR...');
+                        const response = await fetch("http://192.168.2.103:5001/id_card", {
                           method: "POST",
                           body: formData,
                           headers: {
@@ -1217,22 +1378,107 @@ const CreateDriverIdentificationScreen = ({ navigation, initialData }) => {
                         });
 
                         const data = await response.json();
+                        console.log('=== Dữ liệu OCR nhận được ===');
+                        console.log('Text results:', data.text_results);
+                        console.log('Address info:', data.address_info);
+                        console.log('Address info origin:', data.address_info_origin);
+
                         if (data && data.text_results) {
                           setScanningText("Đang điền thông tin...");
-                          setFormData(prev => ({
-                            ...prev,
-                            idNumber: data.text_results.id || prev.idNumber,
-                            fullName: data.text_results.name || prev.fullName,
-                            birthday: data.text_results.dob ? formatDateForInput(data.text_results.dob) : prev.birthday,
-                            gender: data.text_results.gender || prev.gender,
-                            country: data.text_results.nationality || prev.country,
-                            permanentStreetAddress: data.text_results.current_place || prev.permanentStreetAddress,
-                            temporaryStreetAddress: data.text_results.origin_place || prev.temporaryStreetAddress,
-                            expiryDate: data.text_results.expire_date ? formatDateForInput(data.text_results.expire_date) : prev.expiryDate,
-                          }));
+
+                          // Handle permanent address from address_info
+                          if (data.address_info) {
+                            try {
+                              console.log('Đang lấy thông tin địa chỉ thường trú...');
+                              // Fetch districts for permanent address
+                              const permanentDistricts = await getDistricts(data.address_info.province_id);
+                              console.log('Danh sách quận/huyện thường trú:', permanentDistricts);
+                              setPermanentDistricts(permanentDistricts);
+
+                              // Fetch wards for permanent address
+                              const permanentWards = await getWards(data.address_info.district_id);
+                              console.log('Danh sách phường/xã thường trú:', permanentWards);
+                              setPermanentWards(permanentWards);
+
+                              // Handle temporary address from address_info_origin
+                              if (data.address_info_origin) {
+                                console.log('Đang lấy thông tin địa chỉ tạm trú...');
+                                // Fetch districts for temporary address
+                                const temporaryDistricts = await getDistricts(data.address_info_origin.province_id);
+                                console.log('Danh sách quận/huyện tạm trú:', temporaryDistricts);
+                                setTemporaryDistricts(temporaryDistricts);
+
+                                // Fetch wards for temporary address
+                                const temporaryWards = await getWards(data.address_info_origin.district_id);
+                                console.log('Danh sách phường/xã tạm trú:', temporaryWards);
+                                setTemporaryWards(temporaryWards);
+                              }
+
+                              // Update form data with address information
+                              const updatedFormData = {
+                                idNumber: data.text_results.id || "",
+                                fullName: data.text_results.name || "",
+                                birthday: data.text_results.dob ? formatDateForInput(data.text_results.dob) : "",
+                                gender: data.text_results.gender || "",
+                                country: data.text_results.nationality || "",
+                                permanentStreetAddress: data.text_results.current_place || "",
+                                temporaryStreetAddress: data.text_results.origin_place || "",
+                                expiryDate: data.text_results.expire_date ? formatDateForInput(data.text_results.expire_date) : "",
+                                permanentAddressProvince: data.address_info.province_id.toString(),
+                                permanentAddressDistrict: data.address_info.district_id.toString(),
+                                permanentAddressWard: data.address_info.ward_id.toString(),
+                                temporaryAddressProvince: data.address_info_origin?.province_id?.toString() || "",
+                                temporaryAddressDistrict: data.address_info_origin?.district_id?.toString() || "",
+                                temporaryAddressWard: data.address_info_origin?.ward_id?.toString() || "",
+                              };
+                              console.log('=== Dữ liệu form sau khi cập nhật ===');
+                              console.log(updatedFormData);
+                              setFormData(prev => ({
+                                ...prev,
+                                ...updatedFormData
+                              }));
+                            } catch (error) {
+                              console.error("Lỗi khi lấy thông tin địa chỉ:", error);
+                              // Still update other fields even if address fetching fails
+                              const basicFormData = {
+                                idNumber: data.text_results.id || "",
+                                fullName: data.text_results.name || "",
+                                birthday: data.text_results.dob ? formatDateForInput(data.text_results.dob) : "",
+                                gender: data.text_results.gender || "",
+                                country: data.text_results.nationality || "",
+                                permanentStreetAddress: data.text_results.current_place || "",
+                                temporaryStreetAddress: data.text_results.origin_place || "",
+                                expiryDate: data.text_results.expire_date ? formatDateForInput(data.text_results.expire_date) : "",
+                              };
+                              console.log('=== Dữ liệu form cơ bản sau khi cập nhật ===');
+                              console.log(basicFormData);
+                              setFormData(prev => ({
+                                ...prev,
+                                ...basicFormData
+                              }));
+                            }
+                          } else {
+                            // If no address info, just update basic fields
+                            const basicFormData = {
+                              idNumber: data.text_results.id || "",
+                              fullName: data.text_results.name || "",
+                              birthday: data.text_results.dob ? formatDateForInput(data.text_results.dob) : "",
+                              gender: data.text_results.gender || "",
+                              country: data.text_results.nationality || "",
+                              permanentStreetAddress: data.text_results.current_place || "",
+                              temporaryStreetAddress: data.text_results.origin_place || "",
+                              expiryDate: data.text_results.expire_date ? formatDateForInput(data.text_results.expire_date) : "",
+                            };
+                            console.log('=== Dữ liệu form cơ bản sau khi cập nhật (không có thông tin địa chỉ) ===');
+                            console.log(basicFormData);
+                            setFormData(prev => ({
+                              ...prev,
+                              ...basicFormData
+                            }));
+                          }
                         }
                       } catch (error) {
-                        console.error("Error scanning front:", error);
+                        console.error("Lỗi khi quét mặt trước:", error);
                         Alert.alert("Lỗi", "Không thể quét thông tin từ ảnh. Vui lòng thử lại.");
                       } finally {
                         setIsScanning(false);
@@ -1248,6 +1494,7 @@ const CreateDriverIdentificationScreen = ({ navigation, initialData }) => {
         {
           text: "Quét mặt sau",
           onPress: () => {
+            console.log('Đã chọn quét mặt sau CCCD');
             Alert.alert(
               "Quét mặt sau CCCD",
               "Vui lòng chọn cách thức quét",
@@ -1259,6 +1506,7 @@ const CreateDriverIdentificationScreen = ({ navigation, initialData }) => {
                 {
                   text: "Chụp ảnh",
                   onPress: async () => {
+                    console.log('Đã chọn chụp ảnh mặt sau');
                     const hasPermission = await requestPermissions();
                     if (!hasPermission) return;
 
@@ -1279,6 +1527,7 @@ const CreateDriverIdentificationScreen = ({ navigation, initialData }) => {
                           type: "image/jpeg",
                           name: "back.jpg",
                         };
+                        console.log('Dữ liệu ảnh:', imageData);
                         handleInputChange("backFile", imageData);
 
                         const formData = new FormData();
@@ -1288,7 +1537,8 @@ const CreateDriverIdentificationScreen = ({ navigation, initialData }) => {
                           name: `scan_${Date.now()}.jpg`,
                         });
 
-                        const response = await fetch("https://scan.ftcs.online/id_card", {
+                        console.log('Gửi request OCR...');
+                        const response = await fetch("http://192.168.2.103:5001/id_card", {
                           method: "POST",
                           body: formData,
                           headers: {
@@ -1298,16 +1548,24 @@ const CreateDriverIdentificationScreen = ({ navigation, initialData }) => {
                         });
 
                         const data = await response.json();
+                        console.log('=== Dữ liệu OCR nhận được ===');
+                        console.log('Text results:', data.text_results);
+
                         if (data && data.text_results) {
                           setScanningText("Đang điền thông tin...");
+                          const updatedFormData = {
+                            issueDate: data.text_results.issue_date ? formatDateForInput(data.text_results.issue_date) : "",
+                            issuedBy: data.text_results.place_of_issue || "",
+                          };
+                          console.log('=== Dữ liệu form sau khi cập nhật ===');
+                          console.log(updatedFormData);
                           setFormData(prev => ({
                             ...prev,
-                            issueDate: data.text_results.issue_date ? formatDateForInput(data.text_results.issue_date) : prev.issueDate,
-                            issuedBy: data.text_results.place_of_issue || prev.issuedBy,
+                            ...updatedFormData
                           }));
                         }
                       } catch (error) {
-                        console.error("Error scanning back:", error);
+                        console.error("Lỗi khi quét mặt sau:", error);
                         Alert.alert("Lỗi", "Không thể quét thông tin từ ảnh. Vui lòng thử lại.");
                       } finally {
                         setIsScanning(false);
@@ -1319,6 +1577,7 @@ const CreateDriverIdentificationScreen = ({ navigation, initialData }) => {
                 {
                   text: "Chọn từ thư viện",
                   onPress: async () => {
+                    console.log('Đã chọn chọn ảnh từ thư viện mặt sau');
                     const result = await ImagePicker.launchImageLibraryAsync({
                       mediaTypes: ImagePicker.MediaTypeOptions.Images,
                       allowsEditing: true,
@@ -1336,6 +1595,7 @@ const CreateDriverIdentificationScreen = ({ navigation, initialData }) => {
                           type: "image/jpeg",
                           name: "back.jpg",
                         };
+                        console.log('Dữ liệu ảnh:', imageData);
                         handleInputChange("backFile", imageData);
 
                         const formData = new FormData();
@@ -1345,7 +1605,8 @@ const CreateDriverIdentificationScreen = ({ navigation, initialData }) => {
                           name: `scan_${Date.now()}.jpg`,
                         });
 
-                        const response = await fetch("https://scan.ftcs.online/id_card", {
+                        console.log('Gửi request OCR...');
+                        const response = await fetch("http://192.168.2.103:5001/id_card", {
                           method: "POST",
                           body: formData,
                           headers: {
@@ -1355,16 +1616,24 @@ const CreateDriverIdentificationScreen = ({ navigation, initialData }) => {
                         });
 
                         const data = await response.json();
+                        console.log('=== Dữ liệu OCR nhận được ===');
+                        console.log('Text results:', data.text_results);
+
                         if (data && data.text_results) {
                           setScanningText("Đang điền thông tin...");
+                          const updatedFormData = {
+                            issueDate: data.text_results.issue_date ? formatDateForInput(data.text_results.issue_date) : "",
+                            issuedBy: data.text_results.place_of_issue || "",
+                          };
+                          console.log('=== Dữ liệu form sau khi cập nhật ===');
+                          console.log(updatedFormData);
                           setFormData(prev => ({
                             ...prev,
-                            issueDate: data.text_results.issue_date ? formatDateForInput(data.text_results.issue_date) : prev.issueDate,
-                            issuedBy: data.text_results.place_of_issue || prev.issuedBy,
+                            ...updatedFormData
                           }));
                         }
                       } catch (error) {
-                        console.error("Error scanning back:", error);
+                        console.error("Lỗi khi quét mặt sau:", error);
                         Alert.alert("Lỗi", "Không thể quét thông tin từ ảnh. Vui lòng thử lại.");
                       } finally {
                         setIsScanning(false);
@@ -1605,6 +1874,12 @@ const CreateDriverIdentificationScreen = ({ navigation, initialData }) => {
         error={errors.frontFile}
         isFront={true}
         setFormData={setFormData}
+        getDistricts={getDistricts}
+        getWards={getWards}
+        setPermanentDistricts={setPermanentDistricts}
+        setPermanentWards={setPermanentWards}
+        setTemporaryDistricts={setTemporaryDistricts}
+        setTemporaryWards={setTemporaryWards}
       />
 
       <ImageCameraField
@@ -1620,6 +1895,12 @@ const CreateDriverIdentificationScreen = ({ navigation, initialData }) => {
         error={errors.backFile}
         isFront={false}
         setFormData={setFormData}
+        getDistricts={getDistricts}
+        getWards={getWards}
+        setPermanentDistricts={setPermanentDistricts}
+        setPermanentWards={setPermanentWards}
+        setTemporaryDistricts={setTemporaryDistricts}
+        setTemporaryWards={setTemporaryWards}
       />
     </View>
   );
@@ -1638,6 +1919,42 @@ const CreateDriverIdentificationScreen = ({ navigation, initialData }) => {
         return renderPersonalInfo();
     }
   };
+
+  // Add useEffect to handle address selection when districts and wards are updated
+  useEffect(() => {
+    const handleAddressSelection = async () => {
+      if (formData.permanentAddressProvince) {
+        try {
+          const districts = await getDistricts(formData.permanentAddressProvince);
+          setPermanentDistricts(districts);
+
+          if (formData.permanentAddressDistrict) {
+            const wards = await getWards(formData.permanentAddressDistrict);
+            setPermanentWards(wards);
+          }
+        } catch (error) {
+          console.error("Error fetching permanent address data:", error);
+        }
+      }
+
+      if (formData.temporaryAddressProvince) {
+        try {
+          const districts = await getDistricts(formData.temporaryAddressProvince);
+          setTemporaryDistricts(districts);
+
+          if (formData.temporaryAddressDistrict) {
+            const wards = await getWards(formData.temporaryAddressDistrict);
+            setTemporaryWards(wards);
+          }
+        } catch (error) {
+          console.error("Error fetching temporary address data:", error);
+        }
+      }
+    };
+
+    handleAddressSelection();
+  }, [formData.permanentAddressProvince, formData.permanentAddressDistrict, 
+      formData.temporaryAddressProvince, formData.temporaryAddressDistrict]);
 
   return (
     <View style={styles.container}>
