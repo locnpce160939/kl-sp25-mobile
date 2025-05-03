@@ -128,6 +128,9 @@ const VehicleScreen = () => {
   const [notification, setNotification] = useState({ visible: false, message: "", type: "" });
   const notificationOpacity = new Animated.Value(0);
   const { showAlert } = useAlert();
+  // Thêm state cho overlay scan giấy đăng kiểm
+  const [isScanningVehicle, setIsScanningVehicle] = useState(false);
+  const [scanningText, setScanningText] = useState("");
 
   // Effects
   useEffect(() => {
@@ -498,6 +501,8 @@ const VehicleScreen = () => {
 
   const processVehicleImage = async (uri) => {
     try {
+      setIsScanningVehicle(true);
+      setScanningText("Đang quét thông tin...");
       setLoading(true);
       console.log("Bắt đầu xử lý ảnh giấy đăng kiểm:", uri);
 
@@ -587,6 +592,8 @@ const VehicleScreen = () => {
 
     } finally {
       setLoading(false);
+      setIsScanningVehicle(false);
+      setScanningText("");
     }
   };
 
@@ -641,167 +648,178 @@ const VehicleScreen = () => {
   );
 
   const renderForm = () => (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => setViewMode("list")}>
-          <Ionicons name="arrow-back" size={24} color="#00b5ec" style={styles.backIcon} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          {vehicleId ? "Cập nhật thông tin xe" : "Tạo mới thông tin xe"}
-        </Text>
-        <TouchableOpacity 
-          style={styles.scanButton}
-          onPress={() => selectRegistrationImage()}
-        >
-          <Ionicons name="scan-outline" size={28} color="#00b5ec" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Thông tin cơ bản */}
-      <View style={styles.sectionContainer}>
-        <Text style={styles.sectionTitle}>Thông tin cơ bản</Text>
-        <View style={styles.sectionContent}>
-          {["licensePlate", "vehicleType", "make", "model"].map((field) => (
-            <View key={field} style={styles.inputContainer}>
-              <Text style={styles.label}>{VALIDATION_RULES[field].label}</Text>
-              <TextInput
-                style={[styles.input, errors[field] && styles.inputError]}
-                placeholder={`Nhập ${VALIDATION_RULES[field].label.toLowerCase()}`}
-                value={formData[field]}
-                onChangeText={(text) => handleInputChange(field, text)}
-              />
-              {errors[field] && <Text style={styles.errorText}>{errors[field]}</Text>}
-            </View>
-          ))}
-        </View>
-      </View>
-
-      {/* Thông số kỹ thuật */}
-      <View style={styles.sectionContainer}>
-        <Text style={styles.sectionTitle}>Thông số kỹ thuật</Text>
-        <View style={styles.sectionContent}>
-          {["year", "capacity", "dimensions"].map((field) => (
-            <View key={field} style={styles.inputContainer}>
-              <Text style={styles.label}>{VALIDATION_RULES[field].label}</Text>
-              <TextInput
-                style={[styles.input, errors[field] && styles.inputError]}
-                placeholder={`Nhập ${VALIDATION_RULES[field].label.toLowerCase()}`}
-                value={formData[field]}
-                keyboardType={field === "year" || field === "capacity" ? "numeric" : "default"}
-                onChangeText={(text) => handleInputChange(field, text)}
-              />
-              {errors[field] && <Text style={styles.errorText}>{errors[field]}</Text>}
-            </View>
-          ))}
-        </View>
-      </View>
-
-      {/* Thông tin pháp lý */}
-      <View style={styles.sectionContainer}>
-        <Text style={styles.sectionTitle}>Thông tin pháp lý</Text>
-        <View style={styles.sectionContent}>
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>{VALIDATION_RULES.insuranceStatus.label}</Text>
-            <View style={[styles.selectContainer, errors.insuranceStatus && styles.inputError]}>
-              <Picker
-                selectedValue={formData.insuranceStatus}
-                onValueChange={(value) => handleInputChange("insuranceStatus", value)}
-                style={styles.picker}
-              >
-                {VALIDATION_RULES.insuranceStatus.options.map((option) => (
-                  <Picker.Item key={option} label={option} value={option} />
-                ))}
-              </Picker>
-            </View>
-            {errors.insuranceStatus && <Text style={styles.errorText}>{errors.insuranceStatus}</Text>}
-          </View>
-
-          <View style={styles.inputContainer}>
-            <DatePickerField
-              label={VALIDATION_RULES.registrationExpiryDate.label}
-              value={formData.registrationExpiryDate}
-              onChange={(value) => handleInputChange("registrationExpiryDate", value)}
-              field="registrationExpiryDate"
-              error={errors.registrationExpiryDate}
-              style={[styles.input, errors.registrationExpiryDate && styles.inputError]}
-            />
-          </View>
-        </View>
-      </View>
-
-      {/* Hình ảnh xe */}
-      <View style={styles.sectionContainer}>
-        <Text style={styles.sectionTitle}>Hình ảnh xe</Text>
-        <View style={styles.sectionContent}>
-          <ImageSection field="frontView" label="Ảnh mặt trước xe" />
-          <ImageSection field="backView" label="Ảnh mặt sau xe" />
-        </View>
-      </View>
-
-      <TouchableOpacity 
-        style={[styles.button, isUpdating && styles.buttonDisabled]} 
-        onPress={createOrUpdateVehicle}
-        disabled={isUpdating}
-      >
-        {isUpdating ? (
-          <ActivityIndicator color="#fff" size="small" />
-        ) : (
-          <Text style={styles.buttonText}>
-            {vehicleId ? "Cập nhật" : "Tạo mới"}
+    <View style={{flex:1}}>
+      <ScrollView contentContainerStyle={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => setViewMode("list")}> 
+            <Ionicons name="arrow-back" size={24} color="#00b5ec" style={styles.backIcon} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>
+            {vehicleId ? "Cập nhật thông tin xe" : "Tạo mới thông tin xe"}
           </Text>
-        )}
-      </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.scanButton}
+            onPress={() => selectRegistrationImage()}
+          >
+            <Ionicons name="scan-outline" size={28} color="#00b5ec" />
+          </TouchableOpacity>
+        </View>
 
-      {/* Loading Overlay */}
-      <Modal
-        transparent={true}
-        visible={isUpdating}
-        animationType="fade"
-      >
-        <View style={styles.loadingOverlay}>
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#00b5ec" />
-            <Text style={styles.loadingText}>
-              {vehicleId ? "Đang cập nhật thông tin xe..." : "Đang thêm xe mới..."}
-            </Text>
+        {/* Thông tin cơ bản */}
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionTitle}>Thông tin cơ bản</Text>
+          <View style={styles.sectionContent}>
+            {["licensePlate", "vehicleType", "make", "model"].map((field) => (
+              <View key={field} style={styles.inputContainer}>
+                <Text style={styles.label}>{VALIDATION_RULES[field].label}</Text>
+                <TextInput
+                  style={[styles.input, errors[field] && styles.inputError]}
+                  placeholder={`Nhập ${VALIDATION_RULES[field].label.toLowerCase()}`}
+                  value={formData[field]}
+                  onChangeText={(text) => handleInputChange(field, text)}
+                />
+                {errors[field] && <Text style={styles.errorText}>{errors[field]}</Text>}
+              </View>
+            ))}
           </View>
         </View>
-      </Modal>
 
-      {/* Notification */}
-      {notification.visible && (
-        <Animated.View 
-          style={[
-            styles.notification,
-            { opacity: notificationOpacity },
-            notification.type === "success" ? styles.notificationSuccess : styles.notificationError
-          ]}
+        {/* Thông số kỹ thuật */}
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionTitle}>Thông số kỹ thuật</Text>
+          <View style={styles.sectionContent}>
+            {["year", "capacity", "dimensions"].map((field) => (
+              <View key={field} style={styles.inputContainer}>
+                <Text style={styles.label}>{VALIDATION_RULES[field].label}</Text>
+                <TextInput
+                  style={[styles.input, errors[field] && styles.inputError]}
+                  placeholder={`Nhập ${VALIDATION_RULES[field].label.toLowerCase()}`}
+                  value={formData[field]}
+                  keyboardType={field === "year" || field === "capacity" ? "numeric" : "default"}
+                  onChangeText={(text) => handleInputChange(field, text)}
+                />
+                {errors[field] && <Text style={styles.errorText}>{errors[field]}</Text>}
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* Thông tin pháp lý */}
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionTitle}>Thông tin pháp lý</Text>
+          <View style={styles.sectionContent}>
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>{VALIDATION_RULES.insuranceStatus.label}</Text>
+              <View style={[styles.selectContainer, errors.insuranceStatus && styles.inputError]}>
+                <Picker
+                  selectedValue={formData.insuranceStatus}
+                  onValueChange={(value) => handleInputChange("insuranceStatus", value)}
+                  style={styles.picker}
+                >
+                  {VALIDATION_RULES.insuranceStatus.options.map((option) => (
+                    <Picker.Item key={option} label={option} value={option} />
+                  ))}
+                </Picker>
+              </View>
+              {errors.insuranceStatus && <Text style={styles.errorText}>{errors.insuranceStatus}</Text>}
+            </View>
+
+            <View style={styles.inputContainer}>
+              <DatePickerField
+                label={VALIDATION_RULES.registrationExpiryDate.label}
+                value={formData.registrationExpiryDate}
+                onChange={(value) => handleInputChange("registrationExpiryDate", value)}
+                field="registrationExpiryDate"
+                error={errors.registrationExpiryDate}
+                style={[styles.input, errors.registrationExpiryDate && styles.inputError]}
+              />
+            </View>
+          </View>
+        </View>
+
+        {/* Hình ảnh xe */}
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionTitle}>Hình ảnh xe</Text>
+          <View style={styles.sectionContent}>
+            <ImageSection field="frontView" label="Ảnh mặt trước xe" />
+            <ImageSection field="backView" label="Ảnh mặt sau xe" />
+          </View>
+        </View>
+
+        <TouchableOpacity 
+          style={[styles.button, isUpdating && styles.buttonDisabled]} 
+          onPress={createOrUpdateVehicle}
+          disabled={isUpdating}
         >
-          <View style={[
-            styles.notificationIconContainer,
-            notification.type === "success" ? styles.notificationSuccessIcon : styles.notificationErrorIcon
-          ]}>
-            <Ionicons 
-              name={notification.type === "success" ? "checkmark-circle" : "alert-circle"} 
-              size={24} 
-              style={[
-                styles.notificationIcon,
-                notification.type === "success" ? styles.notificationSuccessIconColor : styles.notificationErrorIconColor
-              ]}
-            />
-          </View>
-          <View style={styles.notificationContent}>
-            <Text style={[
-              styles.notificationTitle,
-              notification.type === "success" ? styles.notificationSuccessTitle : styles.notificationErrorTitle
-            ]}>
-              {notification.type === "success" ? "Thành công" : "Lỗi"}
+          {isUpdating ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <Text style={styles.buttonText}>
+              {vehicleId ? "Cập nhật" : "Tạo mới"}
             </Text>
-            <Text style={styles.notificationMessage}>{notification.message}</Text>
+          )}
+        </TouchableOpacity>
+
+        {/* Loading Overlay */}
+        <Modal
+          transparent={true}
+          visible={isUpdating}
+          animationType="fade"
+        >
+          <View style={styles.loadingOverlay}>
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#00b5ec" />
+              <Text style={styles.loadingText}>
+                {vehicleId ? "Đang cập nhật thông tin xe..." : "Đang thêm xe mới..."}
+              </Text>
+            </View>
           </View>
-        </Animated.View>
+        </Modal>
+
+        {/* Notification */}
+        {notification.visible && (
+          <Animated.View 
+            style={[
+              styles.notification,
+              { opacity: notificationOpacity },
+              notification.type === "success" ? styles.notificationSuccess : styles.notificationError
+            ]}
+          >
+            <View style={[
+              styles.notificationIconContainer,
+              notification.type === "success" ? styles.notificationSuccessIcon : styles.notificationErrorIcon
+            ]}>
+              <Ionicons 
+                name={notification.type === "success" ? "checkmark-circle" : "alert-circle"} 
+                size={24} 
+                style={[
+                  styles.notificationIcon,
+                  notification.type === "success" ? styles.notificationSuccessIconColor : styles.notificationErrorIconColor
+                ]}
+              />
+            </View>
+            <View style={styles.notificationContent}>
+              <Text style={[
+                styles.notificationTitle,
+                notification.type === "success" ? styles.notificationSuccessTitle : styles.notificationErrorTitle
+              ]}>
+                {notification.type === "success" ? "Thành công" : "Lỗi"}
+              </Text>
+              <Text style={styles.notificationMessage}>{notification.message}</Text>
+            </View>
+          </Animated.View>
+        )}
+      </ScrollView>
+      {/* Loading Overlay khi scan giấy đăng kiểm đặt ngoài ScrollView */}
+      {isScanningVehicle && (
+        <View style={styles.scanningOverlay}>
+          <View style={styles.scanningContent}>
+            <ActivityIndicator size="large" color="#00b5ec" />
+            <Text style={styles.scanningText}>{scanningText}</Text>
+          </View>
+        </View>
       )}
-    </ScrollView>
+    </View>
   );
 
   // Thêm hàm mới để xử lý chụp ảnh giấy đăng kiểm
@@ -1345,6 +1363,38 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '500',
   },
+  scanningOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  scanningContent: {
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  scanningText: {
+    marginTop: 12,
+    color: '#00b5ec',
+    fontSize: 16,
+    fontWeight: '500',
+  },
 });
 
 export default VehicleScreen;
+
